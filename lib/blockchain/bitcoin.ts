@@ -1,0 +1,1 @@
+// Bitcoin utilities placeholder

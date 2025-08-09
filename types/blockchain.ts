@@ -1,0 +1,1 @@
+// Blockchain types placeholder

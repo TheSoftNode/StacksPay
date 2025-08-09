@@ -1,0 +1,1 @@
+// Cryptographic functions placeholder
