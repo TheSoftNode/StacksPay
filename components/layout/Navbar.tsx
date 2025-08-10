@@ -10,11 +10,8 @@ import {
   BookOpen, 
   Zap, 
   Shield, 
-  Globe,
   ArrowRight,
   ExternalLink,
-  Wallet,
-  Layers,
   Database,
   GitBranch
 } from 'lucide-react'
