@@ -61,12 +61,12 @@ const SpectacularPhonePreview = () => {
   return (
     <div className="relative w-full h-[600px]">
       {/* Desktop Dashboard - Background Layer */}
-      <div className="absolute top-0 left-0 z-10">
+      <div className="absolute top-16 left-0 z-10">
         <DesktopDashboard />
       </div>
       
       {/* Phone Frame - Overlapping Layer */}
-      <div className="absolute -top-20 -right-16 z-20">
+      <div className="absolute top-0 -right-16 z-20">
         <PhoneFrame 
           views={views}
           currentView={currentView}

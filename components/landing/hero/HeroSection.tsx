@@ -1,13 +1,12 @@
 'use client'
 
 import HeroTitle from './leftside/HeroTitle'
-import HeroStats from './leftside/HeroStats'
 import HeroCTA from './leftside/HeroCTA'
 import SpectacularPhonePreview from './rightside/SpectacularPhonePreview'
 
 const HeroSection = () => {
   return (
-    <section className="relative pt-32 pb-20 lg:pt-32 lg:pb-32 overflow-hidden">
+    <section className="relative pt-32 pb-20 lg:pt-20 lg:pb-20 overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-black dark:to-gray-900" />
       
@@ -23,9 +22,8 @@ const HeroSection = () => {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           {/* Left Column - Clean Content */}
-          <div className="flex-1 max-w-2xl space-y-8 lg:space-y-12 lg:pr-12">
+          <div className="flex-1 max-w-2xl space-y-8 lg:space-y-8 lg:pr-12">
             <HeroTitle />
-            <HeroStats />
             <HeroCTA />
           </div>
 

@@ -20,7 +20,7 @@ const PhoneFrame = ({ views, currentView, setCurrentView, children }: PhoneFrame
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.2 }}
-        className="relative mx-auto w-[360px] h-[600px]"
+        className="relative mx-auto w-[360px] h-[620px]"
       >
         {/* Phone Outer Frame */}
         <div className="absolute inset-0 bg-gradient-to-b from-gray-800 to-gray-900 rounded-[3rem] p-2 shadow-2xl">
