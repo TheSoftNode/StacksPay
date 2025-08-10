@@ -23,7 +23,7 @@ const HeroSection = () => {
       <div className="absolute inset-0 dark:bg-gradient-to-br dark:from-blue-950/20 dark:via-transparent dark:to-purple-950/20 pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
+        <div className="flex lg:flex-row flex-col items-center justify-between">
           {/* Left Column - Clean Content */}
           <div className="flex-1 max-w-2xl space-y-8 lg:space-y-8 lg:pr-12">
             <HeroTitle />
@@ -31,7 +31,7 @@ const HeroSection = () => {
           </div>
 
           {/* Right Column - Phone overlapping Desktop */}
-          <div className="hidden lg:block flex-1 relative">
+          <div className="hidden md:block w-full mt-16 lg:mt-0 lg:flex-1 relative">
             <SpectacularPhonePreview />
           </div>
         </div>

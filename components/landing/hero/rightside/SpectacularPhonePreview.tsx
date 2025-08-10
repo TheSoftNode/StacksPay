@@ -61,13 +61,13 @@ const SpectacularPhonePreview = () => {
   return (
     <div className="relative w-full h-[600px] overflow-visible">
       {/* Desktop Dashboard - Background Layer */}
-      <div className="absolute top-16 left-0 z-10">
+      <div className="absolute lg:top-16 lg:left-0 z-10">
         <DesktopDashboard />
       </div>
       
       {/* Phone Frame - Overlapping Layer with Rotation */}
       <motion.div 
-        className="absolute top-5 right-5 z-20 transform-gpu"
+        className="absolute lg:top-5 -top-5 right-16 lg:right-5 z-20 transform-gpu"
         initial={{ opacity: 0, y: 50, rotate: 0 }}
         animate={{ opacity: 1, y: 0, rotate: 15 }}
         transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}

@@ -20,7 +20,7 @@ const DesktopDashboard = () => {
       initial={{ opacity: 0, x: -50 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.8 }}
-      className="hidden lg:block w-[800px] h-[500px] bg-gradient-to-br from-slate-50 via-white to-zinc-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-3xl shadow-[0_20px_40px_-8px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_40px_-8px_rgba(0,0,0,0.4)] border border-slate-200/40 dark:border-gray-700/40 backdrop-blur-sm overflow-hidden mr-12 relative"
+      className="hidden md:block w-[800px] h-[500px] bg-gradient-to-br from-slate-50 via-white to-zinc-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-3xl shadow-[0_20px_40px_-8px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_40px_-8px_rgba(0,0,0,0.4)] border border-slate-200/40 dark:border-gray-700/40 backdrop-blur-sm overflow-hidden mr-12 relative"
     >
       {/* Subtle background pattern */}
       <div className="absolute inset-0 opacity-[0.015] dark:opacity-[0.03]">

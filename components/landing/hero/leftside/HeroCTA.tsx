@@ -10,25 +10,26 @@ const HeroCTA = () => {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, delay: 1.0 }}
-      className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start"
+      className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-start"
     >
       {/* Primary CTA */}
       <motion.div
         whileHover={{ scale: 1.02, y: -1 }}
         whileTap={{ scale: 0.98 }}
+        className="w-full sm:w-auto"
       >
         <Button 
           size="lg"
-          className="bg-violet-600 hover:bg-violet-700 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+          className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700 text-white font-semibold px-6 sm:px-8 py-4 sm:py-3 rounded-full text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
         >
-          <Code className="mr-2 sm:mr-3 w-4 h-4 sm:w-5 sm:h-5" />
+          <Code className="mr-2 sm:mr-3 w-5 h-5 sm:w-5 sm:h-5" />
           Start Building
           <motion.div
             className="ml-2"
             animate={{ x: [0, 3, 0] }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
           >
-            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+            <ArrowRight className="w-5 h-5 sm:w-5 sm:h-5" />
           </motion.div>
         </Button>
       </motion.div>
@@ -50,17 +51,17 @@ const HeroCTA = () => {
         </Button>
       </motion.div>
 
-      {/* Mobile: Show tertiary CTA as a simple link */}
+      {/* Mobile: Show tertiary CTA as a centered button */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.3 }}
-        className="sm:hidden mt-1"
+        className="sm:hidden w-full"
       >
-        <button className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors duration-200 flex items-center group">
+        <button className="w-full py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-full transition-all duration-200 flex items-center justify-center group border border-slate-200 dark:border-slate-700">
           <BookOpen className="mr-2 w-4 h-4" />
           Read Documentation
-          <ArrowRight className="ml-1 w-3 h-3 group-hover:translate-x-1 transition-transform duration-200" />
+          <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
         </button>
       </motion.div>
     </motion.div>
