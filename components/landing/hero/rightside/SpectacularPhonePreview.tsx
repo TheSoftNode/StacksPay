@@ -59,27 +59,33 @@ const SpectacularPhonePreview = () => {
   }
 
   return (
-    <div className="flex items-center justify-between max-w-7xl mx-auto">
-      <DesktopDashboard />
+    <div className="relative w-full h-[600px]">
+      {/* Desktop Dashboard - Background Layer */}
+      <div className="absolute top-0 left-0 z-10">
+        <DesktopDashboard />
+      </div>
       
-      <PhoneFrame 
-        views={views}
-        currentView={currentView}
-        setCurrentView={setCurrentView}
-      >
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentView}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
-          >
-            {renderCurrentView()}
-          </motion.div>
-        </AnimatePresence>
-      </PhoneFrame>
+      {/* Phone Frame - Overlapping Layer */}
+      <div className="absolute -top-20 -right-16 z-20">
+        <PhoneFrame 
+          views={views}
+          currentView={currentView}
+          setCurrentView={setCurrentView}
+        >
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentView}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="h-full"
+            >
+              {renderCurrentView()}
+            </motion.div>
+          </AnimatePresence>
+        </PhoneFrame>
+      </div>
     </div>
   )
 }
