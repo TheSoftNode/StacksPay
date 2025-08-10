@@ -59,14 +59,23 @@ const SpectacularPhonePreview = () => {
   }
 
   return (
-    <div className="relative w-full h-[600px]">
+    <div className="relative w-full h-[600px] overflow-visible">
       {/* Desktop Dashboard - Background Layer */}
       <div className="absolute top-16 left-0 z-10">
         <DesktopDashboard />
       </div>
       
-      {/* Phone Frame - Overlapping Layer */}
-      <div className="absolute top-0 -right-16 z-20">
+      {/* Phone Frame - Overlapping Layer with Rotation */}
+      <motion.div 
+        className="absolute top-5 right-5 z-20 transform-gpu"
+        initial={{ opacity: 0, y: 50, rotate: 0 }}
+        animate={{ opacity: 1, y: 0, rotate: 15 }}
+        transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
+        style={{
+          transformOrigin: 'center center',
+          filter: 'drop-shadow(0 25px 50px rgba(0, 0, 0, 0.3))'
+        }}
+      >
         <PhoneFrame 
           views={views}
           currentView={currentView}
@@ -85,7 +94,7 @@ const SpectacularPhonePreview = () => {
             </motion.div>
           </AnimatePresence>
         </PhoneFrame>
-      </div>
+      </motion.div>
     </div>
   )
 }
