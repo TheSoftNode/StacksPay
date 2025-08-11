@@ -6,7 +6,7 @@ import SpectacularPhonePreview from './rightside/SpectacularPhonePreview'
 
 const HeroSection = () => {
   return (
-    <section className="relative pt-32 pb-20 lg:pt-24 lg:pb-20 overflow-hidden">
+    <section className="relative pt-28 mx-auto pb-20 lg:pt-24 lg:pb-20 overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-black dark:to-gray-900" />
       

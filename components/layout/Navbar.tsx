@@ -45,8 +45,8 @@ const Navbar = () => {
             : 'bg-transparent'
         }`}
       >
-        <nav className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+        <nav className="max-w-6xl mx-auto sm:px-6 ">
+          <div className="flex justify-between px-4 sm:px-0  items-center h-16 sm:h-[4.5rem]">
             {/* Logo */}
             <Logo size="md" showText={true} />
 
@@ -198,7 +198,7 @@ const Navbar = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden border-t border-gray-100 dark:border-gray-800 py-4"
+              className="lg:hidden w-full border-t bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 p-4"
             >
               <div className="space-y-4">
                 <div>
