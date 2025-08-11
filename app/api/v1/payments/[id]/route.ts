@@ -3,8 +3,10 @@ import { Payment } from '@/models/payment';
 import { Merchant } from '@/models/merchant';
 import { sbtcService } from '@/lib/services/sbtc-service';
 import { walletService } from '@/lib/services/wallet-service';
+import { paymentService } from '@/lib/services/payment-service';
+import { webhookService } from '@/lib/services/webhook-service';
+import { connectToDatabase } from '@/lib/database/mongodb';
 import { apiKeyAuth } from '@/lib/middleware/api-key-auth';
-import { connectDatabase } from '@/lib/database/connection';
 
 interface Props {
   params: {
@@ -19,7 +21,7 @@ interface Props {
 export async function GET(request: NextRequest, { params }: Props) {
   try {
     const { id } = params;
-    await connectDatabase();
+    await connectToDatabase();
 
     // Find payment
     const payment = await Payment.findById(id)
@@ -49,26 +51,18 @@ export async function GET(request: NextRequest, { params }: Props) {
     // Check payment status on blockchain if still pending
     let blockchainStatus = null;
     if (payment.status === 'pending' && !isExpired) {
-      blockchainStatus = await checkBlockchainStatus(payment);
+      blockchainStatus = await paymentService.checkPaymentStatus(payment._id);
       
       if (blockchainStatus.confirmed) {
+        await paymentService.updatePaymentStatus(payment._id, 'confirmed', {
+          confirmedTxId: blockchainStatus.txId,
+          blockHeight: blockchainStatus.blockHeight,
+          confirmations: blockchainStatus.confirmations,
+        });
+        
+        // Refresh payment data
         payment.status = 'confirmed';
         payment.confirmedAt = new Date();
-        
-        // Update with blockchain transaction details
-        if (blockchainStatus.txId) {
-          payment.paymentDetails = {
-            ...payment.paymentDetails,
-            confirmedTxId: blockchainStatus.txId,
-            blockHeight: blockchainStatus.blockHeight,
-            confirmations: blockchainStatus.confirmations,
-          };
-        }
-        
-        await payment.save();
-        
-        // TODO: Trigger webhook notification
-        await triggerWebhook(payment, 'payment.confirmed');
       }
     }
 
@@ -96,7 +90,6 @@ export async function GET(request: NextRequest, { params }: Props) {
           blockchain: {
             txId: blockchainStatus.txId,
             confirmations: blockchainStatus.confirmations,
-            required: blockchainStatus.requiredConfirmations,
             blockHeight: blockchainStatus.blockHeight,
           },
         }),
@@ -137,7 +130,7 @@ export async function PATCH(request: NextRequest, { params }: Props) {
 
     const { id } = params;
     const merchantId = authResult.merchantId;
-    await connectDatabase();
+    await connectToDatabase();
 
     const body = await request.json();
     const { status, notes } = body;
@@ -169,35 +162,24 @@ export async function PATCH(request: NextRequest, { params }: Props) {
     }
 
     // Update payment status
-    const oldStatus = payment.status;
-    payment.status = status;
+    const updateResult = await paymentService.updatePaymentStatus(id, status, notes ? { notes } : undefined);
     
-    if (status === 'confirmed' && oldStatus !== 'confirmed') {
-      payment.confirmedAt = new Date();
-    }
-    
-    if (notes) {
-      payment.notes = payment.notes || [];
-      payment.notes.push({
-        content: notes,
-        timestamp: new Date(),
-        updatedBy: 'merchant',
-      });
-    }
-
-    await payment.save();
-
-    // Trigger webhook if status changed
-    if (oldStatus !== status) {
-      await triggerWebhook(payment, `payment.${status}`);
+    if (!updateResult.success) {
+      return NextResponse.json(
+        { 
+          error: 'Update Failed',
+          message: updateResult.error,
+          code: 'UPDATE_FAILED'
+        },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({
       success: true,
       payment: {
-        id: payment._id,
-        status: payment.status,
-        oldStatus,
+        id: updateResult.payment._id,
+        status: updateResult.payment.status,
         updatedAt: new Date(),
       },
       message: `Payment status updated to ${status}`,
@@ -213,184 +195,6 @@ export async function PATCH(request: NextRequest, { params }: Props) {
       }, 
       { status: 500 }
     );
-  }
-}
-
-// Helper functions
-
-async function checkBlockchainStatus(payment: any) {
-  try {
-    switch (payment.paymentMethod) {
-      case 'sbtc':
-        return await checkSbtcPaymentStatus(payment);
-      case 'btc':
-        return await checkBtcPaymentStatus(payment);
-      case 'stx':
-        return await checkStxPaymentStatus(payment);
-      default:
-        return { confirmed: false, error: 'Unknown payment method' };
-    }
-  } catch (error) {
-    console.error(`Blockchain status check error for ${payment.paymentMethod}:`, error);
-    return { confirmed: false, error: error.message };
-  }
-}
-
-async function checkSbtcPaymentStatus(payment: any) {
-  // Check if Bitcoin has been sent to the deposit address
-  const utxos = await sbtcService.getUTXOs(payment.paymentAddress);
-  const targetAmount = payment.paymentAmount * 100000000; // Convert to satoshis
-  
-  let totalReceived = 0;
-  let confirmedAmount = 0;
-  let latestTxId = null;
-  let blockHeight = null;
-  let confirmations = 0;
-
-  for (const utxo of utxos) {
-    totalReceived += utxo.value;
-    
-    if (utxo.confirmations >= 1) {
-      confirmedAmount += utxo.value;
-      
-      if (!latestTxId || utxo.height > blockHeight) {
-        latestTxId = utxo.txid;
-        blockHeight = utxo.height;
-        confirmations = utxo.confirmations;
-      }
-    }
-  }
-
-  const confirmed = confirmedAmount >= targetAmount;
-
-  if (confirmed) {
-    // Check if sBTC has been minted
-    const sbtcStatus = await sbtcService.checkMintStatus(latestTxId);
-    return {
-      confirmed: sbtcStatus.minted,
-      txId: latestTxId,
-      sbtcTxId: sbtcStatus.sbtcTxId,
-      blockHeight,
-      confirmations,
-      requiredConfirmations: 1,
-      amountReceived: confirmedAmount,
-      targetAmount,
-    };
-  }
-
-  return {
-    confirmed: false,
-    txId: latestTxId,
-    blockHeight,
-    confirmations,
-    requiredConfirmations: 1,
-    amountReceived: confirmedAmount,
-    targetAmount,
-  };
-}
-
-async function checkBtcPaymentStatus(payment: any) {
-  const utxos = await sbtcService.getUTXOs(payment.paymentAddress);
-  const targetAmount = payment.paymentAmount * 100000000; // Convert to satoshis
-  
-  let confirmedAmount = 0;
-  let latestTxId = null;
-  let blockHeight = null;
-  let confirmations = 0;
-
-  for (const utxo of utxos) {
-    if (utxo.confirmations >= 1) {
-      confirmedAmount += utxo.value;
-      
-      if (!latestTxId || utxo.height > blockHeight) {
-        latestTxId = utxo.txid;
-        blockHeight = utxo.height;
-        confirmations = utxo.confirmations;
-      }
-    }
-  }
-
-  return {
-    confirmed: confirmedAmount >= targetAmount,
-    txId: latestTxId,
-    blockHeight,
-    confirmations,
-    requiredConfirmations: 1,
-    amountReceived: confirmedAmount,
-    targetAmount,
-  };
-}
-
-async function checkStxPaymentStatus(payment: any) {
-  try {
-    // Check STX transactions to the payment address
-    const transactions = await walletService.getAddressTransactions(payment.paymentAddress);
-    const targetAmount = payment.paymentAmount * 1000000; // Convert to microSTX
-    
-    let confirmedAmount = 0;
-    let latestTxId = null;
-    let blockHeight = null;
-    let confirmations = 0;
-
-    for (const tx of transactions) {
-      if (tx.tx_status === 'success' && tx.tx_type === 'token_transfer') {
-        const amount = parseInt(tx.token_transfer.amount);
-        confirmedAmount += amount;
-        
-        if (!latestTxId || tx.block_height > blockHeight) {
-          latestTxId = tx.tx_id;
-          blockHeight = tx.block_height;
-          confirmations = tx.confirmations || 0;
-        }
-      }
-    }
-
-    return {
-      confirmed: confirmedAmount >= targetAmount,
-      txId: latestTxId,
-      blockHeight,
-      confirmations,
-      requiredConfirmations: 1,
-      amountReceived: confirmedAmount,
-      targetAmount,
-    };
-  } catch (error) {
-    console.error('STX payment check error:', error);
-    return { confirmed: false, error: error.message };
-  }
-}
-
-async function triggerWebhook(payment: any, event: string) {
-  if (!payment.urls?.webhook) {
-    return;
-  }
-
-  try {
-    const webhookPayload = {
-      event,
-      payment: {
-        id: payment._id,
-        status: payment.status,
-        amount: payment.amount,
-        currency: payment.currency,
-        paymentMethod: payment.paymentMethod,
-        confirmedAt: payment.confirmedAt,
-        metadata: payment.metadata,
-      },
-      timestamp: new Date().toISOString(),
-    };
-
-    await fetch(payment.urls.webhook, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'sBTC-Payment-Gateway/1.0',
-      },
-      body: JSON.stringify(webhookPayload),
-    });
-  } catch (error) {
-    console.error('Webhook error:', error);
-    // TODO: Implement webhook retry logic
   }
 }
 

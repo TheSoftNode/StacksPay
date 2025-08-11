@@ -323,6 +323,87 @@ export class WalletService {
         : 'https://api.testnet.hiro.so',
     };
   }
+
+  /**
+   * Verify message signature for Stacks wallet
+   */
+  async verifyMessage(options: {
+    message: string;
+    signature: string;
+    publicKey: string;
+    address: string;
+  }): Promise<boolean> {
+    try {
+      // Import verifyMessageSignature from @stacks/encryption
+      const { verifyMessageSignature } = await import('@stacks/encryption');
+      
+      const isValid = verifyMessageSignature({
+        message: options.message,
+        publicKey: options.publicKey,
+        signature: options.signature,
+      });
+
+      return isValid;
+    } catch (error) {
+      console.error('Error verifying message signature:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Authorize STX payment with wallet signature
+   */
+  async authorizeStxPayment(options: {
+    paymentId: string;
+    amount: number;
+    recipient: string;
+    message?: string;
+  }): Promise<{ success: boolean; txId?: string; error?: string }> {
+    try {
+      const address = await this.getCurrentAddress();
+      if (!address) {
+        return { success: false, error: 'No wallet connected' };
+      }
+
+      // Check if user has sufficient balance
+      const balance = await this.getStxBalance();
+      const amountMicroStx = BigInt(Math.round(options.amount * 1000000));
+      
+      if (balance < amountMicroStx) {
+        return { success: false, error: 'Insufficient STX balance' };
+      }
+
+      // Execute STX transfer
+      const result = await this.openSTXTransfer({
+        recipient: options.recipient,
+        amount: amountMicroStx,
+        memo: options.message || `Payment ${options.paymentId}`,
+      });
+
+      return {
+        success: true,
+        txId: result.txId,
+      };
+
+    } catch (error) {
+      console.error('Error authorizing STX payment:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Payment authorization failed',
+      };
+    }
+  }
+
+  /**
+   * Validate Stacks address format
+   */
+  isValidStacksAddress(address: string): boolean {
+    // Stacks addresses: SP/SM + 39 characters for mainnet, ST + 39 characters for testnet
+    const mainnetPattern = /^S[PM][0-9A-Z]{39}$/;
+    const testnetPattern = /^ST[0-9A-Z]{39}$/;
+    
+    return mainnetPattern.test(address) || testnetPattern.test(address);
+  }
 }
 
 // Create singleton instance

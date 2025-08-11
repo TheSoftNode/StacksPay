@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Merchant } from '@/models/merchant';
 import { authService } from '@/lib/services/auth-service';
 import { multiWalletAuthService } from '@/lib/services/multi-wallet-auth-service';
+import { connectToDatabase } from '@/lib/database/mongodb';
 import { sessionAuth } from '@/lib/middleware/session-auth';
-import { connectDatabase } from '@/lib/database/connection';
 
 /**
  * POST - Complete merchant onboarding
@@ -25,7 +25,18 @@ export async function POST(request: NextRequest) {
     }
 
     const merchantId = authResult.merchantId;
-    await connectDatabase();
+    if (!merchantId) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid Session',
+          message: 'Merchant ID not found in session',
+          code: 'INVALID_SESSION'
+        },
+        { status: 401 }
+      );
+    }
+
+    await connectToDatabase();
 
     const body = await request.json();
     const {
@@ -198,10 +209,17 @@ export async function POST(request: NextRequest) {
     // Generate initial API key if not exists
     let apiKey = null;
     if (!updatedMerchant.apiKeys || updatedMerchant.apiKeys.length === 0) {
-      const apiKeyResult = await authService.generateApiKey(merchantId, 'Primary API Key');
-      if (apiKeyResult.success) {
-        apiKey = apiKeyResult.apiKey;
-      }
+      const apiKeyResult = await authService.generateApiKey(
+        merchantId, 
+        ['read', 'write'], 
+        'test'
+      );
+      apiKey = {
+        keyId: apiKeyResult.keyId,
+        apiKey: apiKeyResult.apiKey,
+        keyPreview: apiKeyResult.keyPreview,
+        createdAt: apiKeyResult.createdAt,
+      };
     }
 
     return NextResponse.json({
@@ -219,8 +237,9 @@ export async function POST(request: NextRequest) {
       },
       ...(apiKey && { 
         apiKey: {
-          key: apiKey.key,
-          hint: `${apiKey.key.substring(0, 8)}...`,
+          keyId: apiKey.keyId,
+          key: apiKey.apiKey,
+          hint: `${apiKey.apiKey.substring(0, 8)}...`,
           createdAt: apiKey.createdAt,
         },
       }),
@@ -269,7 +288,18 @@ export async function GET(request: NextRequest) {
     }
 
     const merchantId = authResult.merchantId;
-    await connectDatabase();
+    if (!merchantId) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid Session',
+          message: 'Merchant ID not found in session',
+          code: 'INVALID_SESSION'
+        },
+        { status: 401 }
+      );
+    }
+
+    await connectToDatabase();
 
     const merchant = await Merchant.findById(merchantId).select('-password');
     if (!merchant) {
@@ -319,10 +349,7 @@ async function validateWalletSetup(walletSetup: any) {
 
     // Validate Stacks address if provided
     if (walletSetup.stacksAddress) {
-      const stacksValid = multiWalletAuthService.validateAddress(
-        walletSetup.stacksAddress, 
-        'stacks'
-      );
+      const stacksValid = validateStacksAddress(walletSetup.stacksAddress);
       if (!stacksValid) {
         return { valid: false, error: 'Invalid Stacks address format' };
       }
@@ -331,10 +358,7 @@ async function validateWalletSetup(walletSetup: any) {
 
     // Validate Bitcoin address if provided
     if (walletSetup.bitcoinAddress) {
-      const bitcoinValid = multiWalletAuthService.validateAddress(
-        walletSetup.bitcoinAddress, 
-        'bitcoin'
-      );
+      const bitcoinValid = validateBitcoinAddress(walletSetup.bitcoinAddress);
       if (!bitcoinValid) {
         return { valid: false, error: 'Invalid Bitcoin address format' };
       }
@@ -359,8 +383,22 @@ async function validateWalletSetup(walletSetup: any) {
     return { valid: true, validations };
 
   } catch (error) {
-    return { valid: false, error: `Wallet validation error: ${error.message}` };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown validation error';
+    return { valid: false, error: `Wallet validation error: ${errorMessage}` };
   }
+}
+
+// Simple address validation functions
+function validateStacksAddress(address: string): boolean {
+  // Stacks addresses start with SP (mainnet) or ST (testnet) followed by 39 chars
+  const stacksRegex = /^S[TMP][0-9A-Z]{39}$/;
+  return stacksRegex.test(address);
+}
+
+function validateBitcoinAddress(address: string): boolean {
+  // Basic Bitcoin address validation (covers most common formats)
+  const btcRegex = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$|^bc1[a-z0-9]{39,59}$/;
+  return btcRegex.test(address);
 }
 
 function getOnboardingStatus(merchant: any) {
@@ -417,7 +455,13 @@ function getOnboardingStatus(merchant: any) {
   };
 }
 
-function getNextSteps(merchant: any) {
+function getNextSteps(merchant: any): Array<{
+  title: string;
+  description: string;
+  action: string;
+  url: string;
+  priority: string;
+}> {
   const onboardingStatus = getOnboardingStatus(merchant);
   
   if (onboardingStatus.isComplete) {
@@ -446,7 +490,13 @@ function getNextSteps(merchant: any) {
     ];
   }
 
-  const nextSteps = [];
+  const nextSteps: Array<{
+    title: string;
+    description: string;
+    action: string;
+    url: string;
+    priority: string;
+  }> = [];
 
   // Add steps based on what's missing
   Object.entries(onboardingStatus.steps).forEach(([key, step]) => {

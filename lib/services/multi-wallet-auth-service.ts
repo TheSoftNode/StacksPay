@@ -40,11 +40,12 @@ export class MultiWalletAuthService {
       let isValid = false;
 
       if (auth.walletType === 'stacks') {
-        // Verify Stacks wallet signature
-        isValid = verifyMessageSignature({
+        // Use WalletService for Stacks wallet verification
+        isValid = await walletService.verifyMessage({
           message: auth.message,
-          publicKey: auth.publicKey,
           signature: auth.signature,
+          publicKey: auth.publicKey,
+          address: auth.address
         });
 
         if (isValid) {
