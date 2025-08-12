@@ -27,10 +27,10 @@ const merchantSchema = new Schema({
   passwordResetToken: String,
   passwordResetExpires: Date,
 
-  // sBTC configuration
+  // sBTC configuration (can be added later)
   stacksAddress: {
     type: String,
-    required: true,
+    required: false, // Allow registration without Stacks wallet
   },
   bitcoinAddress: String,
   

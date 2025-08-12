@@ -10,7 +10,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   businessType: string;
-  stacksAddress: string;
+  stacksAddress?: string; // Optional - can be added later
   website?: string;
 }
 
@@ -67,10 +67,12 @@ export class AuthService {
         return { success: false, error: 'Email already registered' };
       }
 
-      // Validate Stacks address format
-      const stacksAddressRegex = /^S[TM][0-9A-Z]{39}$|^SP[0-9A-Z]{39}$/;
-      if (!stacksAddressRegex.test(data.stacksAddress)) {
-        return { success: false, error: 'Invalid Stacks address format' };
+      // Validate Stacks address format if provided (optional for newcomers)
+      if (data.stacksAddress) {
+        const stacksAddressRegex = /^S[TM][0-9A-Z]{39}$|^SP[0-9A-Z]{39}$/;
+        if (!stacksAddressRegex.test(data.stacksAddress)) {
+          return { success: false, error: 'Invalid Stacks address format' };
+        }
       }
 
       // Hash password
@@ -441,6 +443,83 @@ export class AuthService {
     } catch (error) {
       console.error('Error fetching API keys:', error);
       return [];
+    }
+  }
+
+  /**
+   * Update merchant Stacks address (for newcomers who register without wallet)
+   */
+  async updateStacksAddress(
+    merchantId: string, 
+    stacksAddress: string
+  ): Promise<{ success: boolean; error?: string }> {
+    await connectToDatabase();
+
+    try {
+      // Validate Stacks address format
+      const stacksAddressRegex = /^S[TM][0-9A-Z]{39}$|^SP[0-9A-Z]{39}$/;
+      if (!stacksAddressRegex.test(stacksAddress)) {
+        return { success: false, error: 'Invalid Stacks address format' };
+      }
+
+      // Update merchant
+      const merchant = await Merchant.findById(merchantId);
+      if (!merchant) {
+        return { success: false, error: 'Merchant not found' };
+      }
+
+      merchant.stacksAddress = stacksAddress;
+      await merchant.save();
+
+      await this.logAuthEvent(merchantId, 'stacks_address_updated', '', true, {
+        stacksAddress: stacksAddress.substring(0, 8) + '...' + stacksAddress.substring(stacksAddress.length - 4),
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Stacks address update error:', error);
+      return { success: false, error: 'Failed to update Stacks address' };
+    }
+  }
+
+  /**
+   * Get merchant's wallet setup status (for onboarding flow)
+   */
+  async getWalletSetupStatus(merchantId: string): Promise<{
+    hasStacksWallet: boolean;
+    hasBitcoinWallet: boolean;
+    canReceivePayments: boolean;
+    setupSteps: string[];
+  }> {
+    await connectToDatabase();
+
+    try {
+      const merchant = await Merchant.findById(merchantId);
+      if (!merchant) {
+        throw new Error('Merchant not found');
+      }
+
+      const hasStacksWallet = !!merchant.stacksAddress;
+      const hasBitcoinWallet = !!merchant.bitcoinAddress;
+      const canReceivePayments = hasStacksWallet; // Minimum requirement for sBTC payments
+
+      const setupSteps = [];
+      if (!hasStacksWallet) {
+        setupSteps.push('Connect Stacks wallet for sBTC payments');
+      }
+      if (!hasBitcoinWallet) {
+        setupSteps.push('Add Bitcoin address for advanced features');
+      }
+
+      return {
+        hasStacksWallet,
+        hasBitcoinWallet,
+        canReceivePayments,
+        setupSteps,
+      };
+    } catch (error) {
+      console.error('Wallet setup status error:', error);
+      throw error;
     }
   }
 

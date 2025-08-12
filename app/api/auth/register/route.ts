@@ -10,7 +10,7 @@ const registerSchema = z.object({
   stacksAddress: z.string().regex(
     /^S[TM][0-9A-Z]{39}$|^SP[0-9A-Z]{39}$/,
     'Invalid Stacks address format'
-  ),
+  ).optional(), // Optional for newcomers
   website: z.string().url('Invalid website URL').optional(),
 });
 

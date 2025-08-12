@@ -1,36 +1,195 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# sBTC Payment Gateway - Open Source Project
 
-## Getting Started
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Stacks](https://img.shields.io/badge/Built%20on-Stacks-5546FF)
+![sBTC](https://img.shields.io/badge/Powered%20by-sBTC-FF6B1A)
 
-First, run the development server:
+## 🌟 **Built for the Stacks Builders Competition**
+
+**"Stripe for sBTC"** - A complete payment gateway that makes accepting Bitcoin payments as easy as traditional payments, powered by sBTC on Stacks.
+
+### 🎯 **Hackathon Requirements Met**
+
+- ✅ **Working MVP**: Processes actual sBTC testnet transactions
+- ✅ **Multi-currency**: Accept BTC, STX, or sBTC - settle in sBTC
+- ✅ **Stripe-like DX**: Familiar API, easy integration
+- ✅ **Complete ecosystem**: Payment → Settlement → USD cashout
+
+## 🚀 **Quick Start (5 minutes)**
+
+### 1. **For Developers (API Integration)**
 
 ```bash
+# Clone and setup
+git clone https://github.com/TheSoftNode/sbtc-payment-gateway
+cd sbtc-payment-gateway
+npm install
+
+# Environment setup
+cp .env.example .env.local
+# Add your MongoDB and API keys
+
+# Start development
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. **For Merchants (No Stacks Experience Required)**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Sign up**: No Stacks wallet needed initially!
+2. **Get API key**: Start accepting payments immediately
+3. **Add wallet later**: Connect Stacks wallet when ready
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. **For Customers (Multiple Payment Options)**
 
-## Learn More
+- **Bitcoin**: Traditional, secure (10-30 min)
+- **STX**: Fast (6 seconds), cheap ($0.01 fees) - perfect for demos!
+- **sBTC**: Direct sBTC payment for advanced users
 
-To learn more about Next.js, take a look at the following resources:
+## 🏗️ **Architecture & Innovation**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### **Multi-Currency Flow**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+Customer Pays → Auto-Convert → Merchant Gets → Easy Cashout
+    ↓              ↓             ↓            ↓
+BTC/STX/sBTC → Real-time rates → sBTC → USD/USDC/USDT
+```
 
-## Deploy on Vercel
+### **Tech Stack**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Backend**: MongoDB, Redis, WebSocket real-time updates
+- **Blockchain**: sBTC (Emily API), Stacks.js, Bitcoin integration
+- **APIs**: RESTful design, Stripe-compatible developer experience
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📱 **Live Demo**
+
+### **Demo URLs**
+
+- **Live App**: [https://sbtc-gateway.vercel.app](.) _(deploy for hackathon)_
+- **Merchant Dashboard**: `/dashboard`
+- **API Docs**: `/docs`
+- **Payment Demo**: `/checkout/demo`
+
+### **Demo Script (Perfect for 5-min video)**
+
+1. **Show merchant signup** (no wallet required)
+2. **Create payment via API**
+3. **Customer pays with STX** (6-second confirmation! ⚡)
+4. **Real-time updates**
+5. **sBTC settlement shown**
+
+## 🎖️ **Hackathon Competitive Advantages**
+
+### **1. Newcomer-Friendly**
+
+- ✅ No Stacks wallet required for merchant registration
+- ✅ Progressive onboarding (add wallet later)
+- ✅ Clear documentation for all experience levels
+
+### **2. Demo Appeal**
+
+- ✅ STX payments confirm in 6 seconds (live demo magic!)
+- ✅ Real-time WebSocket updates
+- ✅ Multi-currency selection
+
+### **3. Production-Ready**
+
+- ✅ Enterprise-grade architecture
+- ✅ Comprehensive error handling
+- ✅ Security best practices (API keys, JWT, rate limiting)
+
+### **4. Complete Ecosystem**
+
+- ✅ Payment processing
+- ✅ Merchant dashboard
+- ✅ Developer APIs
+- ✅ Currency conversion
+- ✅ Webhook notifications
+- ✅ Analytics and reporting
+
+## 🛠️ **Contributing**
+
+This is an open-source project built for the Stacks community!
+
+### **Development Setup**
+
+```bash
+# Install dependencies
+npm install
+
+# Setup database
+npm run setup-db
+
+# Run tests
+npm test
+
+# Start development server
+npm run dev
+```
+
+### **Project Structure**
+
+```
+├── app/                 # Next.js 14 app router
+├── components/          # React components
+├── lib/services/        # Core business logic
+├── models/             # Database models
+├── docs/               # Comprehensive documentation
+└── scripts/            # Utility scripts
+```
+
+### **Key Services**
+
+- `sbtc-service.ts` - sBTC/Bitcoin operations
+- `wallet-service.ts` - Stacks wallet integration
+- `payment-service.ts` - Payment orchestration
+- `conversion-service.ts` - Multi-currency conversion
+- `auth-service.ts` - Authentication & API keys
+
+## 📋 **Roadmap**
+
+### **Phase 1: Hackathon MVP** ✅
+
+- sBTC testnet transactions
+- Multi-currency payment flow
+- Basic merchant dashboard
+- API documentation
+
+### **Phase 2: Production** (Post-Hackathon)
+
+- Mainnet deployment
+- Advanced analytics
+- Mobile app
+- Plugin ecosystem (WooCommerce, Shopify, etc.)
+
+### **Phase 3: Expansion**
+
+- Lightning Network integration
+- DeFi yield opportunities
+- Global compliance features
+- Enterprise partnerships
+
+## 🤝 **Community**
+
+### **Get Involved**
+
+- **Discord**: [Stacks Builder Challenge](https://t.me/stacksbuilders)
+- **Twitter**: Tweet your implementations with #BuildOnStacks #sBTC
+- **GitHub**: Star ⭐, fork 🍴, contribute 💻
+
+### **Support**
+
+- **Documentation**: `/docs`
+- **API Reference**: `/docs/api`
+- **Community**: Discord #sbtc-payment-gateway
+- **Issues**: GitHub Issues for bugs/features
+
+## 📄 **License**
+
+MIT License - feel free to use, modify, and distribute!
+
+---
+
+**Built with ❤️ for the Stacks ecosystem**  
+_Making Bitcoin programmable, one payment at a time_ 🚀
