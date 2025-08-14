@@ -14,9 +14,20 @@ This is an **sBTC Payment Gateway** - "The Stripe Experience for Bitcoin Payment
 - **Build**: `npm run build` 
 - **Production server**: `npm start`
 - **Linting**: `npm run lint`
-- **Unit tests**: `npm test` (Jest + React Testing Library)
-- **E2E tests**: `npx playwright test`
 - **Type checking**: `npx tsc --noEmit`
+
+### Testing Commands
+
+- **Unit tests**: `npm test` (Jest + React Testing Library with custom config)
+- **E2E tests**: `npx playwright test` (runs on Chrome, Firefox, Safari)
+- **Test setup file**: `tests/setup.ts` configures Jest environment
+- **Coverage collection**: Automatically includes components/, lib/, and app/ directories
+
+### Database & Setup Commands
+
+- **Database setup**: `npm run setup-db` (initializes MongoDB collections)
+- **Seed demo data**: Run `scripts/seed-data.ts` for development data
+- **Demo environment**: Run `scripts/demo-setup.ts` for hackathon demos
 
 ## Architecture Overview
 
@@ -61,14 +72,31 @@ RESTful API organized by version and feature:
 
 Organized by domain expertise:
 - **`payment/`**: Core payment widgets (payment-form.tsx, wallet-connect.tsx, qr-code.tsx)
-- **`dashboard/`**: Merchant management interface  
-- **`charts/`**: Analytics and reporting visualization
+- **`dashboard/`**: Merchant management interface (stats-cards.tsx, transaction-table.tsx)
+- **`charts/`**: Analytics and reporting visualization (revenue-chart.tsx, payment-trends.tsx)
+- **`forms/`**: Reusable form components (merchant-registration.tsx, api-key-form.tsx)
+- **`landing/`**: Marketing components with hero, features, and demo sections
 - **`providers/`**: React context providers (auth, Stacks, theme, toast)
+- **`ui/`**: Shadcn/ui components with Radix UI primitives
+
+### Configuration & Utilities (`config/`, `lib/utils/`)
+
+- **`config/`**: Environment-specific settings (development.ts, production.ts, staging.ts)
+- **`lib/utils/`**: Shared utilities (validation.ts, formatters.ts, crypto.ts, constants.ts)
+- **`hooks/`**: Custom React hooks (use-auth.ts, use-payments.ts, use-wallet.ts, use-websocket.ts)
 
 ### Data Models (`models/` & `types/`)
 
-- Type-safe data models for core entities: Payment, Merchant, Transaction, User, API Key, Webhook
-- Comprehensive TypeScript definitions in `types/` for API contracts, blockchain interactions
+- **`models/`**: Mongoose schemas (merchant.ts, payment.ts, transaction.ts, user.ts, api-key.ts, webhook.ts)
+- **`types/`**: TypeScript definitions (api.ts, auth.ts, blockchain.ts, payment.ts, merchant.ts)
+- **`store/`**: Client-side state management (auth-store.ts, payment-store.ts, merchant-store.ts)
+
+### Testing Structure (`tests/`)
+
+- **`unit/`**: Component and service unit tests with Jest
+- **`integration/`**: API endpoint testing with supertest
+- **`e2e/`**: End-to-end user flows with Playwright
+- **`__mocks__/`**: Mock implementations for external services (mongodb.ts, stacks.ts)
 
 ## Key Technical Features
 
@@ -127,6 +155,16 @@ import { SbtcPayment } from '@sbtc-gateway/react';
 - **Integration Tests**: 20% coverage for API endpoints and services  
 - **E2E Tests**: 10% coverage with Playwright for complete payment flows
 - **Real Bitcoin Testing**: Use testnet for complete transaction validation
+
+### Key Dependencies & Technologies
+
+- **UI Framework**: Next.js 14 with App Router, React 18, TypeScript 5
+- **Styling**: Tailwind CSS with Shadcn/ui components, Radix UI primitives
+- **Database**: MongoDB with Mongoose ODM, Redis for caching
+- **Blockchain**: Stacks.js SDK, bitcoinjs-lib, sBTC SDK, Emily API integration
+- **Authentication**: NextAuth.js with JWT and session management
+- **Testing**: Jest + React Testing Library + Playwright
+- **Real-time**: WebSocket support for live payment updates
 
 ### Business Context
 
