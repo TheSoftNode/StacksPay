@@ -17,6 +17,7 @@ import {
 } from '@stacks/transactions';
 import { buildSbtcDepositTx, MAINNET, TESTNET } from 'sbtc';
 import { STACKS_MAINNET, STACKS_TESTNET, type StacksNetwork } from '@stacks/network';
+import { webhookService } from './webhook-service';
 
 export interface ContractCallData {
   contractAddress: string;
@@ -112,7 +113,7 @@ export class ContractService {
 
       if (result.type === 'ok' && result.value.type === 'some') {
         const paymentData = result.value.value.data;
-        return {
+        const contractState = {
           merchantAddress: paymentData['merchant-address'].value,
           paymentAmount: BigInt(paymentData['payment-amount'].value),
           paymentStatus: paymentData['payment-status'].value as 'pending' | 'completed' | 'failed' | 'refunded',
@@ -121,6 +122,24 @@ export class ContractService {
           conversionRate: paymentData['conversion-rate'] ? Number(paymentData['conversion-rate'].value) : undefined,
           timestamp: Number(paymentData.timestamp.value),
         };
+
+        // Trigger webhook for payment state query
+        await webhookService.triggerWebhook({
+          urls: { webhook: `https://api.system.com/contracts` },
+          _id: `payment_state_${paymentId}`,
+          type: 'contract_state',
+          data: {
+            paymentId,
+            contractState,
+            action: 'payment_details_queried',
+          },
+          metadata: { 
+            provider: 'contract_service',
+            contractAddress: `${contractAddress}.${contractName}`,
+          }
+        }, 'contract.payment.queried');
+
+        return contractState;
       }
 
       return null;
@@ -267,13 +286,27 @@ export class ContractService {
         errors.push('Required contract methods not found');
       }
 
-      return {
+      const validationResult = {
         isValid: contractExists && hasMethods,
         contractAddress: `${contractAddress}.${contractName}`,
         contractExists,
         hasMethods,
         errors: errors.length > 0 ? errors : undefined,
       };
+
+      // Trigger webhook for contract validation
+      await webhookService.triggerWebhook({
+        urls: { webhook: `https://api.system.com/contracts` },
+        _id: `contract_validation_${Date.now()}`,
+        type: 'contract_validation',
+        data: validationResult,
+        metadata: { 
+          provider: 'contract_service',
+          critical: !validationResult.isValid,
+        }
+      }, validationResult.isValid ? 'contract.validation.success' : 'contract.validation.failed');
+
+      return validationResult;
     } catch (error) {
       return {
         isValid: false,
@@ -330,6 +363,24 @@ export class ContractService {
         maxSignerFee: options.maxSignerFee || 80000,
         reclaimLockTime: options.reclaimLockTime || 6000,
       });
+
+      // Trigger webhook for successful transaction build
+      await webhookService.triggerWebhook({
+        urls: { webhook: `https://api.system.com/contracts` },
+        _id: `sbtc_deposit_${Date.now()}`,
+        type: 'sbtc_transaction',
+        data: {
+          transactionType: 'deposit',
+          amountSats: options.amountSats,
+          stacksAddress: options.stacksAddress,
+          network: this.networkType,
+          maxSignerFee: options.maxSignerFee || 80000,
+        },
+        metadata: { 
+          provider: 'contract_service',
+          action: 'deposit_transaction_built',
+        }
+      }, 'contract.sbtc.deposit.built');
 
       return transaction;
     } catch (error) {

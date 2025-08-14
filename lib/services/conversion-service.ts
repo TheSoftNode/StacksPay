@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { circleApiService } from './circle-api-service';
 import { coinbaseCommerceService } from './coinbase-commerce-service';
+import { webhookService } from './webhook-service';
 
 interface ConversionRate {
   from: string;
@@ -495,18 +496,58 @@ class UpdatedConversionService {
           break;
       }
 
+      // Trigger webhook for successful conversion
+      if (executionResult.success && options.merchantId) {
+        await webhookService.triggerWebhook({
+          urls: { webhook: `https://api.merchant.com/conversions` }, // Would get from merchant settings
+          _id: conversionId,
+          type: 'conversion',
+          merchantId: options.merchantId,
+          data: {
+            conversionId,
+            fromAmount,
+            fromCurrency,
+            toCurrency,
+            executionResult,
+            provider: executionResult.provider,
+          },
+          metadata: { paymentId: options.paymentId }
+        }, 'conversion.executed');
+      }
+
       return executionResult;
 
     } catch (error) {
       console.error('Conversion execution error:', error);
-      return {
+      
+      const failedResult = {
         success: false,
         transactionId: '',
-        status: 'failed',
+        status: 'failed' as const,
         estimatedCompletion: new Date(),
-        provider: 'internal',
+        provider: 'internal' as const,
         error: error instanceof Error ? error.message : 'Conversion failed',
       };
+
+      // Trigger webhook for failed conversion
+      if (options.merchantId) {
+        await webhookService.triggerWebhook({
+          urls: { webhook: `https://api.merchant.com/conversions` },
+          _id: conversionId,
+          type: 'conversion',
+          merchantId: options.merchantId,
+          data: {
+            conversionId,
+            fromAmount,
+            fromCurrency,
+            toCurrency,
+            error: failedResult.error,
+          },
+          metadata: { paymentId: options.paymentId }
+        }, 'conversion.failed');
+      }
+
+      return failedResult;
     }
   }
 
@@ -847,7 +888,7 @@ class UpdatedConversionService {
 
       const isHealthy = circleHealth.isHealthy || coinbaseHealth.isHealthy; // At least one must work
 
-      return {
+      const healthResult = {
         isHealthy,
         providers: {
           circle: {
@@ -861,8 +902,21 @@ class UpdatedConversionService {
         },
         lastChecked: new Date(),
       };
+
+      // Trigger webhook for health status changes
+      if (!isHealthy) {
+        await webhookService.triggerWebhook({
+          urls: { webhook: `https://api.system.com/health` },
+          _id: `health_${Date.now()}`,
+          type: 'system_health',
+          data: healthResult,
+          metadata: { service: 'conversion', critical: true }
+        }, 'conversion.health.degraded');
+      }
+
+      return healthResult;
     } catch (error) {
-      return {
+      const failedHealthResult = {
         isHealthy: false,
         providers: {
           circle: { healthy: false, status: 'Health check failed' },
@@ -870,6 +924,17 @@ class UpdatedConversionService {
         },
         lastChecked: new Date(),
       };
+
+      // Trigger webhook for health check failure
+      await webhookService.triggerWebhook({
+        urls: { webhook: `https://api.system.com/health` },
+        _id: `health_error_${Date.now()}`,
+        type: 'system_health',
+        data: { error: error instanceof Error ? error.message : 'Health check failed', ...failedHealthResult },
+        metadata: { service: 'conversion', critical: true }
+      }, 'conversion.health.failed');
+
+      return failedHealthResult;
     }
   }
 

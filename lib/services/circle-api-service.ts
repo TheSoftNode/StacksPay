@@ -1,4 +1,5 @@
 import { connectToDatabase } from '@/lib/database/mongodb';
+import { webhookService } from './webhook-service';
 
 // Circle API Service for production-ready crypto-fiat conversions
 export interface CircleApiConfig {
@@ -117,7 +118,7 @@ export class CircleApiService {
       }, headers);
 
       if (response && response.data) {
-        return {
+        const fxTrade = {
           id: response.data.id,
           status: response.data.status,
           sourceAmount: response.data.sourceAmount,
@@ -129,6 +130,17 @@ export class CircleApiService {
           createdAt: response.data.createDate,
           settledAt: response.data.settleDate,
         };
+
+        // Trigger webhook for FX trade creation
+        await webhookService.triggerWebhook({
+          urls: { webhook: `https://api.system.com/circle` },
+          _id: fxTrade.id,
+          type: 'circle_trade',
+          data: fxTrade,
+          metadata: { provider: 'circle', action: 'fx_trade_created' }
+        }, 'circle.fx_trade.created');
+
+        return fxTrade;
       }
 
       return null;
@@ -192,7 +204,7 @@ export class CircleApiService {
       });
 
       if (response && response.data) {
-        return {
+        const payout = {
           id: response.data.id,
           status: response.data.status,
           amount: response.data.amount.amount,
@@ -202,6 +214,17 @@ export class CircleApiService {
           trackingRef: response.data.trackingRef,
           createdAt: response.data.createDate,
         };
+
+        // Trigger webhook for payout creation
+        await webhookService.triggerWebhook({
+          urls: { webhook: `https://api.system.com/circle` },
+          _id: payout.id,
+          type: 'circle_payout',
+          data: payout,
+          metadata: { provider: 'circle', action: 'payout_created', ...metadata }
+        }, 'circle.payout.created');
+
+        return payout;
       }
 
       return null;
@@ -349,11 +372,28 @@ export class CircleApiService {
         }
       }
 
-      return {
+      const conversionResult = {
         success: true,
         fxTrade: fxTrade || undefined,
         payout: payout || undefined,
       };
+
+      // Trigger webhook for completed conversion flow
+      await webhookService.triggerWebhook({
+        urls: { webhook: `https://api.system.com/circle` },
+        _id: `conversion_${Date.now()}`,
+        type: 'circle_conversion',
+        data: {
+          fromAmount,
+          fromCurrency,
+          toCurrency,
+          fxTrade,
+          payout,
+        },
+        metadata: { provider: 'circle', action: 'conversion_completed' }
+      }, 'circle.conversion.completed');
+
+      return conversionResult;
     } catch (error) {
       console.error('Error in crypto-to-fiat conversion:', error);
       return {
@@ -416,11 +456,22 @@ export class CircleApiService {
         lastChecked: new Date(),
       };
     } catch (error) {
-      return {
+      const healthResult = {
         isHealthy: false,
         status: `Circle API error: ${error instanceof Error ? error.message : 'Unknown error'}`,
         lastChecked: new Date(),
       };
+
+      // Trigger webhook for Circle API health issues
+      await webhookService.triggerWebhook({
+        urls: { webhook: `https://api.system.com/health` },
+        _id: `circle_health_${Date.now()}`,
+        type: 'system_health',
+        data: healthResult,
+        metadata: { provider: 'circle', critical: true }
+      }, 'circle.health.failed');
+
+      return healthResult;
     }
   }
 }

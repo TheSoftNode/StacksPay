@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { webhookService } from './webhook-service';
 
 // Coinbase Commerce API Service for comprehensive crypto payment acceptance
 export interface CoinbaseCommerceConfig {
@@ -127,7 +128,24 @@ export class CoinbaseCommerceService {
       };
 
       const response = await this.makeRequest('POST', '/charges', chargeData);
-      return response?.data || null;
+      const charge = response?.data || null;
+
+      if (charge) {
+        // Trigger webhook for charge creation
+        await webhookService.triggerWebhook({
+          urls: { webhook: `https://api.system.com/coinbase` },
+          _id: charge.id,
+          type: 'coinbase_charge',
+          data: charge,
+          metadata: { 
+            provider: 'coinbase_commerce', 
+            action: 'charge_created',
+            ...options.metadata 
+          }
+        }, 'coinbase.charge.created');
+      }
+
+      return charge;
     } catch (error) {
       console.error('Error creating Coinbase Commerce charge:', error);
       throw new Error(`Coinbase Commerce charge creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -313,7 +331,7 @@ export class CoinbaseCommerceService {
   /**
    * Process webhook event with comprehensive event handling
    */
-  processWebhookEvent(eventData: CoinbaseWebhookEvent): {
+  async processWebhookEvent(eventData: CoinbaseWebhookEvent): Promise<{
     success: boolean;
     eventType: string;
     chargeId?: string;
@@ -322,7 +340,7 @@ export class CoinbaseCommerceService {
     amount?: string;
     currency?: string;
     timeline?: any[];
-  } {
+  }> {
     try {
       const { event } = eventData;
       const charge = event.data;
@@ -365,6 +383,29 @@ export class CoinbaseCommerceService {
           break;
         default:
           console.log(`Unknown Coinbase webhook event: ${event.type}`);
+      }
+
+      // Trigger our own webhook for important status changes
+      if (['charge:confirmed', 'charge:failed', 'charge:resolved'].includes(event.type)) {
+        await webhookService.triggerWebhook({
+          urls: { webhook: `https://api.system.com/coinbase` },
+          _id: `${charge.id}_${event.type}`,
+          type: 'coinbase_charge_status',
+          data: {
+            chargeId: charge.id,
+            eventType: event.type,
+            status: charge.status,
+            amount: charge.pricing?.local?.amount,
+            currency: charge.pricing?.local?.currency,
+            paymentMethod: lastPayment?.network,
+            timeline: charge.timeline,
+          },
+          metadata: { 
+            provider: 'coinbase_commerce',
+            originalEventId: event.id,
+            eventTimestamp: event.created_at
+          }
+        }, event.type.replace(':', '.'));
       }
 
       return result;
@@ -518,12 +559,23 @@ export class CoinbaseCommerceService {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const isAuthError = errorMessage.includes('401') || errorMessage.includes('authentication');
       
-      return {
+      const healthResult = {
         isHealthy: false,
         status: `Coinbase Commerce API error: ${errorMessage}`,
         lastChecked: new Date(),
         apiKeyValid: !isAuthError,
       };
+
+      // Trigger webhook for health issues
+      await webhookService.triggerWebhook({
+        urls: { webhook: `https://api.system.com/health` },
+        _id: `coinbase_health_${Date.now()}`,
+        type: 'system_health',
+        data: healthResult,
+        metadata: { provider: 'coinbase_commerce', critical: !healthResult.apiKeyValid }
+      }, 'coinbase.health.failed');
+
+      return healthResult;
     }
   }
 

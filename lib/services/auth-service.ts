@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { Merchant } from '@/models/merchant';
 import { AuthEvent } from '@/models/auth-event';
 import { connectToDatabase } from '@/lib/database/mongodb';
+import { webhookService } from './webhook-service';
 
 export interface RegisterRequest {
   name: string;
@@ -110,6 +111,23 @@ export class AuthService {
         hasWebsite: !!data.website,
       });
 
+      // Trigger webhook for new merchant registration
+      await webhookService.triggerWebhook({
+        urls: { webhook: `https://api.system.com/merchants` },
+        _id: merchant._id.toString(),
+        type: 'merchant',
+        merchantId: merchant._id.toString(),
+        data: {
+          name: merchant.name,
+          email: merchant.email,
+          businessType: data.businessType,
+          hasWebsite: !!data.website,
+          stacksAddress: merchant.stacksAddress,
+          emailVerified: merchant.emailVerified,
+        },
+        metadata: { ipAddress, source: 'auth_service' }
+      }, 'merchant.registered');
+
       return {
         success: true,
         token,
@@ -172,6 +190,21 @@ export class AuthService {
         userAgent: userAgent.substring(0, 100), // Truncate for storage
       });
 
+      // Trigger webhook for successful login
+      await webhookService.triggerWebhook({
+        urls: { webhook: merchant.settings?.webhookUrls?.general || `https://api.system.com/auth` },
+        _id: `login_${Date.now()}`,
+        type: 'auth',
+        merchantId: merchant._id.toString(),
+        data: {
+          merchantId: merchant._id.toString(),
+          email: merchant.email,
+          loginTime: new Date(),
+          rememberMe: data.rememberMe,
+        },
+        metadata: { ipAddress, userAgent: userAgent.substring(0, 100) }
+      }, 'merchant.login');
+
       return {
         success: true,
         token,
@@ -212,6 +245,21 @@ export class AuthService {
       await merchant.save();
 
       await this.logAuthEvent(merchantId, 'logout', '', true);
+
+      // Trigger webhook for logout
+      await webhookService.triggerWebhook({
+        urls: { webhook: merchant.settings?.webhookUrls?.general || `https://api.system.com/auth` },
+        _id: `logout_${Date.now()}`,
+        type: 'auth',
+        merchantId: merchantId,
+        data: {
+          merchantId,
+          logoutTime: new Date(),
+          sessionId,
+        },
+        metadata: { source: 'auth_service' }
+      }, 'merchant.logout');
+
       return { success: true };
     } catch (error) {
       console.error('Logout error:', error);
@@ -265,6 +313,22 @@ export class AuthService {
         environment,
         permissions,
       });
+
+      // Trigger webhook for API key creation
+      await webhookService.triggerWebhook({
+        urls: { webhook: merchant.settings?.webhookUrls?.general || `https://api.system.com/auth` },
+        _id: keyId,
+        type: 'auth',
+        merchantId: merchantId,
+        data: {
+          keyId,
+          keyPreview,
+          environment,
+          permissions,
+          createdAt: new Date(),
+        },
+        metadata: { action: 'api_key_created' }
+      }, 'merchant.api_key.created');
 
       return { 
         keyId, 
@@ -410,6 +474,21 @@ export class AuthService {
       await merchant.save();
 
       await this.logAuthEvent(merchantId, 'api_key_revoked', '', true, { keyId });
+
+      // Trigger webhook for API key revocation
+      await webhookService.triggerWebhook({
+        urls: { webhook: merchant.settings?.webhookUrls?.general || `https://api.system.com/auth` },
+        _id: `revoke_${keyId}`,
+        type: 'auth',
+        merchantId: merchantId,
+        data: {
+          keyId,
+          revokedAt: new Date(),
+          keyPreview: merchant.apiKeys[keyIndex].keyPreview,
+        },
+        metadata: { action: 'api_key_revoked' }
+      }, 'merchant.api_key.revoked');
+
       return { success: true };
     } catch (error) {
       console.error('API key revocation error:', error);
@@ -598,12 +677,45 @@ export class AuthService {
         attempts: merchant.loginAttempts,
         lockDuration: lockDuration / 1000 / 60, // minutes
       });
+
+      // Trigger webhook for account lockout (security alert)
+      await webhookService.triggerWebhook({
+        urls: { webhook: merchant.settings?.webhookUrls?.general || `https://api.system.com/security` },
+        _id: `lockout_${merchant._id}`,
+        type: 'security',
+        merchantId: merchant._id.toString(),
+        data: {
+          merchantId: merchant._id.toString(),
+          email: merchant.email,
+          attempts: merchant.loginAttempts,
+          lockDuration: lockDuration / 1000 / 60, // minutes
+          lockedUntil: merchant.lockUntil,
+        },
+        metadata: { ipAddress, critical: true }
+      }, 'merchant.account.locked');
     }
 
     await merchant.save();
     await this.logAuthEvent(merchant._id.toString(), 'failed_login', ipAddress, false, { 
       attempts: merchant.loginAttempts 
     });
+
+    // Trigger webhook for failed login attempts (security monitoring)
+    if (merchant.loginAttempts >= 3) {
+      await webhookService.triggerWebhook({
+        urls: { webhook: merchant.settings?.webhookUrls?.general || `https://api.system.com/security` },
+        _id: `failed_login_${merchant._id}_${Date.now()}`,
+        type: 'security',
+        merchantId: merchant._id.toString(),
+        data: {
+          merchantId: merchant._id.toString(),
+          email: merchant.email,
+          attempts: merchant.loginAttempts,
+          suspiciousActivity: merchant.loginAttempts >= 5,
+        },
+        metadata: { ipAddress }
+      }, 'merchant.login.failed');
+    }
   }
 
   /**

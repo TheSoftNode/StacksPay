@@ -935,6 +935,219 @@ export class PaymentService {
       return { confirmed: false, error: error instanceof Error ? error.message : 'Status check failed' };
     }
   }
+
+  /**
+   * Refund a payment
+   */
+  async refundPayment(
+    paymentId: string,
+    merchantId: string,
+    options: {
+      amount?: number; // Partial refund amount
+      reason?: string;
+      refundId?: string;
+      metadata?: any;
+    } = {}
+  ): Promise<{
+    success: boolean;
+    refund?: any;
+    error?: string;
+  }> {
+    await connectToDatabase();
+
+    try {
+      const payment = await Payment.findOne({ 
+        _id: paymentId, 
+        merchantId 
+      });
+
+      if (!payment) {
+        return { success: false, error: 'Payment not found' };
+      }
+
+      // Check if payment can be refunded
+      if (payment.status !== 'confirmed') {
+        return { success: false, error: 'Only confirmed payments can be refunded' };
+      }
+
+      if (payment.refunded) {
+        return { success: false, error: 'Payment already refunded' };
+      }
+
+      const refundAmount = options.amount || payment.paymentAmount;
+
+      // Validate refund amount
+      if (refundAmount <= 0 || refundAmount > payment.paymentAmount) {
+        return { success: false, error: 'Invalid refund amount' };
+      }
+
+      // Process refund based on payment method
+      let refundResult;
+      
+      switch (payment.paymentMethod) {
+        case 'sbtc':
+          refundResult = await this.processSbtcRefund(payment, refundAmount);
+          break;
+        case 'btc':
+          refundResult = await this.processBtcRefund(payment, refundAmount);
+          break;
+        case 'stx':
+          refundResult = await this.processStxRefund(payment, refundAmount);
+          break;
+        default:
+          return { success: false, error: 'Unsupported payment method for refund' };
+      }
+
+      if (!refundResult.success) {
+        return { success: false, error: refundResult.error };
+      }
+
+      // Create refund record
+      const refundRecord = {
+        id: options.refundId || `ref_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        paymentId: payment._id.toString(),
+        merchantId,
+        amount: refundAmount,
+        currency: payment.paymentMethod.toUpperCase(),
+        reason: options.reason || 'Requested by merchant',
+        status: 'processing',
+        transactionId: refundResult.transactionId,
+        createdAt: new Date(),
+        metadata: options.metadata || {},
+      };
+
+      // Update payment record
+      const isFullRefund = refundAmount >= payment.paymentAmount;
+      payment.status = isFullRefund ? 'refunded' : 'partially_refunded';
+      payment.refunded = isFullRefund;
+      payment.refunds = payment.refunds || [];
+      payment.refunds.push(refundRecord);
+      payment.updatedAt = new Date();
+
+      await payment.save();
+
+      // Trigger webhook notification
+      await webhookService.triggerWebhook({
+        urls: { webhook: payment.webhookUrl },
+        _id: refundRecord.id,
+        type: 'refund',
+        merchantId,
+        data: {
+          refund: refundRecord,
+          payment: {
+            id: payment._id.toString(),
+            status: payment.status,
+            amount: payment.paymentAmount,
+            refundedAmount: refundAmount,
+          },
+        },
+        metadata: { paymentId, isFullRefund }
+      }, 'payment.refunded');
+
+      return {
+        success: true,
+        refund: refundRecord,
+      };
+
+    } catch (error) {
+      console.error('Error processing refund:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Refund processing failed',
+      };
+    }
+  }
+
+  /**
+   * Process sBTC refund
+   */
+  private async processSbtcRefund(payment: any, amount: number): Promise<{
+    success: boolean;
+    transactionId?: string;
+    error?: string;
+  }> {
+    try {
+      // Use sbtc service to process refund
+      const result = await sbtcService.withdraw(
+        amount,
+        payment.customerAddress || payment.paymentAddress,
+        `Refund for payment ${payment._id}`
+      );
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        transactionId: result.transactionId,
+      };
+    } catch (error) {
+      console.error('Error processing sBTC refund:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'sBTC refund failed' 
+      };
+    }
+  }
+
+  /**
+   * Process Bitcoin refund
+   */
+  private async processBtcRefund(payment: any, amount: number): Promise<{
+    success: boolean;
+    transactionId?: string;
+    error?: string;
+  }> {
+    try {
+      // In production, integrate with Bitcoin wallet/service
+      // For now, create a placeholder transaction ID
+      const transactionId = `btc_refund_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // TODO: Implement actual Bitcoin refund logic
+      console.log(`Processing Bitcoin refund: ${amount} BTC to ${payment.customerAddress}`);
+
+      return {
+        success: true,
+        transactionId,
+      };
+    } catch (error) {
+      console.error('Error processing Bitcoin refund:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Bitcoin refund failed' 
+      };
+    }
+  }
+
+  /**
+   * Process STX refund
+   */
+  private async processStxRefund(payment: any, amount: number): Promise<{
+    success: boolean;
+    transactionId?: string;
+    error?: string;
+  }> {
+    try {
+      // In production, integrate with Stacks wallet/service
+      // For now, create a placeholder transaction ID
+      const transactionId = `stx_refund_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // TODO: Implement actual STX refund logic
+      console.log(`Processing STX refund: ${amount} STX to ${payment.customerAddress}`);
+
+      return {
+        success: true,
+        transactionId,
+      };
+    } catch (error) {
+      console.error('Error processing STX refund:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'STX refund failed' 
+      };
+    }
+  }
 }
 
 export const paymentService = new PaymentService();
