@@ -1,7 +1,7 @@
 import { connectToDatabase } from '@/lib/database/mongodb';
-import { circleApiService } from './circle-api-service';
 import { coinbaseCommerceService } from './coinbase-commerce-service';
 import { webhookService } from './webhook-service';
+import { circleApiService } from './circle';
 
 interface ConversionRate {
   from: string;
@@ -166,22 +166,35 @@ class UpdatedConversionService {
       const rates: Record<string, number> = {};
       
       // Get USD/USDC rate from Circle
-      const usdcRate = await circleApiService.getExchangeRates('USD', 'USDC');
-      if (usdcRate) {
-        rates['USD/USDC'] = usdcRate.rate;
-        rates['USDC/USD'] = 1 / usdcRate.rate;
+      const usdcRateResponse = await circleApiService.getExchangeRate({
+        from: 'USD',
+        to: 'USDC'
+      });
+      if (usdcRateResponse.success && usdcRateResponse.data) {
+        const rate = parseFloat(usdcRateResponse.data.rate) || 1.0;
+        rates['USD/USDC'] = rate;
+        rates['USDC/USD'] = 1 / rate;
       }
 
       // Get BTC/USDC rate from Circle
-      const btcUsdcRate = await circleApiService.getExchangeRates('BTC', 'USDC');
-      if (btcUsdcRate) {
-        rates['BTC/USDC'] = btcUsdcRate.rate;
-        rates['USDC/BTC'] = 1 / btcUsdcRate.rate;
+      const btcUsdcRateResponse = await circleApiService.getExchangeRate({
+        from: 'BTC',
+        to: 'USDC'
+      });
+      if (btcUsdcRateResponse.success && btcUsdcRateResponse.data) {
+        const rate = parseFloat(btcUsdcRateResponse.data.rate);
+        rates['BTC/USDC'] = rate;
+        rates['USDC/BTC'] = 1 / rate;
       }
 
       return rates;
     } catch (error) {
       console.error('Error fetching Circle API rates:', error);
+      // Use Circle's error analysis for better handling
+      if (error && typeof error === 'object' && 'category' in error) {
+        const analysis = circleApiService.analyzeError(error as any);
+        console.error('Circle error analysis:', analysis);
+      }
       return {};
     }
   }
@@ -335,7 +348,7 @@ class UpdatedConversionService {
   }
 
   /**
-   * Enhanced currency conversion with real rate sources
+   * Enhanced currency conversion with real rate sources and Circle integration
    */
   async convertCurrency(
     amount: number,
@@ -364,7 +377,60 @@ class UpdatedConversionService {
         throw new Error(`Unsupported to currency: ${toCurrency}`);
       }
 
-      // Get current rates from real sources
+      // Use Circle's transaction validation for supported pairs
+      const provider = this.getBestProvider(fromCurrency, toCurrency, preferredProvider);
+      if (provider === 'circle') {
+        // Use Circle's comprehensive validation and fee calculation
+        const circleValidation = circleApiService.validateTransactionLimits(amount.toString(), fromCurrency);
+        if (!circleValidation.valid) {
+          throw new Error(`Transaction validation failed: ${circleValidation.violations.join(', ')}`);
+        }
+
+        // Use Circle's fee calculation for more accuracy
+        const circleFees = circleApiService.calculateTransactionFees(
+          amount.toString(), 
+          'conversion',
+          fromCurrency
+        );
+
+        // Get current rates from real sources
+        const rates = await this.getConversionRates();
+        const conversionPair = `${fromCurrency}/${toCurrency}`;
+        const rate = rates[conversionPair];
+
+        if (!rate) {
+          throw new Error(`No conversion rate available for ${conversionPair}`);
+        }
+
+        // Calculate conversion using Circle's fee structure
+        const baseConvertedAmount = amount * rate;
+        const totalFees = parseFloat(circleFees.fees);
+        const finalAmount = baseConvertedAmount - totalFees;
+
+        // Apply slippage tolerance for volatile conversions
+        const adjustedAmount = this.shouldApplySlippage(fromCurrency, toCurrency) 
+          ? finalAmount * (1 - slippageTolerance)
+          : finalAmount;
+
+        return {
+          success: true,
+          fromAmount: amount,
+          fromCurrency,
+          toAmount: Math.max(0, adjustedAmount),
+          toCurrency,
+          rate,
+          fees: {
+            conversion: parseFloat(circleFees.breakdown.baseFee),
+            network: parseFloat(circleFees.breakdown.networkFee),
+            total: totalFees,
+          },
+          estimatedTime: this.getEstimatedTime(fromCurrency, toCurrency, provider),
+          minAmount: this.currencies[fromCurrency as keyof typeof this.currencies].minAmount,
+          maxAmount: this.currencies[fromCurrency as keyof typeof this.currencies].maxAmount,
+        };
+      }
+
+      // Fallback to original logic for non-Circle providers
       const rates = await this.getConversionRates();
       const conversionPair = `${fromCurrency}/${toCurrency}`;
       const rate = rates[conversionPair];
@@ -422,6 +488,11 @@ class UpdatedConversionService {
 
     } catch (error) {
       console.error('Currency conversion error:', error);
+      // Use Circle's error analysis if available
+      if (error && typeof error === 'object' && 'category' in error) {
+        const analysis = circleApiService.analyzeError(error as any);
+        throw new Error(analysis.userFriendlyMessage);
+      }
       throw error;
     }
   }
@@ -563,48 +634,66 @@ class UpdatedConversionService {
     options: any
   ): Promise<ConversionExecution> {
     try {
-      const idempotencyKey = `conv_${options.paymentId || Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Execute FX trade via Circle
-      const fxTrade = await circleApiService.createFxTrade(
-        fromAmount.toString(),
-        fromCurrency,
-        toCurrency,
-        idempotencyKey
-      );
+      // Use Circle's enhanced error handling with retry logic
+      return await circleApiService.handleErrorWithRetry(async () => {
+        // Use Circle's conversion feature
+        const conversionResponse = await circleApiService.createConversion({
+          from: fromCurrency,
+          to: toCurrency,
+          amount: fromAmount.toString(),
+          slippageTolerance: options.slippageTolerance || '0.02',
+          recipient: recipientAddress
+        });
 
-      if (!fxTrade) {
-        throw new Error('Circle FX trade creation failed');
-      }
-
-      // If target is USD and we have a bank destination, create payout
-      let payout = null;
-      if (toCurrency === 'USD' && recipientAddress) {
-        try {
-          payout = await circleApiService.createPayout(
-            fxTrade.targetAmount,
-            'USD',
-            { type: 'wire', id: recipientAddress }, // Simplified bank destination
-            { paymentId: options.paymentId, merchantId: options.merchantId }
-          );
-        } catch (payoutError) {
-          console.warn('Circle payout creation failed, trade still successful:', payoutError);
+        if (!conversionResponse.success || !conversionResponse.data) {
+          throw new Error('Circle conversion creation failed');
         }
-      }
 
-      return {
-        success: true,
-        transactionId: fxTrade.id,
-        fromTxId: fxTrade.id,
-        toTxId: payout?.id || fxTrade.id,
-        status: fxTrade.status === 'complete' ? 'completed' : 'processing',
-        estimatedCompletion: new Date(Date.now() + this.getEstimatedTimeMs(fromCurrency, toCurrency)),
-        circleTradeId: fxTrade.id,
-        provider: 'circle',
-      };
+        const conversion = conversionResponse.data;
+
+        // Create payment if needed
+        let payment = null;
+        if (toCurrency === 'USD' || toCurrency === 'USDC') {
+          try {
+            const paymentResponse = await circleApiService.createPayment({
+              amount: conversionResult.toAmount.toString(),
+              currency: toCurrency,
+              source: { type: 'card', id: 'default' },
+              destination: { type: 'blockchain', chain: 'ethereum', address: recipientAddress },
+              metadata: {
+                conversionId: conversion.conversionId || Date.now().toString(),
+                paymentId: options.paymentId,
+                merchantId: options.merchantId
+              }
+            });
+            payment = paymentResponse.data;
+          } catch (paymentError) {
+            console.warn('Circle payment creation failed, conversion still successful:', paymentError);
+          }
+        }
+
+        const conversionId = conversion.conversionId || Date.now().toString();
+        const paymentId = payment?.data?.id || payment?.id;
+
+        return {
+          success: true,
+          transactionId: conversionId,
+          fromTxId: conversionId,
+          toTxId: paymentId || conversionId,
+          status: conversion.status === 'completed' ? 'completed' : 'processing',
+          estimatedCompletion: new Date(Date.now() + this.getEstimatedTimeMs(fromCurrency, toCurrency)),
+          circleTradeId: conversionId,
+          provider: 'circle',
+        };
+      }, 3);
 
     } catch (error) {
       console.error('Circle conversion execution error:', error);
+      // Use Circle's error analysis
+      if (error && typeof error === 'object' && 'category' in error) {
+        const analysis = circleApiService.analyzeError(error as any);
+        throw new Error(`Circle conversion failed: ${analysis.userFriendlyMessage}`);
+      }
       throw new Error(`Circle conversion failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -886,18 +975,22 @@ class UpdatedConversionService {
         coinbaseCommerceService.healthCheck(),
       ]);
 
-      const isHealthy = circleHealth.isHealthy || coinbaseHealth.isHealthy; // At least one must work
+      // Fix: Access the data property correctly
+      const circleHealthy = circleHealth.success && circleHealth.data?.status === 'healthy';
+      const coinbaseHealthy = coinbaseHealth.isHealthy; // Coinbase service has different structure
+
+      const isHealthy = circleHealthy || coinbaseHealthy; // At least one must work
 
       const healthResult = {
         isHealthy,
         providers: {
           circle: {
-            healthy: circleHealth.isHealthy,
-            status: circleHealth.status,
+            healthy: circleHealthy,
+            status: circleHealth.data?.status || 'unknown',
           },
           coinbase: {
-            healthy: coinbaseHealth.isHealthy,
-            status: coinbaseHealth.status,
+            healthy: coinbaseHealthy,
+            status: coinbaseHealth.status || 'unknown',
           },
         },
         lastChecked: new Date(),
@@ -958,6 +1051,8 @@ class UpdatedConversionService {
     const fiats = ['USD'];
     return fiats.includes(from) && cryptos.includes(to);
   }
+
+
 }
 
 export const conversionService = new UpdatedConversionService();
