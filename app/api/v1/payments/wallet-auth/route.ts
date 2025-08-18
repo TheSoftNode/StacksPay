@@ -43,13 +43,12 @@ export async function POST(request: NextRequest) {
 
     // Authenticate wallet using payment service
     const result = await paymentService.authenticateWallet({
-      walletType,
       address,
-      publicKey,
       signature,
+      publicKey,
+      walletType,
       message,
       paymentId,
-      merchantId,
     });
     
     if (!result.success) {
@@ -66,9 +65,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true,
       message: 'Wallet authenticated successfully',
-      authToken: result.authToken,
-      walletInfo: result.walletInfo,
-      expiresAt: result.expiresAt,
+      verified: result.verified,
+      walletType: result.walletType,
+      paymentMethod: result.paymentMethod,
     });
   } catch (error) {
     console.error('Error authenticating wallet:', error);

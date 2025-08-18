@@ -43,11 +43,7 @@ export async function POST(request: NextRequest) {
     // Process payment with wallet using payment service
     const result = await paymentService.processPaymentWithWallet({
       paymentId,
-      merchantId,
       walletAuth,
-      transactionData,
-      signedTransaction,
-      broadcastTransaction: broadcastTransaction !== false, // Default to true
     });
     
     if (!result.success) {
@@ -64,10 +60,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true,
       message: 'Payment processed successfully',
-      payment: result.payment,
-      transaction: result.transaction,
-      status: result.status,
-      confirmationUrl: result.confirmationUrl,
+      txId: result.txId,
+      confirmed: result.confirmed,
     });
   } catch (error) {
     console.error('Error processing payment with wallet:', error);

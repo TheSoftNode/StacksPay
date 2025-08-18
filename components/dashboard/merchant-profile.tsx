@@ -1,1 +1,0 @@
-// Merchant profile component placeholder

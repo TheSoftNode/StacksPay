@@ -5,7 +5,6 @@ const handler = NextAuth({
   providers: [],
   pages: {
     signIn: '/login',
-    signUp: '/register',
   },
 });
 

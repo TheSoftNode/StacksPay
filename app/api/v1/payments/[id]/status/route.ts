@@ -24,12 +24,23 @@ export async function GET(request: NextRequest, { params }: Props) {
     }
 
     const merchantId = authResult.merchantId;
+    if (!merchantId) {
+      return NextResponse.json(
+        { 
+          error: 'Authentication Failed',
+          message: 'Invalid merchant authentication',
+          code: 'INVALID_MERCHANT'
+        },
+        { status: 401 }
+      );
+    }
+
     const paymentId = params.id;
 
     // Check payment status using payment service
     const result = await paymentService.checkPaymentStatus(paymentId);
     
-    if (!result.success) {
+    if (result.error) {
       return NextResponse.json(
         { 
           error: 'Status Check Failed',
@@ -42,9 +53,9 @@ export async function GET(request: NextRequest, { params }: Props) {
     
     return NextResponse.json({ 
       success: true,
-      payment: result.payment,
-      status: result.status,
-      blockchain: result.blockchain,
+      confirmed: result.confirmed,
+      txId: result.txId,
+      blockHeight: result.blockHeight,
       confirmations: result.confirmations,
       lastChecked: new Date().toISOString(),
     });
@@ -77,6 +88,17 @@ export async function PUT(request: NextRequest, { params }: Props) {
     }
 
     const merchantId = authResult.merchantId;
+    if (!merchantId) {
+      return NextResponse.json(
+        { 
+          error: 'Authentication Failed',
+          message: 'Invalid merchant authentication',
+          code: 'INVALID_MERCHANT'
+        },
+        { status: 401 }
+      );
+    }
+
     const paymentId = params.id;
     const body = await request.json();
     

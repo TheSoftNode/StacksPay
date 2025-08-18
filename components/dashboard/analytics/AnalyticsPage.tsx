@@ -2,6 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar
+} from 'recharts'
 import { 
   TrendingUp,
   TrendingDown,
@@ -13,8 +29,8 @@ import {
   Download,
   Filter,
   BarChart3,
-  PieChart,
-  LineChart,
+  PieChart as PieChartIcon,
+  LineChart as LineChartIcon,
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react'
@@ -76,6 +92,29 @@ const mockAnalytics: AnalyticsData = {
     change: 3.1
   }
 }
+
+// Mock data for charts
+const revenueData = [
+  { date: 'Aug 1', revenue: 850, transactions: 45 },
+  { date: 'Aug 3', revenue: 920, transactions: 52 },
+  { date: 'Aug 5', revenue: 1100, transactions: 48 },
+  { date: 'Aug 7', revenue: 980, transactions: 41 },
+  { date: 'Aug 9', revenue: 1250, transactions: 55 },
+  { date: 'Aug 11', revenue: 1180, transactions: 49 },
+  { date: 'Aug 13', revenue: 1320, transactions: 62 },
+  { date: 'Aug 15', revenue: 1450, transactions: 58 },
+  { date: 'Aug 17', revenue: 1280, transactions: 53 },
+  { date: 'Aug 18', revenue: 1380, transactions: 61 }
+]
+
+const paymentMethodsData = [
+  { name: 'Leather Wallet', value: 45, count: 652 },
+  { name: 'Xverse Wallet', value: 32, count: 465 },
+  { name: 'Hiro Wallet', value: 18, count: 261 },
+  { name: 'Other', value: 5, count: 75 }
+]
+
+const COLORS = ['#ea580c', '#3b82f6', '#10b981', '#8b5cf6']
 
 const AnalyticsPage = () => {
   const [analytics, setAnalytics] = useState<AnalyticsData>(mockAnalytics)
@@ -263,7 +302,7 @@ const AnalyticsPage = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <LineChart className="h-5 w-5" />
+              <BarChart3 className="h-5 w-5" />
               <span>Revenue Trend</span>
             </CardTitle>
             <CardDescription>
@@ -271,12 +310,49 @@ const AnalyticsPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center text-gray-400">
-              <div className="text-center">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Revenue chart placeholder</p>
-                <p className="text-xs">Integration with charting library needed</p>
-              </div>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueData}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ea580c" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#ea580c" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis 
+                    dataKey="date" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: 'currentColor' }}
+                    className="text-gray-600 dark:text-gray-400"
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: 'currentColor' }}
+                    className="text-gray-600 dark:text-gray-400"
+                    tickFormatter={(value) => `$${value}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                    }}
+                    formatter={(value: any) => [`$${value}`, 'Revenue']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#ea580c"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
@@ -293,50 +369,55 @@ const AnalyticsPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                  <span className="text-sm">Leather Wallet</span>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={paymentMethodsData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {paymentMethodsData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                    }}
+                    formatter={(value: any, name: any, props: any) => [
+                      `${value}% (${props.payload.count} payments)`,
+                      props.payload.name
+                    ]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            
+            {/* Legend */}
+            <div className="space-y-2 mt-4">
+              {paymentMethodsData.map((entry, index) => (
+                <div key={entry.name} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center space-x-2">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span>{entry.name}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-medium">{entry.value}%</span>
+                    <p className="text-xs text-gray-500">{entry.count} payments</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-sm font-medium">45%</span>
-                  <p className="text-xs text-gray-500">652 payments</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm">Xverse Wallet</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-medium">32%</span>
-                  <p className="text-xs text-gray-500">465 payments</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">Hiro Wallet</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-medium">18%</span>
-                  <p className="text-xs text-gray-500">261 payments</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                  <span className="text-sm">Other</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-medium">5%</span>
-                  <p className="text-xs text-gray-500">75 payments</p>
-                </div>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>

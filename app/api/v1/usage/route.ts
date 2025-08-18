@@ -9,7 +9,7 @@ const recordUsageSchema = z.object({
   quantity: z.number().positive('Quantity must be positive'),
   timestamp: z.string().datetime().optional(),
   idempotencyKey: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 const querySchema = z.object({

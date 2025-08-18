@@ -76,7 +76,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </div>
 
       {/* Main Content */}
-      <div className={`lg:pl-${sidebarCollapsed ? '20' : '64'} transition-all duration-300`}>
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
         {/* Top Navigation */}
         <Navbar 
           onMenuToggle={() => setSidebarOpen(true)}

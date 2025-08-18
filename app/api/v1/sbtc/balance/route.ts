@@ -31,25 +31,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = await sbtcService.getBalance(address);
+    const result = await sbtcService.getSbtcBalance(address);
     
-    if (!result.success) {
-      return NextResponse.json(
-        { 
-          error: 'Balance Fetch Failed',
-          message: result.error,
-          code: 'BALANCE_ERROR'
-        },
-        { status: 400 }
-      );
-    }
-
     return NextResponse.json({ 
       success: true,
-      balance: result.balance,
-      confirmed: result.confirmed,
-      pending: result.pending,
-      address,
+      address: result.address,
+      balanceMicroSbtc: result.balanceMicroSbtc,
+      balanceSbtc: result.balanceSbtc,
+      balanceBtc: result.balanceBtc,
+      lastUpdated: result.lastUpdated,
     });
   } catch (error) {
     console.error('Error fetching sBTC balance:', error);

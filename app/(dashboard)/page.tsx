@@ -1,5 +1,5 @@
 import DashboardOverview from '@/components/dashboard/overview/DashboardOverview'
 
-export default function DashboardPage() {
+export default function DashboardMainPage() {
   return <DashboardOverview />
 }

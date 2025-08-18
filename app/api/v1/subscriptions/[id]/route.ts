@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { subscriptionService } from '@/lib/services/subscription-service';
-import { verifyApiKey } from '@/lib/middleware/auth';
+import { apiKeyAuth } from '@/lib/middleware/api-key-auth';
 import { rateLimit } from '@/lib/middleware/rate-limiting';
 import { z } from 'zod';
 
@@ -9,7 +9,7 @@ const updateSubscriptionSchema = z.object({
   status: z.enum(['trialing', 'active', 'past_due', 'canceled', 'unpaid', 'paused']).optional(),
   planId: z.string().optional(),
   cancelAtPeriodEnd: z.boolean().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   webhookUrl: z.string().url().optional(),
 });
 
@@ -28,10 +28,11 @@ export async function GET(
 ) {
   try {
     // Rate limiting
-    const rateLimitResult = await rateLimit(request, {
+    const rateLimiter = rateLimit({
       windowMs: 60 * 1000, // 1 minute
-      max: 200, // 200 requests per minute
+      maxRequests: 200, // 200 requests per minute
     });
+    const rateLimitResult = await rateLimiter(request);
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
