@@ -15,7 +15,8 @@ import {
   LogOut,
   Shield,
   Zap,
-  Globe
+  Globe,
+  ArrowUpDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -49,6 +50,12 @@ const navigation: NavItem[] = [
     badge: '12',
   },
   {
+    name: 'Balance & Conversion',
+    href: '/dashboard/conversion',
+    icon: ArrowUpDown,
+    isNew: true,
+  },
+  {
     name: 'Analytics',
     href: '/dashboard/analytics',
     icon: BarChart3,
@@ -62,7 +69,6 @@ const navigation: NavItem[] = [
     name: 'Webhooks',
     href: '/dashboard/webhooks',
     icon: Webhook,
-    isNew: true,
   },
   {
     name: 'Customers',

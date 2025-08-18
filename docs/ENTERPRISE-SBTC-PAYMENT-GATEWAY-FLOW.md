@@ -27,12 +27,14 @@
 The **sBTC Payment Gateway** is an enterprise-grade payment infrastructure that provides the exact same developer experience as Stripe but for Bitcoin payments through sBTC. Our system combines Bitcoin's security with the simplicity that made Stripe worth $95 billion.
 
 ### **Core Innovation**
+
 - **Multi-Currency Input**: Customers pay with Bitcoin, STX, or sBTC
 - **Unified Settlement**: Merchants always receive sBTC
 - **Flexible Cashout**: Convert to USD/USDC through integrated exchanges
 - **3-Line Integration**: Simpler than Stripe's 7-line setup
 
 ### **Key Metrics**
+
 - **Fees**: 0.5% vs Stripe's 2.9%
 - **Settlement**: Instant vs 2-7 day delays
 - **Global**: No geographic restrictions
@@ -88,6 +90,7 @@ The **sBTC Payment Gateway** is an enterprise-grade payment infrastructure that 
 **Profile**: Technical teams integrating crypto payments into their applications
 
 **Journey**:
+
 1. **Account Setup** - Register merchant account
 2. **API Key Generation** - Get test/live API keys
 3. **SDK Integration** - 3-line payment setup
@@ -95,18 +98,16 @@ The **sBTC Payment Gateway** is an enterprise-grade payment infrastructure that 
 5. **Production** - Seamless live deployment
 
 **Code Example**:
+
 ```typescript
 // 3-line integration (vs Stripe's 7 lines)
 import { SbtcPayment } from '@sbtc-gateway/react';
 
-<SbtcPayment 
-  amount={0.001} 
-  apiKey="sk_test_..." 
-  onSuccess={handleSuccess} 
-/>
+<SbtcPayment amount={0.001} apiKey="sk_test_..." onSuccess={handleSuccess} />;
 ```
 
 **Tools Provided**:
+
 - Stripe-compatible REST API
 - React/Vue/Angular SDKs
 - Comprehensive documentation
@@ -120,6 +121,7 @@ import { SbtcPayment } from '@sbtc-gateway/react';
 **Profile**: E-commerce stores, SaaS companies, marketplaces wanting to accept crypto
 
 **Journey**:
+
 1. **Easy Registration** - No Stacks wallet required initially
 2. **Progressive Onboarding** - Add wallet when ready
 3. **Payment Integration** - Multiple integration options
@@ -127,12 +129,14 @@ import { SbtcPayment } from '@sbtc-gateway/react';
 5. **Flexible Cashout** - Convert sBTC to USD/USDC
 
 **Benefits**:
+
 - **Lower Fees**: 0.5% vs 2.9% traditional processors
 - **No Chargebacks**: Bitcoin finality protects merchants
 - **Instant Settlement**: No 2-7 day banking delays
 - **Global Reach**: No geographic restrictions
 
 **Merchant Dashboard Features**:
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  📊 Analytics Dashboard                                     │
@@ -167,24 +171,28 @@ import { SbtcPayment } from '@sbtc-gateway/react';
 **Payment Options**:
 
 #### **Option A: Bitcoin Payment (Traditional & Secure)**
+
 - **Time**: 10-30 minutes
 - **Fees**: Network fees only
 - **Security**: Maximum (6+ confirmations)
 - **Use Case**: Large purchases, security-focused users
 
 #### **Option B: STX Payment (Fast & Demo-Perfect)**
+
 - **Time**: 6 seconds ⚡
-- **Fees**: $0.01 
+- **Fees**: $0.01
 - **Security**: Stacks blockchain finality
 - **Use Case**: Live demos, small purchases, Stacks ecosystem users
 
 #### **Option C: sBTC Payment (Direct & Advanced)**
+
 - **Time**: Instant
 - **Fees**: Minimal
 - **Security**: Bitcoin-backed
 - **Use Case**: DeFi users, advanced crypto users
 
 **Customer Experience Flow**:
+
 ```
 1. Select Payment Method
    ├── Connect Wallet (optional)
@@ -215,7 +223,7 @@ const payment = await SbtcGateway.payments.create({
   currency: 'USD',
   paymentMethods: ['bitcoin', 'stx', 'sbtc'],
   successUrl: 'https://store.com/success',
-  webhookUrl: 'https://store.com/webhook'
+  webhookUrl: 'https://store.com/webhook',
 });
 
 // 2. API Authentication & Authorization
@@ -228,7 +236,7 @@ const paymentRequest = await paymentService.createPayment({
   amount: 100,
   currency: 'USD',
   paymentMethod: 'customer_choice', // BTC/STX/sBTC
-  payoutMethod: 'sbtc' // Always sBTC for merchants
+  payoutMethod: 'sbtc', // Always sBTC for merchants
 });
 ```
 
@@ -241,7 +249,9 @@ const rates = await updatedConversionService.getConversionRates();
 
 // 5. Optimal Conversion Path
 const conversion = await updatedConversionService.convertCurrency(
-  100, 'USD', 'BTC' // Customer payment calculation
+  100,
+  'USD',
+  'BTC' // Customer payment calculation
 );
 
 // 6. Provider Selection Logic
@@ -261,7 +271,7 @@ if (isUSDC_USD_conversion) {
 const depositAddress = await sbtcService.createDepositAddress({
   stacksAddress: merchant.stacksAddress,
   amountSats: convertedAmount,
-  network: 'testnet' // or 'mainnet'
+  network: 'testnet', // or 'mainnet'
 });
 
 // 8. Multi-Currency Address Generation
@@ -286,7 +296,7 @@ const walletAuth = await multiWalletAuthService.verifyWalletSignature({
   address: customerWallet,
   signature: signature,
   message: challenge,
-  walletType: 'stacks' // or 'bitcoin'
+  walletType: 'stacks', // or 'bitcoin'
 });
 
 // 10. Payment Method Execution
@@ -295,7 +305,7 @@ if (paymentMethod === 'stx') {
   const result = await walletService.authorizeStxPayment({
     amount: paymentAmount,
     recipient: paymentAddress,
-    paymentId: payment.id
+    paymentId: payment.id,
   });
 } else if (paymentMethod === 'bitcoin') {
   // Bitcoin: Traditional confirmation
@@ -312,7 +322,7 @@ if (paymentMethod === 'stx') {
 // 11. Status Monitoring & Updates
 const paymentMonitor = setInterval(async () => {
   const status = await paymentService.checkPaymentStatus(payment.id);
-  
+
   if (status.confirmed) {
     // 12. Real-time Merchant Notification
     await notificationService.sendRealTimeUpdate(merchantId, {
@@ -320,9 +330,9 @@ const paymentMonitor = setInterval(async () => {
       paymentId: payment.id,
       amount: payment.amount,
       method: payment.paymentMethod,
-      confirmationTime: new Date()
+      confirmationTime: new Date(),
     });
-    
+
     // 13. Webhook Delivery
     await webhookService.triggerWebhook(payment, 'payment.confirmed');
   }
@@ -347,14 +357,14 @@ if (payment.paymentMethod !== 'sbtc') {
 await sbtcService.notifyDeposit({
   txid: conversionExecution.fromTxId,
   depositScript: payment.depositScript,
-  reclaimScript: payment.reclaimScript
+  reclaimScript: payment.reclaimScript,
 });
 
 // 16. Merchant Balance Update
 await merchantService.updateBalance(merchant.id, {
   currency: 'sBTC',
   amount: finalSbtcAmount,
-  transactionId: payment.id
+  transactionId: payment.id,
 });
 ```
 
@@ -372,7 +382,7 @@ await analyticsService.trackPayment({
   fees: conversion.fees,
   processingTime: payment.processingTime,
   customerLocation: payment.customerInfo?.country,
-  success: true
+  success: true,
 });
 
 // 18. Revenue Tracking
@@ -381,7 +391,7 @@ await analyticsService.updateMerchantRevenue({
   period: 'daily',
   revenue: payment.netAmount,
   currency: 'sBTC',
-  transactionCount: 1
+  transactionCount: 1,
 });
 ```
 
@@ -398,7 +408,7 @@ if (merchant.autoCashout.enabled) {
     merchant.bankAccount,
     { preferredProvider: 'circle' }
   );
-  
+
   // 20. Bank Transfer via Circle API
   if (cashout.provider === 'circle') {
     const payout = await circleApiService.createPayout(
@@ -492,6 +502,7 @@ Atomic BTC ↔ sBTC → Internal atomic swaps
 **Background**: Alice runs a small coffee shop and wants to accept crypto payments but has no blockchain experience.
 
 **Journey**:
+
 1. **Registration**: Signs up with email/password only
 2. **Integration**: Adds payment button to website (3 lines of code)
 3. **First Payment**: Customer pays 0.005 BTC for coffee
@@ -499,6 +510,7 @@ Atomic BTC ↔ sBTC → Internal atomic swaps
 5. **Growth**: Adds Stacks wallet later for advanced features
 
 **Technical Flow**:
+
 ```
 Customer pays 0.005 BTC ($225)
     ↓
@@ -520,6 +532,7 @@ Optional: Alice converts to USD via Circle API
 **Background**: Software company wants to accept crypto for subscriptions with full API integration.
 
 **Journey**:
+
 1. **API Integration**: Full webhook system for subscription billing
 2. **Multi-Currency**: Accepts BTC, ETH, STX, sBTC for global customers
 3. **Automation**: Automatic renewal processing via smart contracts
@@ -527,6 +540,7 @@ Optional: Alice converts to USD via Circle API
 5. **Cashout**: Automatic USD conversion for operational expenses
 
 **Technical Flow**:
+
 ```
 Global customer pays monthly subscription in STX
     ↓
@@ -548,6 +562,7 @@ Smart contract handles automatic renewals
 **Background**: Large corporation needs institutional-grade crypto payment processing.
 
 **Journey**:
+
 1. **White-glove Setup**: Dedicated integration support
 2. **High Volume**: Processing millions in daily transactions
 3. **Compliance**: SOC 2 Type II compliant infrastructure
@@ -555,6 +570,7 @@ Smart contract handles automatic renewals
 5. **Banking Integration**: Seamless USD conversion via Circle
 
 **Technical Flow**:
+
 ```
 $1M enterprise payment in multiple cryptocurrencies
     ↓
@@ -639,23 +655,23 @@ Full audit trail for compliance
 
 ### **✅ Core Requirements Met**
 
-| Requirement | Implementation | Status |
-|-------------|----------------|---------|
-| **Working MVP** | Real sBTC testnet transactions via Emily API | ✅ Complete |
-| **Integration Options** | API + Embeddable widgets + Payment links | ✅ Complete |
-| **Merchant Dashboard** | Real-time analytics with WebSocket updates | ✅ Complete |
-| **Documentation** | 24+ comprehensive guides and API references | ✅ Complete |
-| **sBTC-USD Conversion** | Circle API + Coinbase Commerce integration | ✅ Complete |
+| Requirement             | Implementation                               | Status      |
+| ----------------------- | -------------------------------------------- | ----------- |
+| **Working MVP**         | Real sBTC testnet transactions via Emily API | ✅ Complete |
+| **Integration Options** | API + Embeddable widgets + Payment links     | ✅ Complete |
+| **Merchant Dashboard**  | Real-time analytics with WebSocket updates   | ✅ Complete |
+| **Documentation**       | 24+ comprehensive guides and API references  | ✅ Complete |
+| **sBTC-USD Conversion** | Circle API + Coinbase Commerce integration   | ✅ Complete |
 
 ### **🚀 Beyond Requirements (Bonus Points)**
 
-| Feature | Innovation | Competitive Edge |
-|---------|------------|------------------|
-| **Multi-Currency Support** | BTC + STX + sBTC payment options | First in hackathon |
-| **6-Second Demos** | STX payments for live demonstrations | Perfect demo appeal |
-| **Newcomer Friendly** | No Stacks wallet required initially | Broad adoption |
-| **Enterprise Grade** | Production-ready with real APIs | Not typical hackathon |
-| **Stripe Compatibility** | Familiar API patterns for developers | Easy migration |
+| Feature                    | Innovation                           | Competitive Edge      |
+| -------------------------- | ------------------------------------ | --------------------- |
+| **Multi-Currency Support** | BTC + STX + sBTC payment options     | First in hackathon    |
+| **6-Second Demos**         | STX payments for live demonstrations | Perfect demo appeal   |
+| **Newcomer Friendly**      | No Stacks wallet required initially  | Broad adoption        |
+| **Enterprise Grade**       | Production-ready with real APIs      | Not typical hackathon |
+| **Stripe Compatibility**   | Familiar API patterns for developers | Easy migration        |
 
 ### **💡 Unique Value Propositions**
 
@@ -786,12 +802,12 @@ SBTC_NETWORK=testnet
 SBTC_API_URL=https://api.testnet.sbtc.tech
 SBTC_CONTRACT_ADDRESS=ST000000000000000000002AMW42H.sbtc-token
 
-# Circle API
+# Circle API - USDC/USD Institutional Conversions
 CIRCLE_API_KEY=sk_live_...
 CIRCLE_API_URL=https://api.circle.com
 CIRCLE_ENVIRONMENT=production
 
-# Coinbase Commerce
+# Coinbase Commerce - Broad Crypto Acceptance (30+ coins)
 COINBASE_COMMERCE_API_KEY=sk_live_...
 COINBASE_COMMERCE_WEBHOOK_SECRET=whsec_...
 
@@ -811,6 +827,7 @@ API_ENCRYPTION_KEY=your-encryption-key
 ## 🚀 Future Roadmap
 
 ### **Phase 1: Hackathon MVP** ✅ **(Current)**
+
 - sBTC testnet transactions
 - Multi-currency payment flow
 - Basic merchant dashboard
@@ -818,6 +835,7 @@ API_ENCRYPTION_KEY=your-encryption-key
 - Real provider integrations
 
 ### **Phase 2: Production Launch** (Post-Hackathon)
+
 - Mainnet deployment
 - Advanced analytics dashboard
 - Mobile applications
@@ -825,6 +843,7 @@ API_ENCRYPTION_KEY=your-encryption-key
 - Enterprise white-glove onboarding
 
 ### **Phase 3: Scale & Expansion** (6-12 Months)
+
 - Lightning Network integration
 - DeFi yield opportunities for merchants
 - Global compliance features (EU, Asia)
@@ -832,6 +851,7 @@ API_ENCRYPTION_KEY=your-encryption-key
 - Advanced fraud detection
 
 ### **Phase 4: Platform Evolution** (12+ Months)
+
 - Smart contract marketplace
 - Decentralized payment routing
 - Cross-chain payment support
@@ -843,6 +863,7 @@ API_ENCRYPTION_KEY=your-encryption-key
 ## 📈 Business Model & Growth Strategy
 
 ### **Revenue Streams**
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  💰 Primary Revenue (Transaction Fees)                     │
@@ -866,6 +887,7 @@ API_ENCRYPTION_KEY=your-encryption-key
 ```
 
 ### **Growth Projections**
+
 - **Year 1**: 1,000 merchants, $10M transaction volume
 - **Year 2**: 10,000 merchants, $100M transaction volume
 - **Year 3**: 50,000 merchants, $1B transaction volume
@@ -880,6 +902,7 @@ The **sBTC Payment Gateway** represents a fundamental shift in how businesses ca
 Our enterprise-grade implementation, real API integrations, and multi-currency approach position us not just to win this hackathon, but to become the standard for Bitcoin payment processing in the post-sBTC world.
 
 ### **Key Success Metrics**
+
 - ✅ **Technical Excellence**: Production-ready code with real integrations
 - ✅ **Market Innovation**: First multi-currency sBTC gateway
 - ✅ **User Experience**: Stripe-like simplicity for all user types
@@ -890,7 +913,7 @@ Our enterprise-grade implementation, real API integrations, and multi-currency a
 
 ---
 
-*This document was generated for the Stacks Builders Challenge - demonstrating enterprise-grade sBTC payment infrastructure that combines Bitcoin's security with modern payment gateway convenience.*
+_This document was generated for the Stacks Builders Challenge - demonstrating enterprise-grade sBTC payment infrastructure that combines Bitcoin's security with modern payment gateway convenience._
 
 **Build Date**: August 14, 2025  
 **Version**: 1.0.0  

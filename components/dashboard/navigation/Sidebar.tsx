@@ -18,7 +18,8 @@ import {
   Bell,
   Shield,
   Zap,
-  Globe
+  Globe,
+  ArrowUpDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -59,6 +60,12 @@ const navigation: NavItem[] = [
     ]
   },
   {
+    name: 'Balance & Conversion',
+    href: '/dashboard/conversion',
+    icon: ArrowUpDown,
+    isNew: true,
+  },
+  {
     name: 'Analytics',
     href: '/dashboard/analytics',
     icon: BarChart3,
@@ -72,7 +79,6 @@ const navigation: NavItem[] = [
     name: 'Webhooks',
     href: '/dashboard/webhooks',
     icon: Webhook,
-    isNew: true,
   },
   {
     name: 'Customers',
