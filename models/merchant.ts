@@ -205,4 +205,4 @@ merchantSchema.index({ isActive: 1 });
 merchantSchema.index({ 'apiKeys.keyId': 1 });
 merchantSchema.index({ 'sessions.sessionId': 1 });
 
-export const Merchant = models.Merchant || model('Merchant', merchantSchema);
+export const Merchant = models?.Merchant || model('Merchant', merchantSchema);

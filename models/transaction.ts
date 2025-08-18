@@ -37,4 +37,4 @@ const transactionSchema = new Schema({
   },
 });
 
-export const Transaction = models.Transaction || model('Transaction', transactionSchema);
+export const Transaction = models?.Transaction || model('Transaction', transactionSchema);

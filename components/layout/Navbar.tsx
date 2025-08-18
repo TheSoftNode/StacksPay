@@ -17,13 +17,13 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Logo from '../shared/Logo'
-import WalletConnectModal from '../payment/wallet/WalletConnectModal'
+import MerchantSignInModal from '../auth/MerchantSignInModal'
 import ThemeToggle from '../shared/ThemeToggle'
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false)
+  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -163,7 +163,7 @@ const Navbar = () => {
               <Button 
                 variant="ghost" 
                 className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium"
-                onClick={() => setIsWalletModalOpen(true)}
+                onClick={() => setIsSignInModalOpen(true)}
               >
                 Sign in
               </Button>
@@ -223,7 +223,7 @@ const Navbar = () => {
                   <Button 
                     variant="ghost" 
                     className="w-full justify-start text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
-                    onClick={() => setIsWalletModalOpen(true)}
+                    onClick={() => setIsSignInModalOpen(true)}
                   >
                     Sign in
                   </Button>
@@ -238,9 +238,9 @@ const Navbar = () => {
       </motion.header>
 
       {/* Wallet Connect Modal */}
-      <WalletConnectModal 
-        isOpen={isWalletModalOpen}
-        onClose={() => setIsWalletModalOpen(false)}
+      <MerchantSignInModal
+        isOpen={isSignInModalOpen}
+        onClose={() => setIsSignInModalOpen(false)}
       />
     </>
   )

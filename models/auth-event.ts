@@ -49,4 +49,4 @@ authEventSchema.index({ merchantId: 1, eventType: 1, createdAt: -1 });
 authEventSchema.index({ merchantId: 1, success: 1, createdAt: -1 });
 authEventSchema.index({ ipAddress: 1, success: 1, createdAt: -1 });
 
-export const AuthEvent = models.AuthEvent || model('AuthEvent', authEventSchema);
+export const AuthEvent = models?.AuthEvent || model('AuthEvent', authEventSchema);

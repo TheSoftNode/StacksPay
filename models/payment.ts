@@ -137,4 +137,4 @@ paymentSchema.index({ customerWalletAddress: 1 });
 paymentSchema.index({ expiresAt: 1 });
 paymentSchema.index({ status: 1, createdAt: -1 });
 
-export const Payment = models.Payment || model('Payment', paymentSchema);
+export const Payment = models?.Payment || model('Payment', paymentSchema);
