@@ -4,6 +4,7 @@ import "./globals.css";
 import ConditionalNavbar from "@/components/layout/ConditionalNavbar";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import ChatBot from "@/components/shared/ChatBot";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -39,6 +40,7 @@ export default function RootLayout({
         >
           <ConditionalNavbar />
           {children}
+          <ChatBot />
           <Toaster />
         </ThemeProvider>
       </body>
