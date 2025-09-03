@@ -17,8 +17,9 @@ export default function ConditionalNavbar() {
     return null // Return null during SSR and initial hydration
   }
   
-  // Don't show navbar on dashboard routes
-  if (pathname?.startsWith('/dashboard')) {
+  if (pathname?.startsWith('/dashboard')
+      || pathname?.startsWith('/login')
+      || pathname?.startsWith('/register')) {
     return null
   }
   
