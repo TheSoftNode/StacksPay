@@ -4,7 +4,6 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   CheckCircle, 
-  Circle, 
   Building, 
   Wallet, 
   CreditCard, 
@@ -15,14 +14,12 @@ import {
   ArrowRight,
   ArrowLeft,
   Star,
-  Clock,
-  Shield
+  Clock
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/separator'
 
 // Step Components
 import WelcomeStep from './steps/WelcomeStep'
@@ -222,7 +219,7 @@ const MerchantOnboardingWizard = () => {
   const CurrentStepComponent = steps[currentStep].component
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8 p-6">
       {/* Header */}
       <div className="text-center space-y-4">
         <motion.div
@@ -257,7 +254,7 @@ const MerchantOnboardingWizard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Step Navigation Sidebar */}
         <div className="lg:col-span-1">
-          <Card className="sticky top-6">
+          <Card className="sticky top-6 bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg">Setup Steps</CardTitle>
               <CardDescription>
@@ -319,7 +316,7 @@ const MerchantOnboardingWizard = () => {
 
         {/* Main Content Area */}
         <div className="lg:col-span-3">
-          <Card className="min-h-[600px]">
+          <Card className="min-h-[600px] bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader className="border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -366,6 +363,7 @@ const MerchantOnboardingWizard = () => {
                   variant="outline"
                   onClick={prevStep}
                   disabled={currentStep === 0 || isLoading}
+                  className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Previous
@@ -389,6 +387,7 @@ const MerchantOnboardingWizard = () => {
                 <Button
                   onClick={nextStep}
                   disabled={currentStep === steps.length - 1 || isLoading || !isStepComplete(currentStep)}
+                  className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
                 >
                   {currentStep === steps.length - 1 ? (
                     <>

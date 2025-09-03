@@ -264,7 +264,7 @@ export default {
                 onClick={() => setSelectedFramework(framework.id)}
                 className={`p-4 rounded-lg border-2 text-center transition-all ${
                   selectedFramework === framework.id
-                    ? 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/20'
+                    ? 'border-orange-500 bg-orange-50 dark:border-orange-500 dark:bg-orange-900/20'
                     : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -371,7 +371,7 @@ export default {
       </div>
 
       {/* Next Steps */}
-      <Card className="bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/10 dark:to-yellow-900/10 border-orange-200 dark:border-orange-800">
+      <Card className="bg-white dark:bg-gray-900 border shadow-sm">
         <CardContent className="p-6">
           <div className="flex items-start space-x-4">
             <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center flex-shrink-0">

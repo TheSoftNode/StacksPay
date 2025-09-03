@@ -145,7 +145,7 @@ const BusinessInfoStep = ({ data, updateData, onComplete, isLoading, setIsLoadin
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column - Basic Info */}
         <div className="space-y-6">
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Building className="h-5 w-5" />
@@ -183,7 +183,7 @@ const BusinessInfoStep = ({ data, updateData, onComplete, isLoading, setIsLoadin
                   <SelectTrigger className={errors.businessType ? 'border-red-500' : ''}>
                     <SelectValue placeholder="Select your business type" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                     {businessTypes.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         <div>
@@ -239,7 +239,7 @@ const BusinessInfoStep = ({ data, updateData, onComplete, isLoading, setIsLoadin
 
         {/* Right Column - Contact Info */}
         <div className="space-y-6">
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <MapPin className="h-5 w-5" />
@@ -258,7 +258,7 @@ const BusinessInfoStep = ({ data, updateData, onComplete, isLoading, setIsLoadin
                   <SelectTrigger className={errors.country ? 'border-red-500' : ''}>
                     <SelectValue placeholder="Select your country" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                     {countries.map((country) => (
                       <SelectItem key={country} value={country}>
                         {country}
@@ -340,7 +340,7 @@ const BusinessInfoStep = ({ data, updateData, onComplete, isLoading, setIsLoadin
           </Card>
 
           {/* Info Card */}
-          <Alert>
+          <Alert className="bg-white dark:bg-gray-900 border shadow-sm">
             <Info className="h-4 w-4" />
             <AlertDescription>
               <strong>Data Security:</strong> All information is encrypted and stored securely. 
@@ -356,7 +356,7 @@ const BusinessInfoStep = ({ data, updateData, onComplete, isLoading, setIsLoadin
           size="lg"
           onClick={handleSave}
           disabled={!isValid || isLoading}
-          className="min-w-[200px]"
+          className="min-w-[200px] bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
         >
           {isLoading ? (
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -374,7 +374,7 @@ const BusinessInfoStep = ({ data, updateData, onComplete, isLoading, setIsLoadin
           animate={{ opacity: 1, y: 0 }}
           className="mt-6"
         >
-          <Card className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/10 dark:to-blue-900/10 border-green-200 dark:border-green-800">
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg text-green-800 dark:text-green-200">
                 Business Profile Preview

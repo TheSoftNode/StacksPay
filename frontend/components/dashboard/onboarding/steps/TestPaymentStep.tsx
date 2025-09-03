@@ -310,7 +310,7 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                <Card className="bg-white dark:bg-gray-900 border shadow-sm">
                   <CardContent className="p-8 text-center">
                     <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
                       <CheckCircle className="h-8 w-8 text-green-600" />
@@ -380,7 +380,7 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                <Card className="bg-white dark:bg-gray-900 border shadow-sm">
                   <CardContent className="p-8 text-center">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
                       <AlertCircle className="h-8 w-8 text-red-600" />
@@ -394,7 +394,7 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
                     <Button 
                       variant="outline" 
                       onClick={() => setPaymentStatus('idle')}
-                      className="border-red-200 text-red-700 hover:bg-red-50"
+                      variant="outline"
                     >
                       <RefreshCw className="mr-2 h-4 w-4" />
                       Try Again
@@ -407,7 +407,7 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
 
           {/* Integration Check */}
           {paymentStatus === 'idle' && (
-            <Card className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm">
               <CardContent className="p-6">
                 <div className="flex items-start space-x-4">
                   <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -467,7 +467,7 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
       )}
 
       {/* Help Section */}
-      <Card className="bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800">
+      <Card className="bg-white dark:bg-gray-900 border shadow-sm">
         <CardContent className="p-6">
           <div className="flex items-start space-x-4">
             <div className="w-8 h-8 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -487,11 +487,11 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
                 <li>Ensure your firewall allows connections from our servers</li>
               </ul>
               <div className="flex space-x-2 mt-4">
-                <Button variant="outline" size="sm" className="border-yellow-200 text-yellow-700 hover:bg-yellow-100">
+                <Button variant="outline" size="sm">
                   <ExternalLink className="mr-2 h-3 w-3" />
                   Troubleshooting Guide
                 </Button>
-                <Button variant="outline" size="sm" className="border-yellow-200 text-yellow-700 hover:bg-yellow-100">
+                <Button variant="outline" size="sm">
                   Get Testnet Bitcoin
                 </Button>
               </div>

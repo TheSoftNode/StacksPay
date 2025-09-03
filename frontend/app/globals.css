@@ -114,4 +114,14 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Select dropdown styling */
+  [data-radix-popper-content-wrapper] {
+    @apply bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg;
+  }
+
+  /* Select content styling */
+  .select-content {
+    @apply bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700;
+  }
 }

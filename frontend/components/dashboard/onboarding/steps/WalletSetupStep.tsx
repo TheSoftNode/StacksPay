@@ -170,7 +170,7 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
         >
-          <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
@@ -194,7 +194,7 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
       ) : (
         <div className="space-y-6">
           {/* Wallet Connection */}
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Wallet className="h-5 w-5" />
@@ -215,7 +215,7 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
                   size="lg"
                   onClick={connectWallet}
                   disabled={isLoading || connectionStatus === 'connecting'}
-                  className="min-w-[200px]"
+                  className="min-w-[200px] bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
                 >
                   {connectionStatus === 'connecting' ? (
                     <>
@@ -231,7 +231,7 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
                 </Button>
 
                 {connectionStatus === 'error' && (
-                  <Alert className="border-red-200 dark:border-red-800">
+                  <Alert className="bg-white dark:bg-gray-900 border shadow-sm">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription className="text-red-700 dark:text-red-300">
                       Failed to connect wallet. Please make sure you have a Stacks wallet installed and try again.
@@ -255,7 +255,7 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.1 }}
                     >
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                      <Card className="bg-white dark:bg-gray-900 border shadow-sm hover:shadow-md transition-shadow cursor-pointer">
                         <CardContent className="p-4">
                           <div className="flex items-center space-x-4">
                             <div className="text-2xl">{wallet.icon}</div>
@@ -298,7 +298,7 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
           </Card>
 
           {/* Security Info */}
-          <Alert>
+          <Alert className="bg-white dark:bg-gray-900 border shadow-sm">
             <Shield className="h-4 w-4" />
             <AlertDescription>
               <strong>Security Note:</strong> Your wallet private keys always remain in your control. 
@@ -309,7 +309,7 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
       )}
 
       {/* Help Section */}
-      <Card className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
+      <Card className="bg-white dark:bg-gray-900 border shadow-sm">
         <CardContent className="p-6">
           <div className="flex items-start space-x-4">
             <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -323,15 +323,15 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
                 We've created step-by-step guides for each supported wallet to help you get started quickly.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-100">
+                <Button variant="outline" size="sm">
                   <ExternalLink className="mr-2 h-3 w-3" />
                   Wallet Setup Guide
                 </Button>
-                <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-100">
+                <Button variant="outline" size="sm">
                   <Smartphone className="mr-2 h-3 w-3" />
                   Mobile Setup
                 </Button>
-                <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-100">
+                <Button variant="outline" size="sm">
                   <Monitor className="mr-2 h-3 w-3" />
                   Desktop Setup
                 </Button>

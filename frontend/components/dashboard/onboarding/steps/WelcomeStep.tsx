@@ -101,7 +101,7 @@ const WelcomeStep = ({ onComplete }: WelcomeStepProps) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 * index }}
           >
-            <Card className="relative overflow-hidden border-l-4 border-l-orange-500">
+            <Card className="relative overflow-hidden border-l-4 border-l-orange-500 bg-white dark:bg-gray-900 border shadow-sm">
               <CardContent className="p-6">
                 <div className="flex items-start space-x-4">
                   <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -126,7 +126,7 @@ const WelcomeStep = ({ onComplete }: WelcomeStepProps) => {
       </div>
 
       {/* Setup Overview */}
-      <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border-blue-200 dark:border-blue-800">
+      <Card className="bg-white dark:bg-gray-900 border shadow-sm">
         <CardContent className="p-6">
           <div className="flex items-center space-x-3 mb-4">
             <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
@@ -213,7 +213,7 @@ const WelcomeStep = ({ onComplete }: WelcomeStepProps) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8 }}
-        className="text-center bg-gradient-to-r from-orange-50 to-blue-50 dark:from-orange-900/10 dark:to-blue-900/10 rounded-xl p-6"
+        className="text-center bg-white dark:bg-gray-900 border rounded-xl p-6 shadow-sm"
       >
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
           Ready to revolutionize your payments?

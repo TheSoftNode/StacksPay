@@ -139,7 +139,7 @@ const ApiKeySetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
@@ -161,7 +161,7 @@ const ApiKeySetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
           {/* API Keys Display */}
           <div className="grid grid-cols-1 gap-6">
             {/* Test API Key */}
-            <Card>
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -206,7 +206,7 @@ const ApiKeySetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
                   </div>
                 </div>
 
-                <Alert>
+                <Alert className="bg-white dark:bg-gray-900 border shadow-sm">
                   <Shield className="h-4 w-4" />
                   <AlertDescription>
                     <strong>Security:</strong> Treat your API keys like passwords. 
@@ -217,7 +217,7 @@ const ApiKeySetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
             </Card>
 
             {/* Webhook Secret */}
-            <Card>
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm">
               <CardHeader>
                 <div className="flex items-center space-x-2">
                   <Code className="h-5 w-5 text-purple-600" />
@@ -261,7 +261,7 @@ const ApiKeySetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
             </Card>
 
             {/* Live Key Info */}
-            <Card className="border-orange-200 dark:border-orange-800">
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm">
               <CardHeader>
                 <div className="flex items-center space-x-2">
                   <Rocket className="h-5 w-5 text-orange-600" />
@@ -291,7 +291,7 @@ const ApiKeySetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
           </div>
 
           {/* Integration Quick Start */}
-          <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/10 dark:to-blue-900/10 border-purple-200 dark:border-purple-800">
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="text-purple-800 dark:text-purple-200">
                 Quick Integration Preview
@@ -332,7 +332,7 @@ import { SbtcPayment } from '@sbtc-gateway/react'
               size="lg"
               onClick={handleContinue}
               disabled={!keyGenerated}
-              className="min-w-[200px]"
+              className="min-w-[200px] bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
             >
               <Code className="mr-2 h-4 w-4" />
               Continue to Integration
@@ -345,7 +345,7 @@ import { SbtcPayment } from '@sbtc-gateway/react'
             size="lg"
             onClick={generateApiKeys}
             disabled={isLoading}
-            className="min-w-[200px]"
+            className="min-w-[200px] bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
           >
             <Key className="mr-2 h-4 w-4" />
             Generate API Keys

@@ -169,7 +169,7 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column - Payment Methods */}
         <div className="space-y-6">
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <CreditCard className="h-5 w-5" />
@@ -191,7 +191,7 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
                     whileHover={{ scale: 1.02 }}
                     className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
                       isAccepted 
-                        ? 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/20'
+                        ? 'border-orange-500 bg-orange-50 dark:border-orange-500 dark:bg-orange-900/20'
                         : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                     }`}
                     onClick={() => updatePreferences(fieldName, !isAccepted)}
@@ -238,7 +238,7 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
 
         {/* Right Column - Settlement Options */}
         <div className="space-y-6">
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <ArrowRightLeft className="h-5 w-5" />
@@ -259,7 +259,7 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
                       whileHover={{ scale: 1.02 }}
                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
                         preferences.preferredCurrency === currency.value
-                          ? 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/20'
+                          ? 'border-orange-500 bg-orange-50 dark:border-orange-500 dark:bg-orange-900/20'
                           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                       }`}
                       onClick={() => updatePreferences('preferredCurrency', currency.value)}
@@ -314,7 +314,7 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
                   <SelectTrigger>
                     <SelectValue placeholder="Choose settlement frequency" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                     {settlementOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         <div className="flex items-center space-x-2">
@@ -351,7 +351,7 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="pl-4 border-l-2 border-blue-200 dark:border-blue-800"
+                    className="pl-4 border-l-2 border-blue-500 dark:border-blue-500"
                   >
                     <Alert>
                       <Info className="h-4 w-4" />
@@ -367,7 +367,7 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
           </Card>
 
           {/* Fee Preview */}
-          <Card className="bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg text-green-800 dark:text-green-200">
                 Your Fee Structure
@@ -416,7 +416,7 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
       </div>
 
       {/* Configuration Preview */}
-      <Card className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
+      <Card className="bg-white dark:bg-gray-900 border shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg text-blue-800 dark:text-blue-200">
             Configuration Summary
@@ -479,7 +479,7 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
           size="lg"
           onClick={handleSave}
           disabled={!isValid || isLoading}
-          className="min-w-[200px]"
+          className="min-w-[200px] bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
         >
           {isLoading ? (
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>

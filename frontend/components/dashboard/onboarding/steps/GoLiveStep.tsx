@@ -203,7 +203,7 @@ const GoLiveStep = ({ data, updateData, onComplete, isLoading, setIsLoading }: G
           className="space-y-6"
         >
           {/* Readiness Check */}
-          <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <div className="flex items-center space-x-2">
                 <CheckCircle className="h-6 w-6 text-green-600" />
@@ -251,7 +251,7 @@ const GoLiveStep = ({ data, updateData, onComplete, isLoading, setIsLoading }: G
               size="lg"
               onClick={activateAccount}
               disabled={isLoading}
-              className="min-w-[250px] bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+              className="min-w-[250px]"
             >
               {isLoading ? (
                 <>
@@ -279,7 +279,7 @@ const GoLiveStep = ({ data, updateData, onComplete, isLoading, setIsLoading }: G
           className="space-y-6"
         >
           {/* Success Message */}
-          <Card className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/10 dark:to-blue-900/10 border-green-200 dark:border-green-800">
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardContent className="p-8 text-center">
               <div className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle className="h-10 w-10 text-green-600" />
@@ -292,7 +292,7 @@ const GoLiveStep = ({ data, updateData, onComplete, isLoading, setIsLoading }: G
               </p>
 
               {/* Live API Key */}
-              <Card className="bg-white dark:bg-gray-800 border border-orange-200 dark:border-orange-800 mb-6">
+              <Card className="bg-white dark:bg-gray-800 border shadow-sm mb-6">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="text-left">
@@ -357,7 +357,7 @@ const GoLiveStep = ({ data, updateData, onComplete, isLoading, setIsLoading }: G
           </Card>
 
           {/* Pro Tips */}
-          <Card className="bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800">
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="text-purple-800 dark:text-purple-200">
                 Pro Tips for Success
@@ -438,7 +438,7 @@ const GoLiveStep = ({ data, updateData, onComplete, isLoading, setIsLoading }: G
       )}
 
       {activationStatus === 'pending_verification' && (
-        <Card className="bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800">
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-start space-x-4">
               <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -471,7 +471,7 @@ const GoLiveStep = ({ data, updateData, onComplete, isLoading, setIsLoading }: G
             size="lg"
             onClick={activateAccount}
             disabled={isLoading}
-            className="min-w-[200px] bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
+            className="min-w-[200px]"
           >
             {isLoading ? (
               <>
