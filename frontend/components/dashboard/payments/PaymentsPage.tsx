@@ -16,7 +16,15 @@ import {
   Eye,
   Copy,
   ExternalLink,
-  CreditCard
+  CreditCard,
+  RefreshCw,
+  RotateCcw,
+  X,
+  AlertCircle,
+  Link,
+  QrCode,
+  Share,
+  Mail
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,6 +46,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
   TableBody,
@@ -136,7 +154,32 @@ const PaymentsPage = () => {
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [activeTab, setActiveTab] = useState('all')
   const downloadRef = useRef<HTMLAnchorElement>(null)
+  
+  // Modal states
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false)
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
+  const [isRetryModalOpen, setIsRetryModalOpen] = useState(false)
+  const [isPaymentLinkModalOpen, setIsPaymentLinkModalOpen] = useState(false)
+  
+  // Form states
+  const [refundAmount, setRefundAmount] = useState('')
+  const [refundReason, setRefundReason] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Payment link form state
+  const [paymentLinkData, setPaymentLinkData] = useState({
+    amount: '',
+    currency: 'sBTC',
+    description: '',
+    customerEmail: '',
+    expiresIn: '24', // hours
+    customId: ''
+  })
+  const [generatedLink, setGeneratedLink] = useState('')
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -185,14 +228,243 @@ const PaymentsPage = () => {
     console.log('Exporting payments...')
   }
 
+  // Modal handlers
+  const openDetailsModal = (payment: Payment) => {
+    setSelectedPayment(payment)
+    setIsDetailsModalOpen(true)
+  }
+
+  const openRefundModal = (payment: Payment) => {
+    setSelectedPayment(payment)
+    setRefundAmount(payment.amount.toString())
+    setIsRefundModalOpen(true)
+  }
+
+  const openCancelModal = (payment: Payment) => {
+    setSelectedPayment(payment)
+    setIsCancelModalOpen(true)
+  }
+
+  const openRetryModal = (payment: Payment) => {
+    setSelectedPayment(payment)
+    setIsRetryModalOpen(true)
+  }
+
+  const handleRefund = async () => {
+    setIsSubmitting(true)
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    setIsSubmitting(false)
+    setIsRefundModalOpen(false)
+    setRefundAmount('')
+    setRefundReason('')
+    setSelectedPayment(null)
+  }
+
+  const handleCancel = async () => {
+    setIsSubmitting(true)
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    setIsSubmitting(false)
+    setIsCancelModalOpen(false)
+    setSelectedPayment(null)
+  }
+
+  const handleRetry = async () => {
+    setIsSubmitting(true)
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    setIsSubmitting(false)
+    setIsRetryModalOpen(false)
+    setSelectedPayment(null)
+  }
+
+  const generatePaymentLink = async () => {
+    setIsSubmitting(true)
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // Generate a mock payment link
+    const linkId = `pl_${Math.random().toString(36).substring(2, 15)}`
+    const mockLink = `https://checkout.sbtc-gateway.com/${linkId}`
+    
+    setGeneratedLink(mockLink)
+    setIsSubmitting(false)
+  }
+
+  const resetPaymentLinkForm = () => {
+    setPaymentLinkData({
+      amount: '',
+      currency: 'sBTC',
+      description: '',
+      customerEmail: '',
+      expiresIn: '24',
+      customId: ''
+    })
+    setGeneratedLink('')
+  }
+
+  const renderPaymentsTable = () => (
+    <div className="overflow-x-auto">
+      <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+        {filteredPayments.length} of {payments.length} payments
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Customer</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Payment Method</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sortedPayments.map((payment, index) => (
+            <motion.tr
+              key={payment.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="group hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            >
+              <TableCell>
+                <div className="flex items-center space-x-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={payment.customer.avatar} alt={payment.customer.name} />
+                    <AvatarFallback className="bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
+                      {payment.customer.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">
+                      {payment.customer.name}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {payment.customer.email}
+                    </p>
+                  </div>
+                </div>
+              </TableCell>
+              
+              <TableCell>
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    {payment.amount} {payment.currency}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    ${payment.usdAmount.toLocaleString()}
+                  </p>
+                </div>
+              </TableCell>
+              
+              <TableCell>
+                <div className="flex items-center space-x-2">
+                  {getStatusIcon(payment.status)}
+                  {getStatusBadge(payment.status)}
+                </div>
+              </TableCell>
+              
+              <TableCell>
+                <div>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                    {formatDate(payment.createdAt)}
+                  </p>
+                  {payment.completedAt && (
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Completed {formatDate(payment.completedAt)}
+                    </p>
+                  )}
+                </div>
+              </TableCell>
+              
+              <TableCell>
+                <p className="text-sm text-gray-900 dark:text-gray-100">
+                  {payment.paymentMethod}
+                </p>
+              </TableCell>
+              
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => openDetailsModal(payment)}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => copyToClipboard(payment.id)}>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy Payment ID
+                    </DropdownMenuItem>
+                    {payment.transactionHash && (
+                      <DropdownMenuItem>
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        View on Explorer
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    {payment.status === 'completed' && (
+                      <DropdownMenuItem onClick={() => openRefundModal(payment)} className="text-orange-600">
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Refund Payment
+                      </DropdownMenuItem>
+                    )}
+                    {payment.status === 'failed' && (
+                      <DropdownMenuItem onClick={() => openRetryModal(payment)} className="text-blue-600">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Retry Payment
+                      </DropdownMenuItem>
+                    )}
+                    {payment.status === 'pending' && (
+                      <DropdownMenuItem onClick={() => openCancelModal(payment)} className="text-red-600">
+                        <X className="mr-2 h-4 w-4" />
+                        Cancel Payment
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </motion.tr>
+          ))}
+        </TableBody>
+      </Table>
+      
+      {sortedPayments.length === 0 && (
+        <div className="p-8 text-center">
+          <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <CreditCard className="h-6 w-6 text-gray-400" />
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+            No payments found
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-500">
+            {searchQuery || statusFilter !== 'all' 
+              ? 'Try adjusting your search or filters'
+              : activeTab !== 'all' 
+                ? `No ${activeTab} payments found`
+                : 'Payments will appear here once you start receiving them'
+            }
+          </p>
+        </div>
+      )}
+    </div>
+  )
+
   const filteredPayments = payments.filter(payment => {
     const matchesSearch = payment.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          payment.customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          payment.id.toLowerCase().includes(searchQuery.toLowerCase())
     
     const matchesStatus = statusFilter === 'all' || payment.status === statusFilter
+    const matchesTab = activeTab === 'all' || payment.status === activeTab
     
-    return matchesSearch && matchesStatus
+    return matchesSearch && matchesStatus && matchesTab
   })
 
   const sortedPayments = [...filteredPayments].sort((a, b) => {
@@ -229,215 +501,616 @@ const PaymentsPage = () => {
         </div>
         
         <div className="flex items-center space-x-3">
-          <Button variant="outline" size="sm" onClick={exportPayments}>
+          <Button variant="outline" size="sm" onClick={exportPayments} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
           
-          <Button size="sm">
+          <Button 
+            size="sm" 
+            onClick={() => setIsPaymentLinkModalOpen(true)}
+            className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+          >
             <Plus className="mr-2 h-4 w-4" />
             Create Payment Link
           </Button>
         </div>
       </div>
 
-      {/* Filters and Search */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search payments, customers, or payment IDs..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+      {/* Payment Tabs */}
+      <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+        <CardContent className="p-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+              <TabsList className="grid w-full grid-cols-4 max-w-md bg-gray-100 dark:bg-gray-800">
+                <TabsTrigger value="all" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">All</TabsTrigger>
+                <TabsTrigger value="pending" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Pending</TabsTrigger>
+                <TabsTrigger value="completed" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Completed</TabsTrigger>
+                <TabsTrigger value="failed" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Failed</TabsTrigger>
+              </TabsList>
             </div>
             
-            {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px]">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="p-6">
+              {/* Filters and Search */}
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+                {/* Search */}
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search payments, customers, or payment IDs..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 bg-white dark:bg-gray-900 border hover:border-orange-300 dark:hover:border-orange-600"
+                  />
+                </div>
+                
+                {/* Status Filter */}
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[140px] bg-white dark:bg-gray-900 border hover:border-orange-300 dark:hover:border-orange-600">
+                    <Filter className="mr-2 h-4 w-4" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {/* Sort Options */}
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-[140px] bg-white dark:bg-gray-900 border hover:border-orange-300 dark:hover:border-orange-600">
+                    <ArrowUpDown className="mr-2 h-4 w-4" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                    <SelectItem value="date">Sort by Date</SelectItem>
+                    <SelectItem value="amount">Sort by Amount</SelectItem>
+                    <SelectItem value="customer">Sort by Customer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             
-            {/* Sort Options */}
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[140px]">
-                <ArrowUpDown className="mr-2 h-4 w-4" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="date">Sort by Date</SelectItem>
-                <SelectItem value="amount">Sort by Amount</SelectItem>
-                <SelectItem value="customer">Sort by Customer</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              <TabsContent value="all" className="mt-0">
+                {renderPaymentsTable()}
+              </TabsContent>
+              <TabsContent value="pending" className="mt-0">
+                {renderPaymentsTable()}
+              </TabsContent>
+              <TabsContent value="completed" className="mt-0">
+                {renderPaymentsTable()}
+              </TabsContent>
+              <TabsContent value="failed" className="mt-0">
+                {renderPaymentsTable()}
+              </TabsContent>
+            </div>
+          </Tabs>
         </CardContent>
       </Card>
 
-      {/* Payments Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-          <CardDescription>
-            {filteredPayments.length} of {payments.length} payments
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Payment Method</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedPayments.map((payment, index) => (
-                  <motion.tr
-                    key={payment.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="group hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                  >
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={payment.customer.avatar} alt={payment.customer.name} />
-                          <AvatarFallback className="bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
-                            {payment.customer.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-gray-100">
-                            {payment.customer.name}
-                          </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {payment.customer.email}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-gray-100">
-                          {payment.amount} {payment.currency}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          ${payment.usdAmount.toLocaleString()}
-                        </p>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(payment.status)}
-                        {getStatusBadge(payment.status)}
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div>
-                        <p className="text-sm text-gray-900 dark:text-gray-100">
-                          {formatDate(payment.createdAt)}
-                        </p>
-                        {payment.completedAt && (
-                          <p className="text-xs text-gray-600 dark:text-gray-400">
-                            Completed {formatDate(payment.completedAt)}
-                          </p>
-                        )}
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <p className="text-sm text-gray-900 dark:text-gray-100">
-                        {payment.paymentMethod}
-                      </p>
-                    </TableCell>
-                    
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => copyToClipboard(payment.id)}>
-                            <Copy className="mr-2 h-4 w-4" />
-                            Copy Payment ID
-                          </DropdownMenuItem>
-                          {payment.transactionHash && (
-                            <DropdownMenuItem>
-                              <ExternalLink className="mr-2 h-4 w-4" />
-                              View on Explorer
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          {payment.status === 'failed' && (
-                            <DropdownMenuItem>
-                              Retry Payment
-                            </DropdownMenuItem>
-                          )}
-                          {payment.status === 'pending' && (
-                            <DropdownMenuItem className="text-red-600">
-                              Cancel Payment
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+      {/* Payment Details Modal */}
+      <Dialog open={isDetailsModalOpen} onOpenChange={(open) => {
+        setIsDetailsModalOpen(open)
+        if (!open) setSelectedPayment(null)
+      }}>
+        <DialogContent className="max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Payment Details</DialogTitle>
+            <DialogDescription>
+              Complete information about payment {selectedPayment?.id}
+            </DialogDescription>
+          </DialogHeader>
           
-          {sortedPayments.length === 0 && (
-            <div className="p-8 text-center">
-              <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <CreditCard className="h-6 w-6 text-gray-400" />
+          {selectedPayment && (
+            <div className="space-y-6">
+              {/* Payment Summary */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Payment ID</Label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">{selectedPayment.id}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Status</Label>
+                  <div className="flex items-center space-x-2 mt-1">
+                    {getStatusIcon(selectedPayment.status)}
+                    {getStatusBadge(selectedPayment.status)}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Amount</Label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {selectedPayment.amount} {selectedPayment.currency} (${selectedPayment.usdAmount.toLocaleString()})
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Payment Method</Label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{selectedPayment.paymentMethod}</p>
+                </div>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                No payments found
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-500">
-                {searchQuery || statusFilter !== 'all' 
-                  ? 'Try adjusting your search or filters'
-                  : 'Payments will appear here once you start receiving them'
-                }
-              </p>
+
+              {/* Customer Information */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-3">Customer Information</h4>
+                <div className="flex items-center space-x-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={selectedPayment.customer.avatar} alt={selectedPayment.customer.name} />
+                    <AvatarFallback className="bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
+                      {selectedPayment.customer.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{selectedPayment.customer.name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{selectedPayment.customer.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Transaction Details */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-3">Transaction Details</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Description:</span>
+                    <span>{selectedPayment.description}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Created:</span>
+                    <span>{formatDate(selectedPayment.createdAt)}</span>
+                  </div>
+                  {selectedPayment.completedAt && (
+                    <div className="flex justify-between">
+                      <span>Completed:</span>
+                      <span>{formatDate(selectedPayment.completedAt)}</span>
+                    </div>
+                  )}
+                  {selectedPayment.transactionHash && (
+                    <div className="flex justify-between">
+                      <span>Transaction Hash:</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => copyToClipboard(selectedPayment.transactionHash!)}
+                        className="h-auto p-0 text-blue-600 hover:text-blue-700"
+                      >
+                        {selectedPayment.transactionHash.slice(0, 20)}...
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
+
+      {/* Refund Modal */}
+      <Dialog open={isRefundModalOpen} onOpenChange={(open) => {
+        setIsRefundModalOpen(open)
+        if (!open) {
+          setSelectedPayment(null)
+          setRefundAmount('')
+          setRefundReason('')
+        }
+      }}>
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Refund Payment</DialogTitle>
+            <DialogDescription>
+              Process a refund for payment {selectedPayment?.id}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPayment && (
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span>Original Amount:</span>
+                  <span className="font-medium">{selectedPayment.amount} {selectedPayment.currency}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="refund-amount">Refund Amount</Label>
+                <Input
+                  id="refund-amount"
+                  type="number"
+                  placeholder="0.00"
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                  max={selectedPayment.amount}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="refund-reason">Reason (Optional)</Label>
+                <Textarea
+                  id="refund-reason"
+                  placeholder="Describe the reason for this refund..."
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRefundModalOpen(false)} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRefund}
+              disabled={!refundAmount || isSubmitting}
+              className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+            >
+              {isSubmitting && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Processing...' : 'Process Refund'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Modal */}
+      <Dialog open={isCancelModalOpen} onOpenChange={(open) => {
+        setIsCancelModalOpen(open)
+        if (!open) setSelectedPayment(null)
+      }}>
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Cancel Payment</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this pending payment?
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPayment && (
+            <div className="space-y-4">
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                <div className="flex items-center space-x-2">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <span className="text-sm text-red-700 dark:text-red-300 font-medium">
+                    This action cannot be undone
+                  </span>
+                </div>
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                  The payment will be permanently cancelled and the customer will be notified.
+                </p>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Payment ID:</span>
+                  <span className="font-mono">{selectedPayment.id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Customer:</span>
+                  <span>{selectedPayment.customer.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Amount:</span>
+                  <span>{selectedPayment.amount} {selectedPayment.currency}</span>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCancelModalOpen(false)} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
+              Keep Payment
+            </Button>
+            <Button 
+              onClick={handleCancel}
+              disabled={isSubmitting}
+              variant="destructive"
+            >
+              {isSubmitting && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Cancelling...' : 'Cancel Payment'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Retry Modal */}
+      <Dialog open={isRetryModalOpen} onOpenChange={(open) => {
+        setIsRetryModalOpen(open)
+        if (!open) setSelectedPayment(null)
+      }}>
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Retry Payment</DialogTitle>
+            <DialogDescription>
+              Attempt to process this failed payment again
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPayment && (
+            <div className="space-y-4">
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center space-x-2">
+                  <RefreshCw className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                    Payment Retry
+                  </span>
+                </div>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  This will attempt to process the payment with the same details.
+                </p>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Payment ID:</span>
+                  <span className="font-mono">{selectedPayment.id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Customer:</span>
+                  <span>{selectedPayment.customer.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Amount:</span>
+                  <span>{selectedPayment.amount} {selectedPayment.currency}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Original Date:</span>
+                  <span>{formatDate(selectedPayment.createdAt)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRetryModalOpen(false)} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRetry}
+              disabled={isSubmitting}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isSubmitting && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Retrying...' : 'Retry Payment'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Payment Link Modal */}
+      <Dialog open={isPaymentLinkModalOpen} onOpenChange={(open) => {
+        setIsPaymentLinkModalOpen(open)
+        if (!open) {
+          resetPaymentLinkForm()
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Link className="h-5 w-5 text-orange-600" />
+              <span>Create Payment Link</span>
+            </DialogTitle>
+            <DialogDescription>
+              Generate a secure payment link to share with customers
+            </DialogDescription>
+          </DialogHeader>
+          
+          {!generatedLink ? (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900 dark:text-gray-100">Payment Details</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="link-amount">Amount *</Label>
+                    <Input
+                      id="link-amount"
+                      type="number"
+                      step="0.000001"
+                      placeholder="0.001"
+                      value={paymentLinkData.amount}
+                      onChange={(e) => setPaymentLinkData(prev => ({ ...prev, amount: e.target.value }))}
+                      className="bg-white dark:bg-gray-900 border"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="link-currency">Currency</Label>
+                    <Select 
+                      value={paymentLinkData.currency} 
+                      onValueChange={(value) => setPaymentLinkData(prev => ({ ...prev, currency: value }))}
+                    >
+                      <SelectTrigger className="bg-white dark:bg-gray-900 border">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                        <SelectItem value="sBTC">sBTC</SelectItem>
+                        <SelectItem value="BTC">BTC</SelectItem>
+                        <SelectItem value="STX">STX</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="link-description">Description *</Label>
+                  <Input
+                    id="link-description"
+                    placeholder="Premium subscription, Product purchase, etc."
+                    value={paymentLinkData.description}
+                    onChange={(e) => setPaymentLinkData(prev => ({ ...prev, description: e.target.value }))}
+                    className="bg-white dark:bg-gray-900 border"
+                  />
+                </div>
+              </div>
+
+              {/* Customer Information */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900 dark:text-gray-100">Customer Information (Optional)</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="customer-email">Customer Email</Label>
+                  <Input
+                    id="customer-email"
+                    type="email"
+                    placeholder="customer@example.com"
+                    value={paymentLinkData.customerEmail}
+                    onChange={(e) => setPaymentLinkData(prev => ({ ...prev, customerEmail: e.target.value }))}
+                    className="bg-white dark:bg-gray-900 border"
+                  />
+                  <p className="text-xs text-gray-500">Receipt and updates will be sent to this email</p>
+                </div>
+              </div>
+
+              {/* Link Settings */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900 dark:text-gray-100">Link Settings</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="expires-in">Expires In</Label>
+                    <Select 
+                      value={paymentLinkData.expiresIn} 
+                      onValueChange={(value) => setPaymentLinkData(prev => ({ ...prev, expiresIn: value }))}
+                    >
+                      <SelectTrigger className="bg-white dark:bg-gray-900 border">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                        <SelectItem value="1">1 hour</SelectItem>
+                        <SelectItem value="24">24 hours</SelectItem>
+                        <SelectItem value="168">7 days</SelectItem>
+                        <SelectItem value="720">30 days</SelectItem>
+                        <SelectItem value="never">Never</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-id">Custom ID (Optional)</Label>
+                    <Input
+                      id="custom-id"
+                      placeholder="order-123, inv-456"
+                      value={paymentLinkData.customId}
+                      onChange={(e) => setPaymentLinkData(prev => ({ ...prev, customId: e.target.value }))}
+                      className="bg-white dark:bg-gray-900 border"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview */}
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Preview</h4>
+                <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                  <p><span className="font-medium">Amount:</span> {paymentLinkData.amount || '0'} {paymentLinkData.currency}</p>
+                  <p><span className="font-medium">Description:</span> {paymentLinkData.description || 'Payment description'}</p>
+                  {paymentLinkData.customerEmail && (
+                    <p><span className="font-medium">Customer:</span> {paymentLinkData.customerEmail}</p>
+                  )}
+                  <p><span className="font-medium">Expires:</span> {paymentLinkData.expiresIn === 'never' ? 'Never' : `In ${paymentLinkData.expiresIn} hours`}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Success State */}
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    Payment Link Created!
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Share this link with your customer to collect payment
+                  </p>
+                </div>
+              </div>
+
+              {/* Generated Link */}
+              <div className="space-y-3">
+                <Label>Payment Link</Label>
+                <div className="flex items-center space-x-2">
+                  <Input
+                    value={generatedLink}
+                    readOnly
+                    className="font-mono text-sm bg-gray-50 dark:bg-gray-800"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(generatedLink)}
+                    className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* QR Code */}
+              <div className="text-center space-y-3">
+                <Label>QR Code</Label>
+                <div className="w-48 h-48 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto">
+                  <div className="text-center space-y-2">
+                    <QrCode className="h-12 w-12 text-gray-400 mx-auto" />
+                    <p className="text-sm text-gray-500">QR Code Preview</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Share Options */}
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => navigator.share?.({ url: generatedLink, title: 'Payment Link' })}
+                  className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <Share className="mr-2 h-4 w-4" />
+                  Share Link
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(`mailto:${paymentLinkData.customerEmail}?subject=Payment Request&body=Please complete your payment: ${generatedLink}`)}
+                  className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Send Email
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsPaymentLinkModalOpen(false)}
+              className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              {generatedLink ? 'Close' : 'Cancel'}
+            </Button>
+            {!generatedLink ? (
+              <Button 
+                onClick={generatePaymentLink}
+                disabled={!paymentLinkData.amount || !paymentLinkData.description || isSubmitting}
+                className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+              >
+                {isSubmitting && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting ? 'Creating...' : 'Create Payment Link'}
+              </Button>
+            ) : (
+              <Button 
+                onClick={resetPaymentLinkForm}
+                className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create Another
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

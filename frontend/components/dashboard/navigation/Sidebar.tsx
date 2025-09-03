@@ -59,12 +59,6 @@ const navigation: NavItem[] = [
     href: '/dashboard/payments',
     icon: CreditCard,
     badge: '12',
-    children: [
-      { name: 'All Payments', href: '/dashboard/payments', icon: CreditCard },
-      { name: 'Pending', href: '/dashboard/payments/pending', icon: CreditCard },
-      { name: 'Completed', href: '/dashboard/payments/completed', icon: CreditCard },
-      { name: 'Failed', href: '/dashboard/payments/failed', icon: CreditCard },
-    ]
   },
   {
     name: 'Balance & Conversion',
