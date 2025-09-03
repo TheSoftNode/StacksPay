@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useWalletAuth } from '@/hooks/use-wallet-auth';
 import { apiClient } from '@/lib/api/auth-api';
+import Logo from '@/components/shared/Logo';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -69,26 +70,35 @@ export default function LoginPage() {
 
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-6">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="relative z-10 w-full max-w-md"
-        >
+    <div className="flex items-center justify-center min-h-screen p-6 pt-16 bg-gray-50 dark:bg-gray-900">
+      {/* Subtle Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-orange-100 dark:bg-orange-950/30 rounded-full blur-3xl opacity-50"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-blue-100 dark:bg-blue-950/30 rounded-full blur-3xl opacity-50"></div>
+      </div>
+      
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 w-full max-w-lg"
+      >
 
-        <Card className="bg-white dark:bg-gray-900 shadow-2xl border-0">
+        <Card className="bg-white dark:bg-gray-900 shadow-2xl border border-orange-200 dark:border-orange-800/30 rounded-2xl">
           <CardContent className="p-8">
             <div className="text-center mb-8">
+              <div className="mb-6 flex justify-center">
+                <Logo size="md" showText={false} />
+              </div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                Sign in to your account
+                Welcome Back
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                Welcome back to your StacksPay dashboard
+                Sign in to your StacksPay dashboard
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Email
@@ -100,7 +110,7 @@ export default function LoginPage() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="mt-1 h-11 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500"
+                  className="mt-1 h-10 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 rounded-lg"
                   placeholder="merchant@example.com"
                 />
               </div>
@@ -125,7 +135,7 @@ export default function LoginPage() {
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    className="h-11 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 pr-10"
+                    className="h-10 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 rounded-lg pr-10"
                     placeholder="••••••••"
                   />
                   <button
@@ -164,7 +174,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 bg-orange-600 hover:bg-orange-700 text-white text-base font-medium"
+                className="w-full h-10 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors duration-200"
               >
                 {loading ? 'Signing in...' : 'Sign in'}
               </Button>
@@ -180,34 +190,34 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="mt-6 space-y-3">
+              <div className="mt-4 space-y-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleWalletLogin}
                   disabled={walletLoading || isLoggingIn}
-                  className="w-full h-12 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="w-full h-10 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
                 >
-                  <Wallet className="mr-3 h-5 w-5" />
-                  {walletLoading || isLoggingIn ? 'Connecting wallet...' : 'Sign in with Stacks Wallet'}
+                  <Wallet className="mr-2 h-4 w-4" />
+                  {walletLoading || isLoggingIn ? 'Connecting...' : 'Continue with Stacks Wallet'}
                 </Button>
 
                 <Button
                   type="button"
                   variant="outline"
                   disabled
-                  className="w-full h-12 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 opacity-60"
+                  className="w-full h-10 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 opacity-60 rounded-lg"
                 >
-                  <Chrome className="mr-3 h-5 w-5" />
-                  Sign in with Google
-                  <span className="ml-2 text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
-                    Coming Soon
+                  <Chrome className="mr-2 h-4 w-4" />
+                  Continue with Google
+                  <span className="ml-2 text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">
+                    Soon
                   </span>
                 </Button>
               </div>
             </div>
 
-            <div className="mt-8 text-center">
+            <div className="mt-6 text-center">
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Don't have an account?{' '}
                 <Link href="/register" className="text-orange-600 hover:text-orange-500 font-medium">
@@ -217,7 +227,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
         </Card>
-        </motion.div>
+      </motion.div>
     </div>
   );
 }

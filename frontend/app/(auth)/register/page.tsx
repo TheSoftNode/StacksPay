@@ -138,7 +138,7 @@ export default function RegisterPage() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
-            className="relative flex justify-center p-8 lg:p-12 bg-white dark:bg-gray-900"
+            className="relative flex justify-center p-8 lg:p-12 bg-gray-50 dark:bg-gray-900"
           >
             <div className="max-w-lg space-y-6">
             <div>
@@ -194,7 +194,7 @@ export default function RegisterPage() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="relative flex items-center justify-center p-8 lg:p-12 bg-gradient-to-br from-orange-50 via-white to-orange-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-800 overflow-hidden"
+            className="relative flex items-center justify-center p-8 lg:p-12 bg-white dark:bg-gradient-to-br dark:from-gray-950 dark:via-gray-900 dark:to-gray-800 overflow-hidden"
           >
             {/* Unique Brand Pattern Background */}
             <div className="absolute inset-0 opacity-20 dark:opacity-10">
