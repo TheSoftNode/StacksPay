@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import { 
   Save,
   User,
@@ -21,7 +22,10 @@ import {
   Plus,
   Check,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Lock,
+  ExternalLink,
+  ArrowRight
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -73,6 +77,7 @@ interface NotificationSettings {
 }
 
 const SettingsPage = () => {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState('profile')
   const [loading, setLoading] = useState(false)
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile>({
@@ -129,22 +134,27 @@ const SettingsPage = () => {
             Settings
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage your StacksPay account and business settings
+            Manage your sBTC Gateway account and business settings
           </p>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="business">Business</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-        </TabsList>
+      <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+        <CardContent className="p-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+              <TabsList className="grid w-full grid-cols-4 max-w-lg bg-gray-100 dark:bg-gray-800">
+                <TabsTrigger value="profile" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Profile</TabsTrigger>
+                <TabsTrigger value="business" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Business</TabsTrigger>
+                <TabsTrigger value="notifications" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Notifications</TabsTrigger>
+                <TabsTrigger value="security" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Security</TabsTrigger>
+              </TabsList>
+            </div>
+            
+            <div className="p-6">
 
-        {/* Profile Settings */}
-        <TabsContent value="profile" className="space-y-6">
-          <Card>
+              <TabsContent value="profile" className="mt-0">
+                <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <User className="h-5 w-5" />
@@ -234,7 +244,11 @@ const SettingsPage = () => {
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={() => handleSave('profile')} disabled={loading}>
+                <Button 
+                  onClick={() => handleSave('profile')} 
+                  disabled={loading}
+                  className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+                >
                   {loading ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   ) : (
@@ -247,9 +261,8 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Business Settings */}
-        <TabsContent value="business" className="space-y-6">
-          <Card>
+              <TabsContent value="business" className="mt-0">
+                <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Building className="h-5 w-5" />
@@ -378,7 +391,11 @@ const SettingsPage = () => {
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={() => handleSave('business')} disabled={loading}>
+                <Button 
+                  onClick={() => handleSave('business')} 
+                  disabled={loading}
+                  className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+                >
                   {loading ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   ) : (
@@ -391,9 +408,8 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Notifications Settings */}
-        <TabsContent value="notifications" className="space-y-6">
-          <Card>
+              <TabsContent value="notifications" className="mt-0">
+                <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Bell className="h-5 w-5" />
@@ -475,7 +491,11 @@ const SettingsPage = () => {
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={() => handleSave('notifications')} disabled={loading}>
+                <Button 
+                  onClick={() => handleSave('notifications')} 
+                  disabled={loading}
+                  className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+                >
                   {loading ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   ) : (
@@ -488,91 +508,154 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Security Settings */}
-        <TabsContent value="security" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Shield className="h-5 w-5" />
-                <span>Security Settings</span>
-              </CardTitle>
-              <CardDescription>
-                Manage your account security and authentication
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Password */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Password</h4>
-                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div>
-                    <p className="text-sm">Last changed 30 days ago</p>
-                    <p className="text-xs text-gray-500">Choose a strong, unique password</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Change Password
-                  </Button>
-                </div>
-              </div>
+              <TabsContent value="security" className="mt-0">
+                <div className="space-y-6">
+                  {/* Security Overview */}
+                  <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Shield className="h-5 w-5 text-orange-600" />
+                        <span>Security Overview</span>
+                      </CardTitle>
+                      <CardDescription>
+                        Quick security status and access to detailed security management
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Security Score */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                              <Shield className="h-4 w-4 text-green-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-green-900 dark:text-green-100">Security Score</p>
+                              <p className="text-lg font-bold text-green-600">85%</p>
+                            </div>
+                          </div>
+                        </div>
 
-              {/* Two-Factor Authentication */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Two-Factor Authentication</h4>
-                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <Badge className="bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300">
-                        Disabled
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Add an extra layer of security</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Smartphone className="mr-2 h-4 w-4" />
-                    Enable 2FA
-                  </Button>
-                </div>
-              </div>
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                              <Globe className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Active Sessions</p>
+                              <p className="text-lg font-bold text-blue-600">2</p>
+                            </div>
+                          </div>
+                        </div>
 
-              {/* API Keys */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">API Keys</h4>
-                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div>
-                    <p className="text-sm">3 active API keys</p>
-                    <p className="text-xs text-gray-500">Manage your API access</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Key className="mr-2 h-4 w-4" />
-                    Manage Keys
-                  </Button>
-                </div>
-              </div>
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                              <Key className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">API Keys</p>
+                              <p className="text-lg font-bold text-gray-600 dark:text-gray-400">3</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
-              {/* Account Deletion */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium text-red-600 dark:text-red-400">Danger Zone</h4>
-                <div className="border border-red-200 dark:border-red-800 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
-                    <div className="flex-1">
-                      <h5 className="text-sm font-medium text-red-900 dark:text-red-100">
-                        Delete Account
-                      </h5>
-                      <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                        Permanently delete your account and all associated data. This action cannot be undone.
-                      </p>
-                      <Button variant="destructive" size="sm" className="mt-3">
-                        Delete Account
-                      </Button>
-                    </div>
-                  </div>
+                      {/* Quick Actions */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <Smartphone className="h-4 w-4 text-orange-600" />
+                                <span className="text-sm font-medium text-orange-900 dark:text-orange-100">Two-Factor Auth</span>
+                                <Badge className="bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300 text-xs">
+                                  Disabled
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-orange-700 dark:text-orange-300">
+                                Add an extra layer of security to your account
+                              </p>
+                            </div>
+                            <Button variant="outline" size="sm" className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
+                              Enable
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <Lock className="h-4 w-4 text-blue-600" />
+                                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Password</span>
+                                <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300 text-xs">
+                                  30 days old
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-blue-700 dark:text-blue-300">
+                                Last changed 30 days ago
+                              </p>
+                            </div>
+                            <Button variant="outline" size="sm" className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
+                              Change
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Link to Full Security Page */}
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-gradient-to-r from-gray-50 to-orange-50 dark:from-gray-800 dark:to-orange-900/10">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <Shield className="h-5 w-5 text-orange-600" />
+                              <h3 className="font-medium text-gray-900 dark:text-gray-100">Advanced Security Management</h3>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              View security events, manage active sessions, and access advanced security features
+                            </p>
+                          </div>
+                          <Button 
+                            onClick={() => router.push('/dashboard/security')}
+                            className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+                          >
+                            Open Security Center
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Danger Zone */}
+                      <Card className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10">
+                        <CardHeader>
+                          <CardTitle className="text-red-900 dark:text-red-100 text-base">Danger Zone</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="flex items-start space-x-3">
+                            <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+                            <div className="flex-1">
+                              <h5 className="text-sm font-medium text-red-900 dark:text-red-100">
+                                Delete Account
+                              </h5>
+                              <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                                Permanently delete your account and all associated data. This action cannot be undone.
+                              </p>
+                              <Button variant="destructive" size="sm" className="mt-3">
+                                Delete Account
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </CardContent>
+                  </Card>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   )
 }
