@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/popover'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useTheme } from 'next-themes'
+import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
 
 interface NavbarProps {
@@ -87,6 +88,7 @@ const Navbar = ({ onMenuToggle, user }: NavbarProps) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [notifications, setNotifications] = useState(mockNotifications)
   const { theme, setTheme } = useTheme()
+  const { logout } = useAuth()
 
   const unreadCount = notifications.filter(n => !n.read).length
 
@@ -271,7 +273,10 @@ const Navbar = ({ onMenuToggle, user }: NavbarProps) => {
                 <span>Help & Support</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600 dark:text-red-400">
+              <DropdownMenuItem 
+                onClick={logout}
+                className="text-red-600 dark:text-red-400"
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Sign out</span>
               </DropdownMenuItem>

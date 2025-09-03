@@ -22,6 +22,7 @@ const AuthEventSchema = new Schema<IAuthEvent>({
     required: true,
     enum: [
       'register',
+      'register_duplicate_email',
       'login', 
       'logout',
       'failed_login',

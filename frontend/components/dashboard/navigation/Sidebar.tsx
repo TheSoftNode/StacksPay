@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/use-auth'
 import { motion } from 'framer-motion'
 import { 
   LayoutDashboard,
@@ -114,6 +115,7 @@ const secondaryNavigation: NavItem[] = [
 const Sidebar = ({ collapsed, onCollapse }: SidebarProps) => {
   const pathname = usePathname()
   const router = useRouter()
+  const { logout } = useAuth()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
 
   const toggleExpanded = (itemName: string) => {
@@ -283,6 +285,7 @@ const Sidebar = ({ collapsed, onCollapse }: SidebarProps) => {
           <Button
             variant="ghost"
             size="sm"
+            onClick={logout}
             className={cn(
               'text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400',
               collapsed ? 'w-8 h-8 p-0' : 'w-full justify-start'

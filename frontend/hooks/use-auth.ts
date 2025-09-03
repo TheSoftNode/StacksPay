@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
 import { apiClient } from '@/lib/api/auth-api';
 import type { LoginRequest, RegisterRequest, WalletAuthRequest, WalletRegisterRequest } from '@/lib/api/auth-api';
 
 export const useAuth = () => {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { user, isAuthenticated, setUser, setLoading, setError, logout: storeLogout } = useAuthStore();
 
   // Get current user query
@@ -147,11 +149,13 @@ export const useAuth = () => {
     onSuccess: () => {
       storeLogout();
       queryClient.clear();
+      router.push('/login');
     },
     onError: () => {
       // Even if logout fails on server, clear local state
       storeLogout();
       queryClient.clear();
+      router.push('/login');
     },
   });
 

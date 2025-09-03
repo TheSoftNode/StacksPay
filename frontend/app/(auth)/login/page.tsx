@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useWalletAuth } from '@/hooks/use-wallet-auth';
-import { apiClient } from '@/lib/api/auth-api';
+import { useAuth } from '@/hooks/use-auth';
 import Logo from '@/components/shared/Logo';
 
 export default function LoginPage() {
@@ -20,32 +20,36 @@ export default function LoginPage() {
     password: '',
     rememberMe: false,
   });
-  const [loading, setLoading] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   
   const { login: loginWithWallet, isLoggingIn } = useWalletAuth();
+  const { 
+    loginWithEmail, 
+    isLoginLoading, 
+    loginError,
+    clearError,
+    isAuthenticated 
+  } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle successful login
+  useEffect(() => {
+    if (isAuthenticated && !isLoginLoading && !loginError) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, isLoginLoading, loginError, router]);
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    clearError();
     setError('');
 
-    try {
-      const response = await apiClient.loginWithEmail(formData);
-
-      if (response.success) {
-        router.push('/dashboard');
-      } else {
-        setError(response.error || 'Login failed');
-      }
-    } catch (error) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    loginWithEmail({
+      email: formData.email,
+      password: formData.password,
+    });
   };
 
   const handleWalletLogin = async () => {
@@ -165,18 +169,25 @@ export default function LoginPage() {
                 </Label>
               </div>
 
-              {error && (
+              {(loginError || error) && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm">
-                  {error}
+                  <div className="flex items-start space-x-2">
+                    <div className="flex-shrink-0 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center mt-0.5">
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    </div>
+                    <div className="flex-1">
+                      {loginError?.message || error}
+                    </div>
+                  </div>
                 </div>
               )}
 
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={isLoginLoading}
                 className="w-full h-10 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors duration-200"
               >
-                {loading ? 'Signing in...' : 'Sign in'}
+                {isLoginLoading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
 

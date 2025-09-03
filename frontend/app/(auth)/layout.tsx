@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Logo from '@/components/shared/Logo';
 import ThemeToggle from '@/components/shared/ThemeToggle';
+import { ThemeProvider } from '@/components/providers/theme-provider';
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -17,7 +18,17 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
     <div className="min-h-screen bg-white dark:bg-gray-900 relative">
 
       {/* Elegant Top Bar */}
-      <motion.header
+      
+
+      {/* Main Content */}
+      <div className="relative z-10">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+        <motion.header
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
@@ -26,14 +37,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         <div className="max-w-6xl mx-auto px-6 sm:px-6">
           <div className="flex justify-between items-center h-16">
             {/* Logo with Navigation */}
-            <motion.div
-              onClick={() => router.push('/')}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="cursor-pointer"
-            >
-              <Logo size="md" showText={true} />
-            </motion.div>
+            <Logo size="md" showText={true} />
 
             {/* Theme Toggle */}
             <div className="flex items-center">
@@ -42,10 +46,8 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
           </div>
         </div>
       </motion.header>
-
-      {/* Main Content */}
-      <div className="relative z-10">
         {children}
+        </ThemeProvider>
       </div>
 
     </div>

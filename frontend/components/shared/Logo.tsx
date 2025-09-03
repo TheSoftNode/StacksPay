@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg'
@@ -9,6 +10,8 @@ interface LogoProps {
 }
 
 const Logo = ({ size = 'md', showText = true, className = '' }: LogoProps) => {
+  const router = useRouter()
+  
   const sizeClasses = {
     sm: { container: 'w-10 h-10', sText: 'text-lg', btcText: 'text-sm' },
     md: { container: 'w-12 h-12', sText: 'text-xl', btcText: 'text-base' }, 
@@ -23,8 +26,10 @@ const Logo = ({ size = 'md', showText = true, className = '' }: LogoProps) => {
 
   return (
     <motion.div 
+      onClick={() => router.push('/')}
       className={`flex items-center space-x-2 cursor-pointer ${className}`}
       whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
       <div className="relative">

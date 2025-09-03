@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useWalletAuth } from '@/hooks/use-wallet-auth';
-import { apiClient } from '@/lib/api/auth-api';
+import { useAuth } from '@/hooks/use-auth';
 import Logo from '@/components/shared/Logo';
 
 const features = [
@@ -56,52 +56,53 @@ export default function RegisterPage() {
     acceptTerms: false,
     marketingConsent: false,
   });
-  const [loading, setLoading] = useState(false);
-  const [walletLoading, setWalletLoading] = useState(false);
-  const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [error, setError] = useState('');
   const router = useRouter();
   
   const { register: registerWithWallet, isRegistering } = useWalletAuth();
+  const { 
+    registerWithEmail, 
+    isRegisterLoading, 
+    registerError,
+    clearError,
+    isAuthenticated 
+  } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle successful registration
+  useEffect(() => {
+    if (isAuthenticated && !isRegisterLoading && !registerError) {
+      router.push('/dashboard/onboarding');
+    }
+  }, [isAuthenticated, isRegisterLoading, registerError, router]);
+
+  const [validationError, setValidationError] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+    clearError();
+    setValidationError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
+      setValidationError('Passwords do not match');
       return;
     }
 
     if (!formData.acceptTerms) {
-      setError('Please accept the terms and conditions');
-      setLoading(false);
+      setValidationError('Please accept the terms and conditions');
       return;
     }
 
-    try {
-      const response = await apiClient.registerWithEmail({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        businessType: formData.businessType,
-        acceptTerms: formData.acceptTerms,
-        marketingConsent: formData.marketingConsent,
-      });
-
-      if (response.success) {
-        router.push('/dashboard/onboarding');
-      } else {
-        setError(response.error || 'Registration failed');
-      }
-    } catch (error) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    registerWithEmail({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      businessType: formData.businessType,
+      acceptTerms: formData.acceptTerms,
+      marketingConsent: formData.marketingConsent,
+    });
   };
 
   const handleWalletRegister = async () => {
@@ -387,18 +388,34 @@ export default function RegisterPage() {
                     </div>
                   </div>
 
-                  {error && (
+                  {(validationError || registerError || error) && (
                     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm">
-                      {error}
+                      <div className="flex items-start space-x-2">
+                        <div className="flex-shrink-0 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center mt-0.5">
+                          <div className="w-2 h-2 bg-white rounded-full"></div>
+                        </div>
+                        <div className="flex-1">
+                          {validationError || (
+                            (registerError?.message || error) === 'Email already registered' ? (
+                              <>
+                                This email is already registered.{' '}
+                                <Link href="/login" className="underline font-medium hover:text-red-600 dark:hover:text-red-400">
+                                  Sign in instead
+                                </Link>
+                              </>
+                            ) : (registerError?.message || error)
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
 
                   <Button
                     type="submit"
-                    disabled={loading || !formData.acceptTerms}
+                    disabled={isRegisterLoading || !formData.acceptTerms}
                     className="w-full h-11 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors duration-200"
                   >
-                    {loading ? 'Creating account...' : 'Create Account'}
+                    {isRegisterLoading ? 'Creating account...' : 'Create Account'}
                   </Button>
                 </form>
 
