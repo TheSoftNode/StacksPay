@@ -165,3 +165,6 @@ sdk/*/*.tgz
 sdk/*/*.egg
 sdk/*/package-lock.json
 sdk/*/yarn.lock
+
+# Resources directory (sensitive data, configs, etc.)
+resources/

@@ -19,7 +19,8 @@ import {
   Shield,
   Zap,
   Globe,
-  ArrowUpDown
+  ArrowUpDown,
+  Rocket
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -46,6 +47,12 @@ const navigation: NavItem[] = [
     name: 'Overview',
     href: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    name: 'Get Started',
+    href: '/dashboard/onboarding',
+    icon: Rocket,
+    isNew: true,
   },
   {
     name: 'Payments',
