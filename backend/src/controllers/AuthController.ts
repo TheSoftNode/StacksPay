@@ -291,7 +291,7 @@ export class AuthController {
       // Create merchant account with wallet as primary authentication
       const merchantData: RegisterRequest = {
         name: walletData.businessName,
-        email: walletData.email || `${walletData.address}@stackspay.local`, // Generate email if not provided
+        email: walletData.email || `wallet-${walletData.address.toLowerCase()}@stackspay.app`, // Generate valid email if not provided
         password: crypto.randomBytes(32).toString('hex'), // Random password since they'll use wallet auth
         businessType: walletData.businessType,
         stacksAddress: walletData.address,

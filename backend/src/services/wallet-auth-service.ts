@@ -1,4 +1,4 @@
-import { verifyMessageSignature } from '@stacks/encryption';
+import { verifyMessageSignature, verifyMessageSignatureRsv } from '@stacks/encryption';
 import { walletService } from './wallet-service';
 import { AuthEvent } from '@/models/auth-event';
 import { connectToDatabase } from '@/config/database';
@@ -155,14 +155,95 @@ export class WalletAuthService {
     await connectToDatabase();
 
     try {
-      // Verify the signature
-      const isValid = verifyMessageSignature({
-        message: auth.message,
-        publicKey: auth.publicKey,
-        signature: auth.signature,
-      });
+      // Debug logging
+      console.log('🔍 Backend: Verifying wallet connection...');
+      console.log('📝 Message:', auth.message);
+      console.log('🔑 Public Key:', auth.publicKey);
+      console.log('✍️ Signature length:', auth.signature?.length);
+      console.log('🏠 Address:', auth.address);
+      
+      // Try different signature verification approaches
+      let isValid = false;
+      
+      // Method 1: Direct verification (current method)
+      try {
+        isValid = verifyMessageSignature({
+          message: auth.message,
+          publicKey: auth.publicKey,
+          signature: auth.signature,
+        });
+        console.log('✅ Method 1 (direct) result:', isValid);
+      } catch (error) {
+        console.log('❌ Method 1 error:', error);
+      }
+      
+      // Method 2: Check signature format and try different approaches
+      if (!isValid && auth.signature) {
+        console.log('🔍 Signature analysis:');
+        console.log('  - Length:', auth.signature.length);
+        console.log('  - First 20 chars:', auth.signature.substring(0, 20));
+        console.log('  - Last 20 chars:', auth.signature.substring(auth.signature.length - 20));
+        console.log('  - Is hex?', /^[0-9a-fA-F]+$/.test(auth.signature));
+        
+        // Method 2a: Try verifyMessageSignatureRsv (newer method)
+        try {
+          isValid = verifyMessageSignatureRsv({
+            message: auth.message,
+            publicKey: auth.publicKey,
+            signature: auth.signature,
+          });
+          console.log('✅ Method 2a (verifyMessageSignatureRsv) result:', isValid);
+        } catch (error) {
+          console.log('❌ Method 2a error:', error);
+        }
+        
+        // Method 2b: Try with signature prefixed with '0x' if it's not already
+        if (!isValid && !auth.signature.startsWith('0x')) {
+          try {
+            isValid = verifyMessageSignature({
+              message: auth.message,
+              publicKey: auth.publicKey,
+              signature: '0x' + auth.signature,
+            });
+            console.log('✅ Method 2b (0x prefix) result:', isValid);
+          } catch (error) {
+            console.log('❌ Method 2b error:', error);
+          }
+        }
+        
+        // Method 2c: Try verifyMessageSignatureRsv with 0x prefix
+        if (!isValid && !auth.signature.startsWith('0x')) {
+          try {
+            isValid = verifyMessageSignatureRsv({
+              message: auth.message,
+              publicKey: auth.publicKey,
+              signature: '0x' + auth.signature,
+            });
+            console.log('✅ Method 2c (verifyMessageSignatureRsv + 0x) result:', isValid);
+          } catch (error) {
+            console.log('❌ Method 2c error:', error);
+          }
+        }
+        
+        // Method 2d: Try removing '0x' prefix if it exists
+        if (!isValid && auth.signature.startsWith('0x')) {
+          try {
+            isValid = verifyMessageSignature({
+              message: auth.message,
+              publicKey: auth.publicKey,
+              signature: auth.signature.slice(2),
+            });
+            console.log('✅ Method 2d (no 0x prefix) result:', isValid);
+          } catch (error) {
+            console.log('❌ Method 2d error:', error);
+          }
+        }
+      }
+
+      console.log('🎯 Final signature verification result:', isValid);
 
       if (!isValid) {
+        console.log('❌ Backend: Signature verification failed');
         await this.logWalletEvent(auth.address, 'wallet_connected', false, {
           reason: 'invalid_signature',
         });
@@ -272,7 +353,7 @@ export class WalletAuthService {
       const authEvent = new AuthEvent({
         merchantId: null, // Wallet events are not tied to specific merchants
         eventType,
-        ipAddress: '', // IP not available in this context
+        ipAddress: 'unknown', // IP not available in this context
         success,
         metadata: {
           walletAddress: address,
