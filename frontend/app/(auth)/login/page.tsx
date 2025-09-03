@@ -196,9 +196,9 @@ export default function LoginPage() {
                   variant="outline"
                   onClick={handleWalletLogin}
                   disabled={walletLoading || isLoggingIn}
-                  className="w-full h-10 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
+                  className="w-full h-10 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 border-purple-200 dark:border-purple-700/50 hover:from-purple-100 hover:to-blue-100 dark:hover:from-purple-800/40 dark:hover:to-blue-800/40 text-gray-900 dark:text-gray-100 rounded-lg transition-all duration-200"
                 >
-                  <Wallet className="mr-2 h-4 w-4" />
+                  <Wallet className="mr-2 h-4 w-4 text-purple-600 dark:text-purple-400" />
                   {walletLoading || isLoggingIn ? 'Connecting...' : 'Continue with Stacks Wallet'}
                 </Button>
 

@@ -9,7 +9,6 @@ import {
   Shield, 
   Globe, 
   TrendingUp, 
-  CheckCircle, 
   Eye, 
   EyeOff,
   Wallet,
@@ -138,7 +137,7 @@ export default function RegisterPage() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
-            className="relative flex justify-center p-8 lg:p-12 bg-gray-50 dark:bg-gray-900"
+            className="relative sm:flex justify-center hidden  p-8 lg:p-12 bg-gray-50 dark:bg-gray-900"
           >
             <div className="max-w-lg space-y-6">
             <div>
@@ -194,7 +193,7 @@ export default function RegisterPage() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="relative flex items-center justify-center p-8 lg:p-12 bg-white dark:bg-gradient-to-br dark:from-gray-950 dark:via-gray-900 dark:to-gray-800 overflow-hidden"
+            className="relative flex items-center justify-center p-6 lg:p-12 bg-white dark:bg-gradient-to-br dark:from-gray-950 dark:via-gray-900 dark:to-gray-800 overflow-hidden"
           >
             {/* Unique Brand Pattern Background */}
             <div className="absolute inset-0 opacity-20 dark:opacity-10">
@@ -216,7 +215,7 @@ export default function RegisterPage() {
               {/* Unique Form Card */}
               <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-orange-200 dark:border-orange-800/30 backdrop-blur-sm overflow-hidden">
                 {/* Form Content */}
-                <div className="p-8">
+                <div className="p-6">
                   <div className="text-center mb-6">
                     <div className="mb-4 flex justify-center">
                       <Logo size="md" showText={false} />
@@ -419,9 +418,9 @@ export default function RegisterPage() {
                       variant="outline"
                       onClick={handleWalletRegister}
                       disabled={walletLoading || isRegistering}
-                      className="w-full h-10 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
+                      className="w-full h-10 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 border-purple-200 dark:border-purple-700/50 hover:from-purple-100 hover:to-blue-100 dark:hover:from-purple-800/40 dark:hover:to-blue-800/40 text-gray-900 dark:text-gray-100 rounded-lg transition-all duration-200"
                     >
-                      <Wallet className="mr-2 h-4 w-4" />
+                      <Wallet className="mr-2 h-4 w-4 text-purple-600 dark:text-purple-400" />
                       {walletLoading || isRegistering ? 'Connecting...' : 'Continue with Stacks Wallet'}
                     </Button>
 
