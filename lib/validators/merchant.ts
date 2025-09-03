@@ -1,1 +1,0 @@
-// Merchant validation schemas placeholder

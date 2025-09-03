@@ -1,1 +1,0 @@
-// Payment store placeholder

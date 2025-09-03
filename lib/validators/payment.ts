@@ -1,1 +1,0 @@
-// Payment validation schemas placeholder

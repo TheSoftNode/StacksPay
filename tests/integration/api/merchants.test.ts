@@ -1,1 +1,0 @@
-// Merchants API test
