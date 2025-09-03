@@ -21,7 +21,8 @@ import {
   CreditCard,
   Activity,
   Star,
-  Users
+  Users,
+  AlertTriangle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -84,6 +85,24 @@ const CustomersPage = () => {
   const [sortBy, setSortBy] = useState('totalSpent')
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [showAddCustomer, setShowAddCustomer] = useState(false)
+  const [showEditCustomer, setShowEditCustomer] = useState(false)
+  const [showDeleteCustomer, setShowDeleteCustomer] = useState(false)
+  const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null)
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null)
+  const [showSendMessage, setShowSendMessage] = useState(false)
+  const [customerToMessage, setCustomerToMessage] = useState<Customer | null>(null)
+  const [messageData, setMessageData] = useState({
+    subject: '',
+    message: ''
+  })
+  const [newCustomerData, setNewCustomerData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    location: '',
+    tags: '',
+    notes: ''
+  })
 
   // Mock data
   const customers: Customer[] = [
@@ -197,6 +216,73 @@ const CustomersPage = () => {
     })
   }
 
+  const handleEditCustomer = (customer: Customer) => {
+    setCustomerToEdit(customer)
+    setNewCustomerData({
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone || '',
+      location: customer.location,
+      tags: customer.tags.join(', '),
+      notes: ''
+    })
+    setShowEditCustomer(true)
+  }
+
+  const handleDeleteCustomer = (customer: Customer) => {
+    setCustomerToDelete(customer)
+    setShowDeleteCustomer(true)
+  }
+
+  const resetAddCustomerForm = () => {
+    setNewCustomerData({
+      name: '',
+      email: '',
+      phone: '',
+      location: '',
+      tags: '',
+      notes: ''
+    })
+  }
+
+  const handleAddCustomer = () => {
+    // Here you would typically call an API to create the customer
+    console.log('Adding customer:', newCustomerData)
+    setShowAddCustomer(false)
+    resetAddCustomerForm()
+  }
+
+  const handleUpdateCustomer = () => {
+    // Here you would typically call an API to update the customer
+    console.log('Updating customer:', customerToEdit?.id, newCustomerData)
+    setShowEditCustomer(false)
+    setCustomerToEdit(null)
+  }
+
+  const confirmDeleteCustomer = () => {
+    // Here you would typically call an API to delete the customer
+    console.log('Deleting customer:', customerToDelete?.id)
+    setShowDeleteCustomer(false)
+    setCustomerToDelete(null)
+  }
+
+  const handleSendMessage = (customer: Customer) => {
+    setCustomerToMessage(customer)
+    setMessageData({
+      subject: '',
+      message: ''
+    })
+    setShowSendMessage(true)
+  }
+
+  const sendMessage = () => {
+    // Here you would typically call an API to send the message
+    console.log('Sending message to:', customerToMessage?.email, messageData)
+    setShowSendMessage(false)
+    setCustomerToMessage(null)
+    setMessageData({ subject: '', message: '' })
+  }
+
   // Calculate stats
   const totalCustomers = customers.length
   const activeCustomers = customers.filter(c => c.status === 'active').length
@@ -220,7 +306,10 @@ const CustomersPage = () => {
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
-          <Button onClick={() => setShowAddCustomer(true)}>
+          <Button 
+            onClick={() => setShowAddCustomer(true)}
+            className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+          >
             <Plus className="mr-2 h-4 w-4" />
             Add Customer
           </Button>
@@ -234,7 +323,7 @@ const CustomersPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -258,7 +347,7 @@ const CustomersPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -282,7 +371,7 @@ const CustomersPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -306,7 +395,7 @@ const CustomersPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -327,7 +416,7 @@ const CustomersPage = () => {
       </div>
 
       {/* Filters and Search */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-900 border shadow-sm">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
@@ -371,9 +460,12 @@ const CustomersPage = () => {
       </Card>
 
       {/* Customer Table */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-900 border shadow-sm">
         <CardHeader>
-          <CardTitle>Customer List</CardTitle>
+          <CardTitle className="flex items-center space-x-2">
+            <Users className="h-5 w-5 text-orange-600" />
+            <span>Customer List</span>
+          </CardTitle>
           <CardDescription>
             Showing {filteredCustomers.length} of {totalCustomers} customers
           </CardDescription>
@@ -448,16 +540,19 @@ const CustomersPage = () => {
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditCustomer(customer)}>
                             <Edit3 className="mr-2 h-4 w-4" />
                             Edit Customer
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSendMessage(customer)}>
                             <Mail className="mr-2 h-4 w-4" />
                             Send Email
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem 
+                            className="text-red-600 dark:text-red-400"
+                            onClick={() => handleDeleteCustomer(customer)}
+                          >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete Customer
                           </DropdownMenuItem>
@@ -474,7 +569,7 @@ const CustomersPage = () => {
 
       {/* Customer Detail Modal */}
       <Dialog open={!!selectedCustomer} onOpenChange={() => setSelectedCustomer(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900">
           <DialogHeader>
             <DialogTitle>Customer Details</DialogTitle>
             <DialogDescription>
@@ -544,11 +639,23 @@ const CustomersPage = () => {
               </div>
 
               <div className="flex justify-end space-x-2">
-                <Button variant="outline">
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedCustomer(null)
+                    handleSendMessage(selectedCustomer!)
+                  }}
+                >
                   <Mail className="mr-2 h-4 w-4" />
                   Send Email
                 </Button>
-                <Button>
+                <Button 
+                  className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+                  onClick={() => {
+                    setSelectedCustomer(null)
+                    handleEditCustomer(selectedCustomer!)
+                  }}
+                >
                   <Edit3 className="mr-2 h-4 w-4" />
                   Edit Customer
                 </Button>
@@ -559,51 +666,391 @@ const CustomersPage = () => {
       </Dialog>
 
       {/* Add Customer Modal */}
-      <Dialog open={showAddCustomer} onOpenChange={setShowAddCustomer}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Customer</DialogTitle>
+      <Dialog open={showAddCustomer} onOpenChange={(open) => {
+        setShowAddCustomer(open)
+        if (!open) resetAddCustomerForm()
+      }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl bg-white dark:bg-gray-900">
+          <DialogHeader className="space-y-3">
+            <DialogTitle className="flex items-center space-x-2">
+              <User className="h-5 w-5 text-orange-600" />
+              <span>Add New Customer</span>
+            </DialogTitle>
             <DialogDescription>
-              Create a new customer record
+              Create a new customer record in your sBTC payment gateway
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="customerName">Name</Label>
-                <Input id="customerName" placeholder="Customer name" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="customerEmail">Email</Label>
-                <Input id="customerEmail" type="email" placeholder="customer@example.com" />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="customerPhone">Phone</Label>
-                <Input id="customerPhone" type="tel" placeholder="+1 (555) 123-4567" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="customerLocation">Location</Label>
-                <Input id="customerLocation" placeholder="City, State" />
+          <div className="space-y-6">
+            {/* Personal Information */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
+                <User className="h-4 w-4 text-orange-600" />
+                <span>Personal Information</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="customerName">Full Name *</Label>
+                  <Input 
+                    id="customerName" 
+                    placeholder="John Doe" 
+                    value={newCustomerData.name}
+                    onChange={(e) => setNewCustomerData(prev => ({ ...prev, name: e.target.value }))}
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerEmail">Email Address *</Label>
+                  <Input 
+                    id="customerEmail" 
+                    type="email" 
+                    placeholder="john@example.com"
+                    value={newCustomerData.email}
+                    onChange={(e) => setNewCustomerData(prev => ({ ...prev, email: e.target.value }))}
+                    required 
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="customerNotes">Notes</Label>
-              <Textarea id="customerNotes" placeholder="Additional notes about the customer" />
+            {/* Contact Information */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
+                <Phone className="h-4 w-4 text-orange-600" />
+                <span>Contact Information</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="customerPhone">Phone Number</Label>
+                  <Input 
+                    id="customerPhone" 
+                    type="tel" 
+                    placeholder="+1 (555) 123-4567"
+                    value={newCustomerData.phone}
+                    onChange={(e) => setNewCustomerData(prev => ({ ...prev, phone: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerLocation">Location</Label>
+                  <Input 
+                    id="customerLocation" 
+                    placeholder="San Francisco, CA"
+                    value={newCustomerData.location}
+                    onChange={(e) => setNewCustomerData(prev => ({ ...prev, location: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Details */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
+                <Star className="h-4 w-4 text-orange-600" />
+                <span>Additional Details</span>
+              </h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="customerTags">Customer Tags</Label>
+                <Input 
+                  id="customerTags" 
+                  placeholder="VIP, Enterprise, New Customer (comma separated)"
+                  value={newCustomerData.tags}
+                  onChange={(e) => setNewCustomerData(prev => ({ ...prev, tags: e.target.value }))}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="customerNotes">Notes</Label>
+                <Textarea 
+                  id="customerNotes" 
+                  placeholder="Additional notes about the customer, preferences, or special requirements"
+                  rows={3}
+                  value={newCustomerData.notes}
+                  onChange={(e) => setNewCustomerData(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddCustomer(false)}>
+          <DialogFooter className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 pt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAddCustomer(false)}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button onClick={() => setShowAddCustomer(false)}>
+            <Button 
+              onClick={handleAddCustomer}
+              className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700 w-full sm:w-auto"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Add Customer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Customer Modal */}
+      <Dialog open={showEditCustomer} onOpenChange={setShowEditCustomer}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl bg-white dark:bg-gray-900">
+          <DialogHeader className="space-y-3">
+            <DialogTitle className="flex items-center space-x-2">
+              <Edit3 className="h-5 w-5 text-orange-600" />
+              <span>Edit Customer</span>
+            </DialogTitle>
+            <DialogDescription>
+              Update customer information and details
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Personal Information */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
+                <User className="h-4 w-4 text-orange-600" />
+                <span>Personal Information</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editCustomerName">Full Name *</Label>
+                  <Input 
+                    id="editCustomerName" 
+                    placeholder="John Doe" 
+                    value={newCustomerData.name}
+                    onChange={(e) => setNewCustomerData(prev => ({ ...prev, name: e.target.value }))}
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editCustomerEmail">Email Address *</Label>
+                  <Input 
+                    id="editCustomerEmail" 
+                    type="email" 
+                    placeholder="john@example.com"
+                    value={newCustomerData.email}
+                    onChange={(e) => setNewCustomerData(prev => ({ ...prev, email: e.target.value }))}
+                    required 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Information */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
+                <Phone className="h-4 w-4 text-orange-600" />
+                <span>Contact Information</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editCustomerPhone">Phone Number</Label>
+                  <Input 
+                    id="editCustomerPhone" 
+                    type="tel" 
+                    placeholder="+1 (555) 123-4567"
+                    value={newCustomerData.phone}
+                    onChange={(e) => setNewCustomerData(prev => ({ ...prev, phone: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editCustomerLocation">Location</Label>
+                  <Input 
+                    id="editCustomerLocation" 
+                    placeholder="San Francisco, CA"
+                    value={newCustomerData.location}
+                    onChange={(e) => setNewCustomerData(prev => ({ ...prev, location: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Details */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
+                <Star className="h-4 w-4 text-orange-600" />
+                <span>Additional Details</span>
+              </h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="editCustomerTags">Customer Tags</Label>
+                <Input 
+                  id="editCustomerTags" 
+                  placeholder="VIP, Enterprise, New Customer (comma separated)"
+                  value={newCustomerData.tags}
+                  onChange={(e) => setNewCustomerData(prev => ({ ...prev, tags: e.target.value }))}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="editCustomerNotes">Notes</Label>
+                <Textarea 
+                  id="editCustomerNotes" 
+                  placeholder="Additional notes about the customer, preferences, or special requirements"
+                  rows={3}
+                  value={newCustomerData.notes}
+                  onChange={(e) => setNewCustomerData(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 pt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowEditCustomer(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpdateCustomer}
+              className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700 w-full sm:w-auto"
+            >
+              <Edit3 className="mr-2 h-4 w-4" />
+              Update Customer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Customer Confirmation Modal */}
+      <Dialog open={showDeleteCustomer} onOpenChange={setShowDeleteCustomer}>
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900">
+          <DialogHeader className="space-y-3">
+            <DialogTitle className="flex items-center space-x-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <span>Delete Customer</span>
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this customer? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          {customerToDelete && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={customerToDelete.avatar} alt={customerToDelete.name} />
+                  <AvatarFallback className="bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
+                    {customerToDelete.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    {customerToDelete.name}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {customerToDelete.email}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="text-gray-500">Total Spent:</span>
+                  <span className="font-medium ml-1">{formatCurrency(customerToDelete.totalSpent)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Orders:</span>
+                  <span className="font-medium ml-1">{customerToDelete.totalOrders}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 pt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDeleteCustomer(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={confirmDeleteCustomer}
+              className="w-full sm:w-auto"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Customer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Message Modal */}
+      <Dialog open={showSendMessage} onOpenChange={setShowSendMessage}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-lg bg-white dark:bg-gray-900">
+          <DialogHeader className="space-y-3">
+            <DialogTitle className="flex items-center space-x-2">
+              <Mail className="h-5 w-5 text-orange-600" />
+              <span>Send Email</span>
+            </DialogTitle>
+            <DialogDescription>
+              Send an email message to the customer
+            </DialogDescription>
+          </DialogHeader>
+
+          {customerToMessage && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={customerToMessage.avatar} alt={customerToMessage.name} />
+                  <AvatarFallback className="bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
+                    {customerToMessage.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    {customerToMessage.name}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {customerToMessage.email}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="messageSubject">Subject *</Label>
+              <Input 
+                id="messageSubject" 
+                placeholder="Enter email subject"
+                value={messageData.subject}
+                onChange={(e) => setMessageData(prev => ({ ...prev, subject: e.target.value }))}
+                required 
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="messageBody">Message *</Label>
+              <Textarea 
+                id="messageBody" 
+                placeholder="Enter your message here..."
+                rows={6}
+                value={messageData.message}
+                onChange={(e) => setMessageData(prev => ({ ...prev, message: e.target.value }))}
+                required
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 pt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSendMessage(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={sendMessage}
+              className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700 w-full sm:w-auto"
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              Send Email
             </Button>
           </DialogFooter>
         </DialogContent>

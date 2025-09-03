@@ -108,14 +108,14 @@ export default function SecurityPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+          className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm p-6"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Security Score</p>
               <p className="text-2xl font-bold text-green-600">85%</p>
             </div>
-            <Shield className="h-8 w-8 text-green-500" />
+            <Shield className="h-8 w-8 text-orange-600" />
           </div>
           <p className="text-sm text-gray-500 mt-2">Good security posture</p>
         </motion.div>
@@ -124,7 +124,7 @@ export default function SecurityPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+          className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm p-6"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -140,7 +140,7 @@ export default function SecurityPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+          className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm p-6"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -158,7 +158,7 @@ export default function SecurityPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+        className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm"
       >
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Security Settings</h2>
@@ -259,7 +259,7 @@ export default function SecurityPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+        className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm"
       >
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Activity</h2>

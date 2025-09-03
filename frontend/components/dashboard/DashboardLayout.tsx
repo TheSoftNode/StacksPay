@@ -20,12 +20,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const router = useRouter()
   const pathname = usePathname()
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/')
-    }
-  }, [user, loading, router])
+  // Redirect if not authenticated - TEMPORARILY DISABLED FOR DEVELOPMENT
+  // useEffect(() => {
+  //   if (!loading && !user) {
+  //     router.push('/')
+  //   }
+  // }, [user, loading, router])
 
   // Close mobile sidebar when route changes
   useEffect(() => {
@@ -40,9 +40,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     )
   }
 
-  if (!user) {
-    return null
-  }
+  // TEMPORARILY DISABLED FOR DEVELOPMENT - Allow dashboard access without authentication
+  // if (!user) {
+  //   return null
+  // }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

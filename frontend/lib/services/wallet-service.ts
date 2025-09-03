@@ -105,16 +105,43 @@ class WalletService {
 
       // Use the modern connect API for Stacks addresses
       console.log('🔄 Initiating new wallet connection...');
-      const result = await request('stx_getAddresses', {
-        network: this.network === STACKS_MAINNET ? 'mainnet' : 'testnet'
-      });
-
-      if (!result.addresses || result.addresses.length === 0) {
-        throw new Error('No Stacks addresses returned from wallet');
+      
+      // First, try to get Stacks addresses specifically
+      let result;
+      try {
+        result = await request('stx_getAddresses', {
+          network: this.network === STACKS_MAINNET ? 'mainnet' : 'testnet'
+        });
+      } catch (stacksError) {
+        console.warn('⚠️ Failed to get Stacks addresses, trying general connect...', stacksError);
+        // Fallback to general connect
+        result = await connect();
       }
 
-      const stacksAddress = result.addresses[0];
+      if (!result.addresses || result.addresses.length === 0) {
+        throw new Error('No addresses returned from wallet');
+      }
+
+      // Find the Stacks address
+      let stacksAddress = result.addresses[0];
+      
+      // If we have multiple addresses, try to find the Stacks one
+      if (result.addresses.length > 1) {
+        const stxAddr = result.addresses.find(addr => 
+          addr.symbol === 'STX' || 
+          (typeof addr.address === 'string' && (addr.address.startsWith('ST') || addr.address.startsWith('SP')))
+        );
+        if (stxAddr) {
+          stacksAddress = stxAddr;
+        }
+      }
+
       console.log('✅ Wallet connection successful:', stacksAddress);
+      console.log('🏠 Address type check:', {
+        address: stacksAddress.address,
+        isStacksAddress: stacksAddress.address?.startsWith('ST') || stacksAddress.address?.startsWith('SP'),
+        symbol: stacksAddress.symbol
+      });
 
       // Store connection data for future use
       const walletData: WalletConnectionResult = {
@@ -271,6 +298,8 @@ class WalletService {
       }
 
       console.log('✍️ StacksPay: Signing message with wallet...');
+      console.log('📝 Message to sign:', message);
+      console.log('🔑 Using public key:', walletData.publicKey);
 
       // Use the modern request API for message signing
       const result = await request('stx_signMessage', {
@@ -279,9 +308,26 @@ class WalletService {
       });
 
       console.log('✅ Message signed successfully');
+      console.log('🔏 Raw signature result:', result);
+      console.log('🔍 Signature analysis:');
+      console.log('  - Type:', typeof result.signature);
+      console.log('  - Length:', result.signature?.length);
+      console.log('  - Is string:', typeof result.signature === 'string');
+      console.log('  - Raw value:', result.signature);
+
+      // Ensure signature is in the correct format
+      let processedSignature = result.signature;
+      if (typeof result.signature === 'string') {
+        // Remove 0x prefix if present
+        if (result.signature.startsWith('0x')) {
+          processedSignature = result.signature.slice(2);
+        }
+      }
+
+      console.log('🔏 Processed signature:', processedSignature);
 
       return {
-        signature: result.signature,
+        signature: processedSignature,
         publicKey: result.publicKey,
         address: walletData.address,
         message: message,
@@ -391,10 +437,18 @@ class WalletService {
         walletType: 'stacks' as const,
         businessName,
         businessType,
-        email,
+        // Only include email if it's not empty
+        ...(email && email.trim() ? { email: email.trim() } : {}),
       };
 
-      console.log('📤 Sending registration to backend...');
+      console.log('📤 Sending registration to backend...', {
+        address: registrationData.address,
+        signature: registrationData.signature,
+        message: registrationData.message,
+        publicKey: registrationData.publicKey,
+        walletType: registrationData.walletType
+      });
+      
       const response = await fetch(`${this.baseURL}/api/auth/register/wallet`, {
         method: 'POST',
         headers: {
@@ -405,6 +459,7 @@ class WalletService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Registration failed' }));
+        console.error('❌ Backend registration error:', errorData);
         throw new Error(errorData.error || `Registration failed: ${response.statusText}`);
       }
 

@@ -187,14 +187,14 @@ export default function HelpPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+          className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm p-6"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Avg. Response Time</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">2.1h</p>
             </div>
-            <Clock className="h-8 w-8 text-blue-500" />
+            <Clock className="h-8 w-8 text-orange-600" />
           </div>
         </motion.div>
 
@@ -202,14 +202,14 @@ export default function HelpPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+          className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm p-6"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Active Support Hours</p>
               <p className="text-2xl font-bold text-green-600">9 AM - 6 PM PST</p>
             </div>
-            <HelpCircle className="h-8 w-8 text-green-500" />
+            <HelpCircle className="h-8 w-8 text-orange-600" />
           </div>
         </motion.div>
 
@@ -217,14 +217,14 @@ export default function HelpPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+          className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm p-6"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Resolution Rate</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">98.5%</p>
             </div>
-            <Zap className="h-8 w-8 text-orange-500" />
+            <Zap className="h-8 w-8 text-orange-600" />
           </div>
         </motion.div>
       </div>
@@ -235,10 +235,13 @@ export default function HelpPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+          className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm"
         >
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Documentation & Resources</h2>
+          <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+              <Book className="h-5 w-5 text-orange-600" />
+              <span>Documentation & Resources</span>
+            </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">Comprehensive guides and references</p>
           </div>
 
@@ -250,7 +253,7 @@ export default function HelpPage() {
                 className="w-full justify-between p-4 h-auto"
               >
                 <div className="flex items-center space-x-3">
-                  <resource.icon className="h-5 w-5" />
+                  <resource.icon className="h-5 w-5 text-orange-600" />
                   <div className="text-left">
                     <p className="font-medium">{resource.title}</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">{resource.description}</p>
@@ -267,10 +270,13 @@ export default function HelpPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+          className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm"
         >
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Contact Support</h2>
+          <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+              <MessageCircle className="h-5 w-5 text-orange-600" />
+              <span>Contact Support</span>
+            </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">Get direct help from our support team</p>
           </div>
 
@@ -280,13 +286,13 @@ export default function HelpPage() {
                 key={index}
                 className={`p-4 rounded-lg border ${
                   channel.available
-                    ? 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'
-                    : 'border-gray-200 dark:border-gray-700 opacity-50'
+                    ? 'border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer bg-white dark:bg-gray-900'
+                    : 'border-gray-200 dark:border-gray-800 opacity-50 bg-white dark:bg-gray-900'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <channel.icon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                    <channel.icon className="h-5 w-5 text-orange-600" />
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">{channel.name}</p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">{channel.description}</p>
@@ -306,10 +312,13 @@ export default function HelpPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
-        className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+        className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm"
       >
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Frequently Asked Questions</h2>
+        <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+            <HelpCircle className="h-5 w-5 text-orange-600" />
+            <span>Frequently Asked Questions</span>
+          </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400">Common questions and answers</p>
           
           {/* Category Filter */}

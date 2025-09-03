@@ -164,7 +164,7 @@ const AnalyticsPage = () => {
         whileHover={{ y: -2 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       >
-        <Card className="relative overflow-hidden border-0 shadow-sm bg-white dark:bg-gray-900 hover:shadow-md transition-shadow duration-200">
+        <Card className="relative overflow-hidden bg-white dark:bg-gray-900 border shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardContent className="p-6">
             {loading && (
               <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
@@ -248,7 +248,12 @@ const AnalyticsPage = () => {
             Export Report
           </Button>
           
-          <Button size="sm" onClick={refreshData} disabled={loading}>
+          <Button 
+            size="sm" 
+            onClick={refreshData} 
+            disabled={loading}
+            className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+          >
             {loading ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
             ) : (
@@ -299,10 +304,10 @@ const AnalyticsPage = () => {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Revenue Trend */}
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <BarChart3 className="h-5 w-5" />
+              <BarChart3 className="h-5 w-5 text-orange-600" />
               <span>Revenue Trend</span>
             </CardTitle>
             <CardDescription>
@@ -358,10 +363,10 @@ const AnalyticsPage = () => {
         </Card>
 
         {/* Payment Methods */}
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <PieChart className="h-5 w-5" />
+              <PieChartIcon className="h-5 w-5 text-orange-600" />
               <span>Payment Methods</span>
             </CardTitle>
             <CardDescription>
@@ -426,9 +431,12 @@ const AnalyticsPage = () => {
       {/* Additional Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Top Customers */}
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Top Customers</CardTitle>
+            <CardTitle className="flex items-center space-x-2">
+              <Users className="h-5 w-5 text-orange-600" />
+              <span>Top Customers</span>
+            </CardTitle>
             <CardDescription>
               Highest spending customers
             </CardDescription>
@@ -459,9 +467,12 @@ const AnalyticsPage = () => {
         </Card>
 
         {/* Success Rate */}
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+            <CardTitle className="flex items-center space-x-2">
+              <Activity className="h-5 w-5 text-orange-600" />
+              <span>Success Rate</span>
+            </CardTitle>
             <CardDescription>
               Payment completion rate
             </CardDescription>
@@ -489,9 +500,12 @@ const AnalyticsPage = () => {
         </Card>
 
         {/* Network Stats */}
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Network Performance</CardTitle>
+            <CardTitle className="flex items-center space-x-2">
+              <TrendingUp className="h-5 w-5 text-orange-600" />
+              <span>Network Performance</span>
+            </CardTitle>
             <CardDescription>
               Blockchain metrics
             </CardDescription>
@@ -499,21 +513,21 @@ const AnalyticsPage = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Avg Block Time</span>
-              <Badge variant="secondary" className="bg-green-100 text-green-700">
+              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
                 10.2 min
               </Badge>
             </div>
             
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Network Fee</span>
-              <Badge variant="secondary">
+              <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
                 0.0001 sBTC
               </Badge>
             </div>
             
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Confirmation Time</span>
-              <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+              <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
                 2.3 min
               </Badge>
             </div>
