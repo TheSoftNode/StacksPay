@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { 
   Plus,
@@ -33,7 +34,7 @@ const quickActions: QuickAction[] = [
     title: 'Create Payment Link',
     description: 'Generate a payment link for customers',
     icon: Plus,
-    href: '/dashboard/payments/create',
+    href: '/dashboard/payments',
     variant: 'primary'
   },
   {
@@ -41,7 +42,7 @@ const quickActions: QuickAction[] = [
     title: 'Send Invoice',
     description: 'Create and send an sBTC invoice',
     icon: Send,
-    href: '/dashboard/invoices/create'
+    href: '/dashboard/payments'
   },
   {
     id: 'api-keys',
@@ -55,7 +56,7 @@ const quickActions: QuickAction[] = [
     title: 'View Documentation',
     description: 'Integration guides and API reference',
     icon: FileText,
-    href: '/docs',
+    href: 'https://docs.example.com',
     external: true
   },
   {
@@ -75,6 +76,7 @@ const quickActions: QuickAction[] = [
 ]
 
 const QuickActions = () => {
+  const router = useRouter()
   const [hoveredAction, setHoveredAction] = useState<string | null>(null)
 
   const handleActionClick = (action: QuickAction) => {
@@ -84,14 +86,13 @@ const QuickActions = () => {
       if (action.external) {
         window.open(action.href, '_blank')
       } else {
-        // Use router navigation in real implementation
-        console.log(`Navigate to: ${action.href}`)
+        router.push(action.href)
       }
     }
   }
 
   return (
-    <Card>
+    <Card className="bg-white dark:bg-gray-900 border shadow-sm">
       <CardHeader className="pb-4">
         <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
         <CardDescription>
@@ -114,16 +115,16 @@ const QuickActions = () => {
               onClick={() => handleActionClick(action)}
               className={`w-full p-3 rounded-lg border text-left transition-all duration-200 ${
                 action.variant === 'primary'
-                  ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/30'
-                  : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                  ? 'bg-white dark:bg-gray-900 border-orange-200 dark:border-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/10'
+                  : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className={`p-2 rounded-md ${
                     action.variant === 'primary'
-                      ? 'bg-orange-100 dark:bg-orange-900/40'
-                      : 'bg-white dark:bg-gray-900'
+                      ? 'bg-orange-100 dark:bg-orange-900/30'
+                      : 'bg-gray-100 dark:bg-gray-800'
                   }`}>
                     <action.icon className={`h-4 w-4 ${
                       action.variant === 'primary'
@@ -172,7 +173,12 @@ const QuickActions = () => {
         ))}
         
         <div className="pt-2 mt-4 border-t border-gray-200 dark:border-gray-800">
-          <Button variant="outline" size="sm" className="w-full">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+            onClick={() => router.push('/dashboard/onboarding')}
+          >
             View All Actions
           </Button>
         </div>

@@ -218,7 +218,7 @@ export function ConversionWidget({ balances, onConversionComplete }: ConversionW
     selectedBalance && parseFloat(fromAmount) <= selectedBalance.available;
 
   return (
-    <Card>
+    <Card className="bg-white dark:bg-gray-900 border shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ArrowUpDown className="h-5 w-5" />
@@ -244,7 +244,7 @@ export function ConversionWidget({ balances, onConversionComplete }: ConversionW
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                 {getAvailableFromCurrencies().map((currency) => (
                   <SelectItem key={currency} value={currency}>
                     {currency}
@@ -293,7 +293,7 @@ export function ConversionWidget({ balances, onConversionComplete }: ConversionW
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                 {getAvailableToCurrencies(fromCurrency).map((currency) => (
                   <SelectItem key={currency} value={currency}>
                     {currency}
@@ -319,7 +319,7 @@ export function ConversionWidget({ balances, onConversionComplete }: ConversionW
             animate={{ opacity: 1, y: 0 }}
             className="space-y-3"
           >
-            <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+            <Card className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
               <CardContent className="p-4">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -373,7 +373,7 @@ export function ConversionWidget({ balances, onConversionComplete }: ConversionW
         <Button
           onClick={handleConvert}
           disabled={!canConvert}
-          className="w-full"
+          className="w-full bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
           size="lg"
         >
           {isConverting && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
@@ -381,7 +381,7 @@ export function ConversionWidget({ balances, onConversionComplete }: ConversionW
         </Button>
 
         {/* Info */}
-        <Alert>
+        <Alert className="bg-white dark:bg-gray-900 border shadow-sm">
           <Info className="h-4 w-4" />
           <AlertDescription>
             Conversions are processed through our secure multi-provider network. 

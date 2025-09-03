@@ -39,13 +39,13 @@ const currencyIcons: Record<string, React.ReactNode> = {
 };
 
 const currencyColors: Record<string, string> = {
-  sBTC: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800',
-  BTC: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800',
-  USD: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
-  USDC: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
-  USDT: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
-  STX: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800',
-  ETH: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+  sBTC: 'bg-white dark:bg-gray-900 border-l-4 border-l-orange-500',
+  BTC: 'bg-white dark:bg-gray-900 border-l-4 border-l-orange-500',
+  USD: 'bg-white dark:bg-gray-900 border-l-4 border-l-green-500',
+  USDC: 'bg-white dark:bg-gray-900 border-l-4 border-l-blue-500',
+  USDT: 'bg-white dark:bg-gray-900 border-l-4 border-l-green-500',
+  STX: 'bg-white dark:bg-gray-900 border-l-4 border-l-purple-500',
+  ETH: 'bg-white dark:bg-gray-900 border-l-4 border-l-blue-500',
 };
 
 export function BalanceCard({ balance, hideAmount = false }: BalanceCardProps) {
@@ -69,7 +69,7 @@ export function BalanceCard({ balance, hideAmount = false }: BalanceCardProps) {
       whileHover={{ scale: 1.02 }}
       transition={{ duration: 0.2 }}
     >
-      <Card className={`${currencyColors[balance.currency] || 'bg-gray-50 dark:bg-gray-900/20'} hover:shadow-md transition-shadow`}>
+      <Card className={`${currencyColors[balance.currency] || 'bg-white dark:bg-gray-900 border'} hover:shadow-lg transition-all duration-200 border shadow-sm`}>
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">

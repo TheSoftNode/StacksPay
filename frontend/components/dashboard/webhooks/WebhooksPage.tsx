@@ -89,9 +89,20 @@ interface WebhookEvent {
 
 const WebhooksPage = () => {
   const [showAddWebhook, setShowAddWebhook] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isTestDialogOpen, setIsTestDialogOpen] = useState(false)
   const [selectedWebhook, setSelectedWebhook] = useState<WebhookEndpoint | null>(null)
   const [selectedEvent, setSelectedEvent] = useState<WebhookEvent | null>(null)
   const [activeTab, setActiveTab] = useState('endpoints')
+  const [webhookData, setWebhookData] = useState({
+    url: '',
+    description: '',
+    events: [] as string[],
+    isActive: true
+  })
+  const [testResult, setTestResult] = useState<{status: number, message: string} | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Mock data
   const webhookEndpoints: WebhookEndpoint[] = [
@@ -239,11 +250,11 @@ const WebhooksPage = () => {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button variant="outline">
+          <Button variant="outline" className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
             <Code className="mr-2 h-4 w-4" />
             Documentation
           </Button>
-          <Button onClick={() => setShowAddWebhook(true)}>
+          <Button onClick={() => setShowAddWebhook(true)} className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700">
             <Plus className="mr-2 h-4 w-4" />
             Add Endpoint
           </Button>
@@ -257,7 +268,7 @@ const WebhooksPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -281,7 +292,7 @@ const WebhooksPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -305,7 +316,7 @@ const WebhooksPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -329,7 +340,7 @@ const WebhooksPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -351,7 +362,7 @@ const WebhooksPage = () => {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
+        <TabsList className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
           <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
           <TabsTrigger value="events">Event Log</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -359,7 +370,7 @@ const WebhooksPage = () => {
 
         {/* Endpoints Tab */}
         <TabsContent value="endpoints" className="space-y-6">
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle>Webhook Endpoints</CardTitle>
               <CardDescription>
@@ -432,17 +443,29 @@ const WebhooksPage = () => {
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuItem onClick={() => setSelectedWebhook(webhook)}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedWebhook(webhook)
+                                setWebhookData({
+                                  url: webhook.url,
+                                  description: webhook.description,
+                                  events: webhook.events,
+                                  isActive: webhook.status === 'active'
+                                })
+                                setIsEditDialogOpen(true)
+                              }}>
                                 <Edit3 className="mr-2 h-4 w-4" />
                                 Edit Endpoint
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedWebhook(webhook)
+                                setIsTestDialogOpen(true)
+                              }}>
                                 <TestTube className="mr-2 h-4 w-4" />
                                 Test Endpoint
                               </DropdownMenuItem>
@@ -451,7 +474,13 @@ const WebhooksPage = () => {
                                 Copy Secret
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600">
+                              <DropdownMenuItem 
+                                className="text-red-600 dark:text-red-400"
+                                onClick={() => {
+                                  setSelectedWebhook(webhook)
+                                  setIsDeleteDialogOpen(true)
+                                }}
+                              >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete Endpoint
                               </DropdownMenuItem>
@@ -469,7 +498,7 @@ const WebhooksPage = () => {
 
         {/* Events Tab */}
         <TabsContent value="events" className="space-y-6">
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle>Event Log</CardTitle>
               <CardDescription>
@@ -542,7 +571,7 @@ const WebhooksPage = () => {
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-6">
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader>
               <CardTitle>Webhook Settings</CardTitle>
               <CardDescription>
@@ -573,7 +602,7 @@ const WebhooksPage = () => {
                     <SelectTrigger className="w-[200px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                       <SelectItem value="1">1 attempt</SelectItem>
                       <SelectItem value="3">3 attempts</SelectItem>
                       <SelectItem value="5">5 attempts</SelectItem>
@@ -588,7 +617,7 @@ const WebhooksPage = () => {
                     <SelectTrigger className="w-[200px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                       <SelectItem value="10">10 seconds</SelectItem>
                       <SelectItem value="30">30 seconds</SelectItem>
                       <SelectItem value="60">60 seconds</SelectItem>
@@ -604,7 +633,7 @@ const WebhooksPage = () => {
 
       {/* Add Webhook Modal */}
       <Dialog open={showAddWebhook} onOpenChange={setShowAddWebhook}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle>Add Webhook Endpoint</DialogTitle>
             <DialogDescription>
@@ -615,21 +644,43 @@ const WebhooksPage = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="webhookUrl">Endpoint URL</Label>
-              <Input id="webhookUrl" placeholder="https://api.example.com/webhooks" />
+              <Input 
+                id="webhookUrl" 
+                placeholder="https://api.example.com/webhooks"
+                value={webhookData.url}
+                onChange={(e) => setWebhookData(prev => ({ ...prev, url: e.target.value }))}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="webhookDescription">Description</Label>
-              <Input id="webhookDescription" placeholder="Description of this webhook endpoint" />
+              <Input 
+                id="webhookDescription" 
+                placeholder="Description of this webhook endpoint"
+                value={webhookData.description}
+                onChange={(e) => setWebhookData(prev => ({ ...prev, description: e.target.value }))}
+              />
             </div>
 
             <div className="space-y-2">
               <Label>Events to Send</Label>
-              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded">
+              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                 {availableEvents.map((event) => (
                   <div key={event} className="flex items-center space-x-2">
-                    <input type="checkbox" id={event} className="rounded" />
-                    <Label htmlFor={event} className="text-sm">{event}</Label>
+                    <input 
+                      type="checkbox" 
+                      id={`create-${event}`} 
+                      className="rounded text-orange-600 focus:ring-orange-600" 
+                      checked={webhookData.events.includes(event)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setWebhookData(prev => ({ ...prev, events: [...prev.events, event] }))
+                        } else {
+                          setWebhookData(prev => ({ ...prev, events: prev.events.filter(e => e !== event) }))
+                        }
+                      }}
+                    />
+                    <Label htmlFor={`create-${event}`} className="text-sm cursor-pointer">{event}</Label>
                   </div>
                 ))}
               </div>
@@ -637,10 +688,18 @@ const WebhooksPage = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddWebhook(false)}>
+            <Button variant="outline" onClick={() => setShowAddWebhook(false)} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
               Cancel
             </Button>
-            <Button onClick={() => setShowAddWebhook(false)}>
+            <Button 
+              onClick={() => {
+                // Handle webhook creation
+                setShowAddWebhook(false)
+                setWebhookData({ url: '', description: '', events: [], isActive: true })
+              }}
+              disabled={!webhookData.url || webhookData.events.length === 0}
+              className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Create Endpoint
             </Button>
@@ -649,8 +708,8 @@ const WebhooksPage = () => {
       </Dialog>
 
       {/* Webhook Detail Modal */}
-      <Dialog open={!!selectedWebhook} onOpenChange={() => setSelectedWebhook(null)}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={!!selectedWebhook && !isEditDialogOpen && !isTestDialogOpen && !isDeleteDialogOpen} onOpenChange={() => setSelectedWebhook(null)}>
+        <DialogContent className="max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle>Webhook Details</DialogTitle>
             <DialogDescription>
@@ -664,11 +723,12 @@ const WebhooksPage = () => {
                 <div className="space-y-2">
                   <Label>URL</Label>
                   <div className="flex items-center space-x-2">
-                    <Input value={selectedWebhook.url} readOnly />
+                    <Input value={selectedWebhook.url} readOnly className="bg-gray-50 dark:bg-gray-800" />
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => copyToClipboard(selectedWebhook.url)}
+                      className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
@@ -684,7 +744,7 @@ const WebhooksPage = () => {
 
                 <div className="space-y-2">
                   <Label>Success Rate</Label>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                     {selectedWebhook.successRate}%
                   </p>
                 </div>
@@ -700,11 +760,12 @@ const WebhooksPage = () => {
               <div className="space-y-2">
                 <Label>Webhook Secret</Label>
                 <div className="flex items-center space-x-2">
-                  <Input value={selectedWebhook.secret} readOnly type="password" />
+                  <Input value={selectedWebhook.secret} readOnly type="password" className="bg-gray-50 dark:bg-gray-800 font-mono" />
                   <Button 
                     variant="outline" 
                     size="sm"
                     onClick={() => copyToClipboard(selectedWebhook.secret)}
+                    className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
@@ -715,7 +776,7 @@ const WebhooksPage = () => {
                 <Label>Subscribed Events</Label>
                 <div className="flex flex-wrap gap-2">
                   {selectedWebhook.events.map((event) => (
-                    <Badge key={event} variant="secondary">
+                    <Badge key={event} variant="secondary" className="text-xs">
                       {event}
                     </Badge>
                   ))}
@@ -723,12 +784,18 @@ const WebhooksPage = () => {
               </div>
             </div>
           )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedWebhook(null)} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Event Detail Modal */}
       <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle>Event Details</DialogTitle>
             <DialogDescription>
@@ -791,7 +858,7 @@ const WebhooksPage = () => {
                   <Textarea 
                     value={selectedEvent.response.body} 
                     readOnly 
-                    className="font-mono text-sm"
+                    className="font-mono text-sm bg-gray-50 dark:bg-gray-800"
                     rows={4}
                   />
                 </div>
@@ -800,12 +867,262 @@ const WebhooksPage = () => {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedEvent(null)}>
+            <Button variant="outline" onClick={() => setSelectedEvent(null)} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
               Close
             </Button>
-            <Button>
+            <Button className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700">
               <RefreshCw className="mr-2 h-4 w-4" />
               Retry Event
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Webhook Modal */}
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open)
+        if (!open) setSelectedWebhook(null)
+      }}>
+        <DialogContent className="max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Edit Webhook Endpoint</DialogTitle>
+            <DialogDescription>
+              Update webhook endpoint configuration and event subscriptions
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="editWebhookUrl">Endpoint URL</Label>
+              <Input 
+                id="editWebhookUrl" 
+                value={webhookData.url}
+                onChange={(e) => setWebhookData(prev => ({ ...prev, url: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="editWebhookDescription">Description</Label>
+              <Input 
+                id="editWebhookDescription" 
+                value={webhookData.description}
+                onChange={(e) => setWebhookData(prev => ({ ...prev, description: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Status</Label>
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    checked={webhookData.isActive}
+                    onCheckedChange={(checked) => setWebhookData(prev => ({ ...prev, isActive: checked }))}
+                  />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {webhookData.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Events to Send</Label>
+              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                {availableEvents.map((event) => (
+                  <div key={event} className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox" 
+                      id={`edit-${event}`} 
+                      className="rounded text-orange-600 focus:ring-orange-600" 
+                      checked={webhookData.events.includes(event)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setWebhookData(prev => ({ ...prev, events: [...prev.events, event] }))
+                        } else {
+                          setWebhookData(prev => ({ ...prev, events: prev.events.filter(e => e !== event) }))
+                        }
+                      }}
+                    />
+                    <Label htmlFor={`edit-${event}`} className="text-sm cursor-pointer">{event}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsEditDialogOpen(false)
+                setSelectedWebhook(null)
+              }} 
+              className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                // Handle webhook update
+                setIsEditDialogOpen(false)
+                setSelectedWebhook(null)
+              }}
+              disabled={!webhookData.url || webhookData.events.length === 0}
+              className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Webhook Modal */}
+      <Dialog open={isTestDialogOpen} onOpenChange={(open) => {
+        setIsTestDialogOpen(open)
+        if (!open) {
+          setSelectedWebhook(null)
+          setTestResult(null)
+        }
+      }}>
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Test Webhook Endpoint</DialogTitle>
+            <DialogDescription>
+              Send a test event to verify your webhook endpoint is working
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedWebhook && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <Globe className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-mono">{selectedWebhook.url}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Test Event Type</Label>
+                <Select defaultValue="payment.succeeded">
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                    {selectedWebhook.events.map(event => (
+                      <SelectItem key={event} value={event}>{event}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {testResult && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-3 rounded-lg border ${
+                    testResult.status >= 200 && testResult.status < 300
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                      : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    {testResult.status >= 200 && testResult.status < 300 ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-600" />
+                    )}
+                    <span className="text-sm font-medium">
+                      Response: {testResult.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    {testResult.message}
+                  </p>
+                </motion.div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsTestDialogOpen(false)
+                setSelectedWebhook(null)
+                setTestResult(null)
+              }} 
+              className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={async () => {
+                setIsSubmitting(true)
+                // Simulate test request
+                await new Promise(resolve => setTimeout(resolve, 1500))
+                setTestResult({
+                  status: Math.random() > 0.3 ? 200 : 500,
+                  message: Math.random() > 0.3 ? 'Webhook test successful' : 'Connection timeout'
+                })
+                setIsSubmitting(false)
+              }}
+              disabled={isSubmitting}
+              className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+            >
+              {isSubmitting && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Testing...' : 'Send Test Event'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Webhook Modal */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+        setIsDeleteDialogOpen(open)
+        if (!open) setSelectedWebhook(null)
+      }}>
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Delete Webhook Endpoint</DialogTitle>
+            <DialogDescription>
+              This will permanently delete the webhook endpoint "{selectedWebhook?.url}".
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-medium text-red-900 dark:text-red-100">
+                  This action cannot be undone
+                </h4>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  All webhook events for this endpoint will stop being delivered immediately.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsDeleteDialogOpen(false)
+                setSelectedWebhook(null)
+              }} 
+              className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                // Handle webhook deletion
+                setIsDeleteDialogOpen(false)
+                setSelectedWebhook(null)
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
+            >
+              Delete Endpoint
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -93,7 +93,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
             Configure your currency preferences and withdrawal methods
           </p>
         </div>
-        <Button onClick={handleSave} disabled={isLoading}>
+        <Button onClick={handleSave} disabled={isLoading} className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700">
           {isLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
           Save Changes
         </Button>
@@ -104,7 +104,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Alert className={savedMessage.includes('success') ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+          <Alert className={savedMessage.includes('success') ? 'bg-white dark:bg-gray-900 border border-green-500 shadow-sm' : 'bg-white dark:bg-gray-900 border border-red-500 shadow-sm'}>
             {savedMessage.includes('success') ? <CheckCircle className="h-4 w-4 text-green-600" /> : <AlertTriangle className="h-4 w-4 text-red-600" />}
             <AlertDescription className={savedMessage.includes('success') ? 'text-green-800' : 'text-red-800'}>
               {savedMessage}
@@ -115,7 +115,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Auto-Conversion Settings */}
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5" />
@@ -154,7 +154,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                       <SelectItem value="USD">USD - US Dollar</SelectItem>
                       <SelectItem value="USDC">USDC - USD Coin</SelectItem>
                       <SelectItem value="sBTC">sBTC - Synthetic Bitcoin</SelectItem>
@@ -180,7 +180,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
         </Card>
 
         {/* Payment Preferences */}
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wallet className="h-5 w-5" />
@@ -200,7 +200,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                   <SelectItem value="sBTC">sBTC - Synthetic Bitcoin</SelectItem>
                   <SelectItem value="USD">USD - US Dollar</SelectItem>
                   <SelectItem value="USDC">USDC - USD Coin</SelectItem>
@@ -225,7 +225,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
         </Card>
 
         {/* Wallet Addresses */}
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
@@ -269,7 +269,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
         </Card>
 
         {/* Bank Account */}
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Landmark className="h-5 w-5" />
@@ -308,7 +308,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
               />
             </div>
 
-            <Alert>
+            <Alert className="bg-white dark:bg-gray-900 border shadow-sm">
               <Shield className="h-4 w-4" />
               <AlertDescription>
                 Your banking information is encrypted and securely stored. We never store your full account details.
@@ -318,7 +318,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
         </Card>
 
         {/* Notifications */}
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Info className="h-5 w-5" />
@@ -373,7 +373,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
         </Card>
 
         {/* Advanced Settings */}
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
@@ -409,7 +409,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                   <SelectItem value="circle">Circle (Best for USD/USDC)</SelectItem>
                   <SelectItem value="coinbase">Coinbase Commerce</SelectItem>
                   <SelectItem value="internal">Internal (Best for sBTC/STX)</SelectItem>
@@ -431,7 +431,7 @@ export function ConversionSettings({ onSettingsUpdate }: ConversionSettingsProps
             </div>
 
             {settings.enableTestMode && (
-              <Alert className="border-yellow-200 bg-yellow-50">
+              <Alert className="bg-white dark:bg-gray-900 border border-yellow-500 shadow-sm">
                 <AlertTriangle className="h-4 w-4 text-yellow-600" />
                 <AlertDescription className="text-yellow-800">
                   Test mode is enabled. All conversions will use testnet currencies.

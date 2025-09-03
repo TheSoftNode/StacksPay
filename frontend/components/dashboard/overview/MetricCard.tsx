@@ -23,7 +23,7 @@ const MetricCard = ({ title, value, change, icon: Icon, description, loading }: 
       whileHover={{ y: -2 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      <Card className="relative overflow-hidden border-0 shadow-sm bg-white dark:bg-gray-900 hover:shadow-md transition-shadow duration-200">
+      <Card className="relative overflow-hidden border shadow-sm bg-white dark:bg-gray-900 hover:shadow-md transition-shadow duration-200">
         <CardContent className="p-6">
           {loading && (
             <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">

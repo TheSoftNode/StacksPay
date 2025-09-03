@@ -111,6 +111,10 @@ const ApiKeysPage = () => {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>(mockApiKeys)
   const [showKeys, setShowKeys] = useState<{[key: string]: boolean}>({})
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isRegenerateDialogOpen, setIsRegenerateDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [selectedKey, setSelectedKey] = useState<ApiKey | null>(null)
   const [newKeyData, setNewKeyData] = useState({
     name: '',
     environment: 'test' as 'test' | 'live',
@@ -198,8 +202,54 @@ const ApiKeysPage = () => {
     }))
   }
 
+  const openEditDialog = (key: ApiKey) => {
+    setSelectedKey(key)
+    setNewKeyData({
+      name: key.name,
+      environment: key.environment,
+      permissions: key.permissions,
+      description: ''
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const openRegenerateDialog = (key: ApiKey) => {
+    setSelectedKey(key)
+    setIsRegenerateDialogOpen(true)
+  }
+
+  const openDeleteDialog = (key: ApiKey) => {
+    setSelectedKey(key)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleEditKey = () => {
+    if (!selectedKey) return
+    setApiKeys(prev => prev.map(key => 
+      key.id === selectedKey.id 
+        ? { ...key, name: newKeyData.name, permissions: newKeyData.permissions }
+        : key
+    ))
+    setIsEditDialogOpen(false)
+    setSelectedKey(null)
+  }
+
+  const handleRegenerateKey = () => {
+    if (!selectedKey) return
+    const newKeyValue = `sk_${selectedKey.environment}_${Math.random().toString(36).substring(2, 34)}`
+    setApiKeys(prev => prev.map(key => 
+      key.id === selectedKey.id 
+        ? { ...key, key: newKeyValue, createdAt: new Date().toISOString() }
+        : key
+    ))
+    setIsRegenerateDialogOpen(false)
+    setSelectedKey(null)
+  }
+
   const deleteKey = (keyId: string) => {
     setApiKeys(prev => prev.filter(key => key.id !== keyId))
+    setIsDeleteDialogOpen(false)
+    setSelectedKey(null)
   }
 
   return (
@@ -217,12 +267,12 @@ const ApiKeysPage = () => {
         
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm">
+            <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700">
               <Plus className="mr-2 h-4 w-4" />
               Create API Key
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <DialogHeader>
               <DialogTitle>Create New API Key</DialogTitle>
               <DialogDescription>
@@ -252,7 +302,7 @@ const ApiKeysPage = () => {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                     <SelectItem value="test">Test Environment</SelectItem>
                     <SelectItem value="live">Live Environment</SelectItem>
                   </SelectContent>
@@ -293,12 +343,13 @@ const ApiKeysPage = () => {
             </div>
             
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
                 Cancel
               </Button>
               <Button 
                 onClick={handleCreateKey}
                 disabled={!newKeyData.name || newKeyData.permissions.length === 0}
+                className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
               >
                 Create Key
               </Button>
@@ -308,7 +359,7 @@ const ApiKeysPage = () => {
       </div>
 
       {/* Security Notice */}
-      <Card className="border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20">
+      <Card className="bg-white dark:bg-gray-900 border border-orange-500 shadow-sm">
         <CardContent className="p-4">
           <div className="flex items-start space-x-3">
             <Shield className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
@@ -334,7 +385,7 @@ const ApiKeysPage = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
           >
-            <Card className="hover:shadow-md transition-shadow duration-200">
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -347,7 +398,7 @@ const ApiKeysPage = () => {
                     </div>
                     
                     <div className="flex items-center space-x-3 mb-4">
-                      <div className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-3 font-mono text-sm">
+                      <div className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 font-mono text-sm">
                         {showKeys[apiKey.id] 
                           ? apiKey.key 
                           : `${apiKey.key.substring(0, 12)}${'•'.repeat(20)}`
@@ -357,6 +408,7 @@ const ApiKeysPage = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => toggleKeyVisibility(apiKey.id)}
+                        className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
                         {showKeys[apiKey.id] ? (
                           <EyeOff className="h-4 w-4" />
@@ -368,6 +420,7 @@ const ApiKeysPage = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => copyToClipboard(apiKey.key)}
+                        className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
@@ -403,20 +456,20 @@ const ApiKeysPage = () => {
                         <Settings className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openEditDialog(apiKey)}>
                         <Edit3 className="mr-2 h-4 w-4" />
                         Edit Key
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openRegenerateDialog(apiKey)}>
                         <Key className="mr-2 h-4 w-4" />
                         Regenerate Key
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
                         className="text-red-600 dark:text-red-400"
-                        onClick={() => deleteKey(apiKey.id)}
+                        onClick={() => openDeleteDialog(apiKey)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Key
@@ -431,7 +484,7 @@ const ApiKeysPage = () => {
       </div>
 
       {apiKeys.length === 0 && (
-        <Card>
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardContent className="p-8 text-center">
             <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto mb-4">
               <Key className="h-6 w-6 text-gray-400" />
@@ -442,7 +495,7 @@ const ApiKeysPage = () => {
             <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">
               Create your first API key to start integrating with StacksPay
             </p>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700">
               <Plus className="mr-2 h-4 w-4" />
               Create API Key
             </Button>
@@ -451,7 +504,7 @@ const ApiKeysPage = () => {
       )}
 
       {/* Documentation */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-900 border shadow-sm">
         <CardHeader>
           <CardTitle className="text-sm font-medium">Quick Start</CardTitle>
           <CardDescription>
@@ -459,7 +512,7 @@ const ApiKeysPage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+          <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
             <h4 className="text-sm font-medium mb-2">Authentication</h4>
             <pre className="text-xs text-gray-600 dark:text-gray-400 overflow-x-auto">
 {`curl -X GET https://api.stackspay.com/v1/payments \\
@@ -471,12 +524,145 @@ const ApiKeysPage = () => {
             <span className="text-sm text-gray-600 dark:text-gray-400">
               Need help getting started?
             </span>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
               View Documentation
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit API Key Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Edit API Key</DialogTitle>
+            <DialogDescription>
+              Update the name and permissions for this API key
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="editKeyName">Key Name</Label>
+              <Input
+                id="editKeyName"
+                value={newKeyData.name}
+                onChange={(e) => setNewKeyData(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Permissions</Label>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {availablePermissions.map(permission => (
+                  <div key={permission.id} className="flex items-center space-x-2">
+                    <Switch
+                      id={`edit-${permission.id}`}
+                      checked={newKeyData.permissions.includes(permission.id)}
+                      onCheckedChange={() => togglePermission(permission.id)}
+                    />
+                    <div className="flex-1">
+                      <Label htmlFor={`edit-${permission.id}`} className="text-sm font-medium">
+                        {permission.name}
+                      </Label>
+                      <p className="text-xs text-gray-500">{permission.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleEditKey}
+              disabled={!newKeyData.name}
+              className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Regenerate API Key Dialog */}
+      <Dialog open={isRegenerateDialogOpen} onOpenChange={setIsRegenerateDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Regenerate API Key</DialogTitle>
+            <DialogDescription>
+              This will generate a new API key. Your old key will stop working immediately.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="bg-white dark:bg-gray-900 border border-yellow-500 rounded-lg p-4 shadow-sm">
+            <div className="flex items-start space-x-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
+                  Warning: This action cannot be undone
+                </h4>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                  Make sure to update all applications using this API key before proceeding.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRegenerateDialogOpen(false)} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRegenerateKey}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600 hover:border-yellow-700"
+            >
+              Regenerate Key
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete API Key Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Delete API Key</DialogTitle>
+            <DialogDescription>
+              This will permanently delete the API key "{selectedKey?.name}".
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="bg-white dark:bg-gray-900 border border-red-500 rounded-lg p-4 shadow-sm">
+            <div className="flex items-start space-x-3">
+              <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-medium text-red-900 dark:text-red-100">
+                  This action cannot be undone
+                </h4>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  All applications using this API key will stop working immediately.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => selectedKey && deleteKey(selectedKey.id)}
+              className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
+            >
+              Delete Key
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

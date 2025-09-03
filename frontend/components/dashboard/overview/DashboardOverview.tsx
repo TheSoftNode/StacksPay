@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import { 
   TrendingUp,
   TrendingDown,
@@ -14,7 +15,10 @@ import {
   Eye,
   Calendar,
   Filter,
-  Download
+  Download,
+  Wallet,
+  Landmark,
+  RefreshCw
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,6 +31,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import MetricCard from './MetricCard'
 import QuickActions from './QuickActions'
 import RecentPayments from './RecentPayments'
@@ -55,9 +69,17 @@ const mockStats: DashboardStats = {
 }
 
 const DashboardOverview = () => {
+  const router = useRouter()
   const [stats, setStats] = useState<DashboardStats>(mockStats)
   const [timeRange, setTimeRange] = useState('7d')
   const [loading, setLoading] = useState(false)
+  const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false)
+  const [withdrawalData, setWithdrawalData] = useState({
+    amount: '',
+    method: '',
+    recipientAddress: ''
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const refreshData = async () => {
     setLoading(true)
@@ -65,6 +87,23 @@ const DashboardOverview = () => {
     await new Promise(resolve => setTimeout(resolve, 1000))
     setLoading(false)
   }
+
+  const handleWithdrawal = async () => {
+    setIsSubmitting(true)
+    // Simulate withdrawal processing
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    setIsSubmitting(false)
+    setIsWithdrawalModalOpen(false)
+    setWithdrawalData({ amount: '', method: '', recipientAddress: '' })
+  }
+
+  const withdrawalMethods = [
+    { id: 'bank_usd', name: 'Bank Transfer (ACH)', type: 'bank', currency: 'USD', time: '1-3 business days' },
+    { id: 'crypto_btc', name: 'Bitcoin Wallet', type: 'crypto', currency: 'sBTC', time: '10-30 minutes' },
+    { id: 'crypto_usdc', name: 'USDC Wallet', type: 'crypto', currency: 'USDC', time: '5-15 minutes' }
+  ]
+
+  const selectedMethod = withdrawalMethods.find(m => m.id === withdrawalData.method)
 
   useEffect(() => {
     refreshData()
@@ -89,7 +128,7 @@ const DashboardOverview = () => {
               <Calendar className="mr-2 h-4 w-4" />
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
               <SelectItem value="24h">Last 24 hours</SelectItem>
               <SelectItem value="7d">Last 7 days</SelectItem>
               <SelectItem value="30d">Last 30 days</SelectItem>
@@ -97,12 +136,12 @@ const DashboardOverview = () => {
             </SelectContent>
           </Select>
           
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
           
-          <Button size="sm" onClick={refreshData} disabled={loading}>
+          <Button size="sm" onClick={refreshData} disabled={loading} className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700">
             {loading ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
             ) : (
@@ -157,7 +196,7 @@ const DashboardOverview = () => {
         {/* Charts and Analytics */}
         <div className="lg:col-span-2 space-y-6">
           {/* Payment Chart */}
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -167,7 +206,7 @@ const DashboardOverview = () => {
                   </CardDescription>
                 </div>
                 <Tabs defaultValue="volume" className="w-auto">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800">
                     <TabsTrigger value="volume">Volume</TabsTrigger>
                     <TabsTrigger value="count">Count</TabsTrigger>
                   </TabsList>
@@ -180,7 +219,7 @@ const DashboardOverview = () => {
           </Card>
 
           {/* Recent Payments */}
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -189,7 +228,12 @@ const DashboardOverview = () => {
                     Latest transactions from your customers
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => router.push('/dashboard/payments')}
+                  className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
                   <Eye className="mr-2 h-4 w-4" />
                   View All
                 </Button>
@@ -207,7 +251,7 @@ const DashboardOverview = () => {
           <QuickActions />
 
           {/* Network Status */}
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-medium">Network Status</CardTitle>
             </CardHeader>
@@ -217,7 +261,7 @@ const DashboardOverview = () => {
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Stacks Network</span>
                 </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-700">
+                <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
                   Operational
                 </Badge>
               </div>
@@ -227,7 +271,7 @@ const DashboardOverview = () => {
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Bitcoin Network</span>
                 </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-700">
+                <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
                   Operational
                 </Badge>
               </div>
@@ -237,7 +281,7 @@ const DashboardOverview = () => {
                   <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">sBTC Bridge</span>
                 </div>
-                <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+                <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
                   Testnet
                 </Badge>
               </div>
@@ -252,7 +296,7 @@ const DashboardOverview = () => {
           </Card>
 
           {/* Balance Overview */}
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-medium">Balance Overview</CardTitle>
             </CardHeader>
@@ -275,7 +319,12 @@ const DashboardOverview = () => {
               </div>
               
               <div className="pt-2 border-t border-gray-200 dark:border-gray-800">
-                <Button variant="outline" size="sm" className="w-full">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800" 
+                  onClick={() => setIsWithdrawalModalOpen(true)}
+                >
                   Withdraw Funds
                 </Button>
               </div>
@@ -283,6 +332,112 @@ const DashboardOverview = () => {
           </Card>
         </div>
       </div>
+
+      {/* Withdrawal Modal */}
+      <Dialog open={isWithdrawalModalOpen} onOpenChange={setIsWithdrawalModalOpen}>
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Withdraw Funds</DialogTitle>
+            <DialogDescription>
+              Transfer your available balance to an external account
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="withdrawal-amount">Amount</Label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  id="withdrawal-amount"
+                  type="number"
+                  placeholder="0.00"
+                  value={withdrawalData.amount}
+                  onChange={(e) => setWithdrawalData(prev => ({ ...prev, amount: e.target.value }))}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWithdrawalData(prev => ({ ...prev, amount: '2.847' }))}
+                  className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  Max
+                </Button>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Available: 2.847 sBTC (~$12,847.32)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Withdrawal Method</Label>
+              <div className="space-y-2">
+                {withdrawalMethods.map((method) => (
+                  <div
+                    key={method.id}
+                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      withdrawalData.method === method.id
+                        ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/10'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600'
+                    }`}
+                    onClick={() => setWithdrawalData(prev => ({ ...prev, method: method.id }))}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        {method.type === 'bank' ? (
+                          <Landmark className="h-4 w-4" />
+                        ) : (
+                          <Wallet className="h-4 w-4" />
+                        )}
+                        <div>
+                          <p className="font-medium text-sm">{method.name}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {method.currency} • {method.time}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {selectedMethod?.type === 'crypto' && (
+              <div className="space-y-2">
+                <Label htmlFor="recipient-address">
+                  Recipient Address *
+                </Label>
+                <Input
+                  id="recipient-address"
+                  placeholder={`Enter ${selectedMethod.currency} address`}
+                  value={withdrawalData.recipientAddress}
+                  onChange={(e) => setWithdrawalData(prev => ({ ...prev, recipientAddress: e.target.value }))}
+                  className="font-mono text-sm"
+                />
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsWithdrawalModalOpen(false)} 
+              className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleWithdrawal}
+              disabled={!withdrawalData.amount || !withdrawalData.method || (selectedMethod?.type === 'crypto' && !withdrawalData.recipientAddress) || isSubmitting}
+              className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+            >
+              {isSubmitting && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Processing...' : 'Withdraw'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

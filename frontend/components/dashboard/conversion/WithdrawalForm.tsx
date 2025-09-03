@@ -197,7 +197,7 @@ export function WithdrawalForm({ balances, onWithdrawalSubmit }: WithdrawalFormP
   };
 
   return (
-    <Card>
+    <Card className="bg-white dark:bg-gray-900 border shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ArrowUpRight className="h-5 w-5" />
@@ -216,7 +216,7 @@ export function WithdrawalForm({ balances, onWithdrawalSubmit }: WithdrawalFormP
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                 {availableBalances.map((balance) => (
                   <SelectItem key={balance.currency} value={balance.currency}>
                     {balance.currency} - Available: {balance.available}
@@ -267,8 +267,8 @@ export function WithdrawalForm({ balances, onWithdrawalSubmit }: WithdrawalFormP
                   key={method.id}
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                     selectedMethod === method.id
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                      ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/10'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600'
                   }`}
                   onClick={() => setSelectedMethod(method.id)}
                 >
@@ -331,7 +331,7 @@ export function WithdrawalForm({ balances, onWithdrawalSubmit }: WithdrawalFormP
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <Card className="bg-gray-50 dark:bg-gray-800/50">
+              <Card className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
                 <CardContent className="p-4">
                   <h4 className="font-medium mb-3">Withdrawal Summary</h4>
                   <div className="space-y-2 text-sm">
@@ -365,7 +365,7 @@ export function WithdrawalForm({ balances, onWithdrawalSubmit }: WithdrawalFormP
           <Button
             type="submit"
             disabled={!canWithdraw}
-            className="w-full"
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
             size="lg"
           >
             {isSubmitting && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
@@ -373,7 +373,7 @@ export function WithdrawalForm({ balances, onWithdrawalSubmit }: WithdrawalFormP
           </Button>
 
           {/* Info */}
-          <Alert>
+          <Alert className="bg-white dark:bg-gray-900 border shadow-sm">
             <Info className="h-4 w-4" />
             <AlertDescription>
               Withdrawals are processed securely through our verified partners. 

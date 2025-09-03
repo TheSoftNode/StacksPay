@@ -182,7 +182,7 @@ export default function ConversionPage() {
       </div>
 
       {/* Total Balance Card */}
-      <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+      <Card className="bg-orange-600 text-white border-0 shadow-lg">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -226,7 +226,7 @@ export default function ConversionPage() {
       </Card>
 
       {/* Navigation Tabs */}
-      <div className="flex space-x-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+      <div className="flex space-x-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-1 rounded-lg shadow-sm">
         {[
           { id: 'overview', label: 'Overview', icon: Wallet },
           { id: 'convert', label: 'Convert', icon: ArrowUpDown },
@@ -238,8 +238,8 @@ export default function ConversionPage() {
             onClick={() => setActiveTab(tab.id as any)}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors flex-1 ${
               activeTab === tab.id
-                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                ? 'bg-orange-600 text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
             }`}
           >
             <tab.icon className="h-4 w-4" />
@@ -269,7 +269,7 @@ export default function ConversionPage() {
             </div>
 
             {/* Recent Activity */}
-            <Card>
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
