@@ -22,27 +22,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useWalletAuth } from '@/hooks/use-wallet-auth';
 import { apiClient } from '@/lib/api/auth-api';
+import Logo from '@/components/shared/Logo';
 
 const features = [
   {
     icon: Zap,
-    title: 'Lightning Fast Payments',
-    description: 'Accept Bitcoin payments in under 10 seconds with sBTC',
+    title: 'Instant Settlements',
+    description: 'Real-time Bitcoin payments with sub-second confirmations',
   },
   {
     icon: Shield,
-    title: '83% Lower Fees',
-    description: 'Only 0.5% vs traditional 2.9% + 30¢ processing fees',
+    title: 'Advanced Security',
+    description: 'Bank-grade encryption with non-custodial wallet integration',
   },
   {
     icon: Globe,
-    title: 'Global by Design',
-    description: 'No borders, no currency conversion, worldwide acceptance',
+    title: 'Global Infrastructure',
+    description: 'Built on Stacks blockchain with worldwide accessibility',
   },
   {
     icon: TrendingUp,
-    title: 'No Chargebacks',
-    description: 'Bitcoin\'s finality protects your revenue completely',
+    title: 'Zero Risk Payments',
+    description: 'Immutable transactions eliminate payment disputes',
   },
 ];
 
@@ -131,53 +132,53 @@ export default function RegisterPage() {
 
 
   return (
-    <div className="grid lg:grid-cols-2 gap-0 min-h-screen">
+    <div className="grid lg:grid-cols-2 gap-0 min-h-screen pt-16">
           {/* Features Section */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
-            className="flex  justify-center p-12 lg:p-16"
+            className="relative flex justify-center p-8 lg:p-12 bg-white dark:bg-gray-900"
           >
-            <div className="max-w-lg space-y-8">
+            <div className="max-w-lg space-y-6">
             <div>
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="inline-flex items-center space-x-2 text-orange-600 font-semibold text-sm mb-4"
+                className="inline-flex items-center space-x-2 text-orange-600 font-semibold text-sm mb-6"
               >
-                <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
+                <div className="w-2 h-2 bg-orange-600 rounded-full animate-pulse"></div>
                 <span>STACKSPAY</span>
               </motion.div>
-              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                The Stripe Experience
+              <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4 leading-tight">
+                Bitcoin Payments
                 <br />
-                <span className="text-orange-600">for Bitcoin Payments</span>
+                <span className="text-orange-600">Made Simple</span>
               </h1>
-              <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-                Accept Bitcoin with the simplicity that made Stripe worth $95B. 
-                3-line integration, 83% lower fees, zero chargebacks.
+              <p className="text-lg text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+                Modern Bitcoin payment infrastructure built for businesses. 
+                Secure, fast, and reliable payment processing.
               </p>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-2">
               {features.map((feature, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 + index * 0.1 }}
-                  className="flex items-start space-x-4"
+                  className="group flex items-center space-x-3 p-3 rounded-xl bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 border border-gray-200 dark:border-gray-700"
                 >
-                  <div className="flex-shrink-0 w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
-                    <feature.icon className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                  <div className="flex-shrink-0 w-8 h-8 bg-orange-600 dark:bg-orange-500 rounded-lg flex items-center justify-center shadow-sm">
+                    <feature.icon className="h-4 w-4 text-white" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm mb-0.5">
                       {feature.title}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 leading-tight">
                       {feature.description}
                     </p>
                   </div>
@@ -185,22 +186,6 @@ export default function RegisterPage() {
               ))}
             </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6"
-            >
-              <div className="flex items-center space-x-3 mb-3">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <span className="font-semibold text-gray-900 dark:text-gray-100">
-                  Join thousands of businesses
-                </span>
-              </div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                StacksPay is trusted by ambitious startups and enterprises of every size to power their Bitcoin payment infrastructure.
-              </p>
-            </motion.div>
             </div>
           </motion.div>
 
@@ -209,19 +194,42 @@ export default function RegisterPage() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="flex items-center justify-center p-12 lg:p-16 bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800"
+            className="relative flex items-center justify-center p-8 lg:p-12 bg-gradient-to-br from-orange-50 via-white to-orange-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-800 overflow-hidden"
           >
-            <div className="w-full max-w-md">
-                <div className="text-center mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                    Create your StacksPay account
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Start accepting Bitcoin payments in minutes
-                  </p>
-                </div>
+            {/* Unique Brand Pattern Background */}
+            <div className="absolute inset-0 opacity-20 dark:opacity-10">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-orange-300 to-yellow-400 rounded-full blur-2xl"></div>
+            </div>
+            
+            {/* Hexagonal Pattern Overlay */}
+            <div className="absolute inset-0 opacity-5 dark:opacity-10">
+              <div 
+                className="w-full h-full"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill='none' stroke='%23f97316' stroke-width='1' opacity='0.3'/%3E%3C/svg%3E")`,
+                  backgroundSize: '60px 60px'
+                }}
+              />
+            </div>
+            <div className="w-full max-w-lg relative">
+              {/* Unique Form Card */}
+              <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-orange-200 dark:border-orange-800/30 backdrop-blur-sm overflow-hidden">
+                {/* Form Content */}
+                <div className="p-8">
+                  <div className="text-center mb-6">
+                    <div className="mb-4 flex justify-center">
+                      <Logo size="md" showText={false} />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                      Create Account
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Start accepting Bitcoin payments today
+                    </p>
+                  </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                  <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="name" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Business name
@@ -233,7 +241,7 @@ export default function RegisterPage() {
                       required
                       value={formData.name}
                       onChange={handleChange}
-                      className="mt-1 h-11 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500"
+                      className="mt-1 h-10 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 rounded-lg"
                       placeholder="Your business name"
                     />
                   </div>
@@ -249,7 +257,7 @@ export default function RegisterPage() {
                       required
                       value={formData.email}
                       onChange={handleChange}
-                      className="mt-1 h-11 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500"
+                      className="mt-1 h-10 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 rounded-lg"
                       placeholder="business@example.com"
                     />
                   </div>
@@ -263,7 +271,7 @@ export default function RegisterPage() {
                       onValueChange={(value) => setFormData(prev => ({ ...prev, businessType: value }))}
                       required
                     >
-                      <SelectTrigger className="mt-1 h-11 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500">
+                      <SelectTrigger className="mt-1 h-10 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 rounded-lg">
                         <SelectValue placeholder="Select business type" />
                       </SelectTrigger>
                       <SelectContent className="bg-white dark:bg-gray-900">
@@ -290,7 +298,7 @@ export default function RegisterPage() {
                         required
                         value={formData.password}
                         onChange={handleChange}
-                        className="h-11 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 pr-10"
+                        className="h-10 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 rounded-lg pr-10"
                         placeholder="Create a strong password"
                       />
                       <button
@@ -319,7 +327,7 @@ export default function RegisterPage() {
                         required
                         value={formData.confirmPassword}
                         onChange={handleChange}
-                        className="h-11 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 pr-10"
+                        className="h-10 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 rounded-lg pr-10"
                         placeholder="Confirm your password"
                       />
                       <button
@@ -389,9 +397,9 @@ export default function RegisterPage() {
                   <Button
                     type="submit"
                     disabled={loading || !formData.acceptTerms}
-                    className="w-full h-12 bg-orange-600 hover:bg-orange-700 text-white text-base font-medium"
+                    className="w-full h-11 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors duration-200"
                   >
-                    {loading ? 'Creating account...' : 'Create account'}
+                    {loading ? 'Creating account...' : 'Create Account'}
                   </Button>
                 </form>
 
@@ -405,41 +413,43 @@ export default function RegisterPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6 space-y-3">
+                  <div className="mt-4 space-y-2">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={handleWalletRegister}
                       disabled={walletLoading || isRegistering}
-                      className="w-full h-12 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      className="w-full h-10 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
                     >
-                      <Wallet className="mr-3 h-5 w-5" />
-                      {walletLoading || isRegistering ? 'Connecting wallet...' : 'Sign up with Stacks Wallet'}
+                      <Wallet className="mr-2 h-4 w-4" />
+                      {walletLoading || isRegistering ? 'Connecting...' : 'Continue with Stacks Wallet'}
                     </Button>
 
                     <Button
                       type="button"
                       variant="outline"
                       disabled
-                      className="w-full h-12 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 opacity-60"
+                      className="w-full h-10 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 opacity-60 rounded-lg"
                     >
-                      <Chrome className="mr-3 h-5 w-5" />
-                      Sign up with Google
-                      <span className="ml-2 text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
-                        Coming Soon
+                      <Chrome className="mr-2 h-4 w-4" />
+                      Continue with Google
+                      <span className="ml-2 text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">
+                        Soon
                       </span>
                     </Button>
                   </div>
                 </div>
 
-                <div className="mt-8 text-center">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Already have an account?{' '}
-                    <Link href="/login" className="text-orange-600 hover:text-orange-500 font-medium">
-                      Sign in
-                    </Link>
-                  </p>
+                  <div className="mt-6 text-center">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Already have an account?{' '}
+                      <Link href="/login" className="text-orange-600 hover:text-orange-500 font-medium">
+                        Sign in
+                      </Link>
+                    </p>
+                  </div>
                 </div>
+              </div>
             </div>
           </motion.div>
       </div>
