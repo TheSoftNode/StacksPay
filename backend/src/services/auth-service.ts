@@ -333,6 +333,54 @@ export class AuthService {
   }
 
   /**
+   * Resend email verification
+   */
+  async resendEmailVerification(email: string): Promise<{ success: boolean; error?: string }> {
+    await connectToDatabase();
+
+    try {
+      const merchant = await Merchant.findOne({ email });
+
+      if (!merchant) {
+        return { success: false, error: 'Account not found' };
+      }
+
+      if (merchant.emailVerified) {
+        return { success: false, error: 'Email already verified' };
+      }
+
+      // Generate new verification token
+      const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+      merchant.emailVerificationToken = emailVerificationToken;
+      await merchant.save();
+
+      // Send verification email  
+      const emailResult = await emailService.sendWelcomeEmail(merchant.email, {
+        merchantName: merchant.name,
+        businessType: merchant.businessType || 'unknown',
+        stacksAddress: merchant.stacksAddress,
+        verificationToken: emailVerificationToken,
+      });
+
+      if (!emailResult.success) {
+        console.error('Failed to send verification email:', emailResult.error);
+        return { success: false, error: 'Failed to send verification email' };
+      }
+
+      console.log('Verification email sent successfully:', {
+        email: merchant.email,
+        messageId: emailResult.messageId,
+        previewUrl: emailResult.previewUrl
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Resend email verification error:', error);
+      return { success: false, error: 'Failed to resend verification email' };
+    }
+  }
+
+  /**
    * Logout merchant and invalidate session
    */
   async logout(merchantId: string, sessionId: string, ipAddress: string): Promise<{ success: boolean }> {

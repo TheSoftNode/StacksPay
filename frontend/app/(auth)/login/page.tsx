@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Wallet, Chrome } from 'lucide-react';
@@ -23,7 +23,9 @@ export default function LoginPage() {
   const [walletLoading, setWalletLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showVerifiedMessage, setShowVerifiedMessage] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const { login: loginWithWallet, isLoggingIn } = useWalletAuth();
   const { 
@@ -33,6 +35,16 @@ export default function LoginPage() {
     clearError,
     isAuthenticated 
   } = useAuth();
+
+  // Check for verification success
+  useEffect(() => {
+    const verified = searchParams?.get('verified');
+    if (verified === 'true') {
+      setShowVerifiedMessage(true);
+      // Auto-hide after 5 seconds
+      setTimeout(() => setShowVerifiedMessage(false), 5000);
+    }
+  }, [searchParams]);
 
   // Handle successful login
   useEffect(() => {
@@ -168,6 +180,19 @@ export default function LoginPage() {
                   Remember me on this device
                 </Label>
               </div>
+
+              {showVerifiedMessage && (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg text-sm">
+                  <div className="flex items-start space-x-2">
+                    <div className="flex-shrink-0 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center mt-0.5">
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    </div>
+                    <div className="flex-1">
+                      Email verified successfully! You can now sign in to your account.
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {(loginError || error) && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm">

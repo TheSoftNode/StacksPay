@@ -52,6 +52,8 @@ router.get('/test', (req, res) => {
       'POST /api/auth/register/wallet', 
       'POST /api/auth/login/email',
       'POST /api/auth/login/wallet',
+      'POST /api/auth/verify-email',
+      'POST /api/auth/resend-verification',
       'GET /api/auth/me',
       'POST /api/auth/logout',
       'POST /api/auth/refresh'
@@ -113,6 +115,24 @@ router.get('/wallet/challenge', authController.generateWalletChallenge.bind(auth
  *     tags: [Wallet Authentication]
  */
 router.post('/wallet/verify', authController.verifyWalletSignature.bind(authController));
+
+/**
+ * @swagger
+ * /api/auth/verify-email:
+ *   post:
+ *     summary: Verify email address with token
+ *     tags: [Authentication]
+ */
+router.post('/verify-email', authController.verifyEmail.bind(authController));
+
+/**
+ * @swagger
+ * /api/auth/resend-verification:
+ *   post:
+ *     summary: Resend email verification
+ *     tags: [Authentication]
+ */
+router.post('/resend-verification', authController.resendVerificationEmail.bind(authController));
 
 // Protected routes (require session authentication)
 /**

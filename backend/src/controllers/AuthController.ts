@@ -994,4 +994,139 @@ export class AuthController {
       });
     }
   }
+
+  /**
+   * @swagger
+   * /api/auth/verify-email:
+   *   post:
+   *     tags: [Authentication]
+   *     summary: Verify email address with token
+   *     description: Verify merchant email address using verification token sent via email
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               token:
+   *                 type: string
+   *                 description: Email verification token
+   *             required:
+   *               - token
+   *     responses:
+   *       200:
+   *         description: Email verification successful
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 message:
+   *                   type: string
+   *       400:
+   *         description: Invalid or expired token
+   *       500:
+   *         description: Server error
+   */
+  async verifyEmail(req: Request, res: Response): Promise<void> {
+    try {
+      const { token } = req.body;
+
+      if (!token) {
+        res.status(400).json({
+          success: false,
+          error: 'Verification token is required'
+        });
+        return;
+      }
+
+      const result = await authService.verifyEmail({ token });
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: 'Email verified successfully'
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+    } catch (error) {
+      logger.error('Email verification error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Email verification failed'
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/auth/resend-verification:
+   *   post:
+   *     tags: [Authentication]
+   *     summary: Resend email verification
+   *     description: Resend verification email to the merchant
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               email:
+   *                 type: string
+   *                 format: email
+   *             required:
+   *               - email
+   *     responses:
+   *       200:
+   *         description: Verification email sent successfully
+   *       400:
+   *         description: Email already verified or invalid
+   *       500:
+   *         description: Server error
+   */
+  async resendVerificationEmail(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+
+      logger.info('Resend verification request received', { email });
+
+      if (!email) {
+        res.status(400).json({
+          success: false,
+          error: 'Email is required'
+        });
+        return;
+      }
+
+      const result = await authService.resendEmailVerification(email);
+
+      if (result.success) {
+        logger.info('Verification email resent successfully', { email });
+        res.json({
+          success: true,
+          message: 'Verification email sent successfully'
+        });
+      } else {
+        logger.warn('Resend verification failed', { email, error: result.error });
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+    } catch (error) {
+      logger.error('Resend verification error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to resend verification email'
+      });
+    }
+  }
 }

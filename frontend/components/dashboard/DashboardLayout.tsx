@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from './navigation/Sidebar'
 import Navbar from './navigation/Navbar'
 import MobileMenu from './navigation/MobileMenu'
+import EmailVerificationBanner from './verification/EmailVerificationBanner'
 import { useAuth } from '@/hooks/use-auth'
 import { Toaster } from '@/components/ui/toaster'
 
@@ -83,6 +84,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           onMenuToggle={() => setSidebarOpen(true)}
           user={user}
         />
+
+        {/* Email Verification Banner */}
+        {user && <EmailVerificationBanner user={user} />}
 
         {/* Page Content */}
         <main className="flex-1">

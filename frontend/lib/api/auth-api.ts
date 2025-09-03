@@ -242,6 +242,21 @@ class ApiClient {
     });
   }
 
+  // Email verification
+  async verifyEmail(token: string): Promise<ApiResponse> {
+    return this.makeRequest('/api/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  async resendVerificationEmail(email: string): Promise<ApiResponse> {
+    return this.makeRequest('/api/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
   // Password reset
   async requestPasswordReset(email: string): Promise<ApiResponse> {
     return this.makeRequest('/api/auth/forgot-password', {

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 import { apiClient } from '@/lib/api/auth-api';
 import type { LoginRequest, RegisterRequest, WalletAuthRequest, WalletRegisterRequest } from '@/lib/api/auth-api';
@@ -15,9 +16,27 @@ export const useAuth = () => {
     queryFn: () => apiClient.getCurrentUser(),
     enabled: isAuthenticated && !!localStorage.getItem('authToken'),
     retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 0, // Always fresh data for verification status
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
+
+  // Sync server user data with store
+  useEffect(() => {
+    if (currentUser?.success && currentUser.data) {
+      const serverUser = currentUser.data;
+      setUser({
+        id: serverUser.id,
+        name: serverUser.name,
+        email: serverUser.email,
+        stacksAddress: serverUser.stacksAddress,
+        emailVerified: serverUser.emailVerified,
+        verificationLevel: serverUser.verificationLevel,
+        businessType: serverUser.businessType,
+        walletConnected: !!serverUser.stacksAddress,
+      });
+    }
+  }, [currentUser, setUser]);
 
   // Email/Password Login
   const loginWithEmailMutation = useMutation({
@@ -179,6 +198,35 @@ export const useAuth = () => {
     mutationFn: (walletData: WalletAuthRequest) => apiClient.verifyWalletSignature(walletData),
   });
 
+  // Email verification
+  const verifyEmailMutation = useMutation({
+    mutationFn: (token: string) => apiClient.verifyEmail(token),
+    onSuccess: (response) => {
+      if (response.success && user) {
+        // Update user in store immediately
+        const updatedUser = { ...user, emailVerified: true };
+        setUser(updatedUser);
+      }
+      // Also refresh current user data from server
+      queryClient.invalidateQueries({ queryKey: ['auth', 'currentUser'] });
+    },
+  });
+
+  // Resend email verification
+  const resendVerificationMutation = useMutation({
+    mutationFn: (email: string) => apiClient.resendVerificationEmail(email),
+    onSuccess: (response) => {
+      if (response.success) {
+        console.log('Resend verification email successful');
+      } else {
+        console.error('Resend verification failed:', response.error);
+      }
+    },
+    onError: (error) => {
+      console.error('Resend verification error:', error);
+    },
+  });
+
   return {
     // State
     user,
@@ -216,6 +264,14 @@ export const useAuth = () => {
     // Logout
     logout: logoutMutation.mutate,
     isLoggingOut: logoutMutation.isPending,
+
+    // Email verification
+    verifyEmail: verifyEmailMutation.mutate,
+    isVerifyingEmail: verifyEmailMutation.isPending,
+    verifyEmailError: verifyEmailMutation.error,
+    resendVerificationEmail: resendVerificationMutation.mutate,
+    isResendingVerification: resendVerificationMutation.isPending,
+    resendVerificationError: resendVerificationMutation.error,
 
     // Utilities
     clearError: useAuthStore.getState().clearError,
