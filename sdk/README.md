@@ -1,20 +1,20 @@
-# sBTC Gateway SDK Development Setup
+# StacksPay SDK Development Setup
 
-This directory contains the official SDKs for the sBTC Payment Gateway.
+This directory contains the official SDKs for StacksPay - The Stripe for sBTC.
 
 ## Available SDKs
 
-### Node.js SDK (`@sbtc-gateway/node`)
+### Node.js SDK (`@stackspay/node`)
 
-- **Package**: `@sbtc-gateway/node`
-- **Installation**: `npm install @sbtc-gateway/node`
+- **Package**: `@stackspay/node`
+- **Installation**: `npm install @stackspay/node`
 - **Language**: TypeScript/JavaScript
 - **Node.js**: >= 14.0.0
 
-### Python SDK (`sbtc-gateway`)
+### Python SDK (`stackspay`)
 
-- **Package**: `sbtc-gateway`
-- **Installation**: `pip install sbtc-gateway`
+- **Package**: `stackspay`
+- **Installation**: `pip install stackspay`
 - **Language**: Python
 - **Python**: >= 3.8
 
@@ -23,9 +23,9 @@ This directory contains the official SDKs for the sBTC Payment Gateway.
 ### Node.js
 
 ```javascript
-const SBTCGateway = require("@sbtc-gateway/node");
+const StacksPay = require("@stackspay/node");
 
-const client = new SBTCGateway("sk_live_your_api_key");
+const client = new StacksPay("sk_live_your_api_key");
 const payment = await client.payments.create({
   amount: 50000,
   currency: "sbtc",
@@ -36,10 +36,10 @@ const payment = await client.payments.create({
 ### Python
 
 ```python
-import sbtc_gateway
+import stackspay
 
-client = sbtc_gateway.SBTCGateway('sk_live_your_api_key')
-payment = client.payments.create(sbtc_gateway.PaymentRequest(
+client = stackspay.Client('sk_live_your_api_key')
+payment = client.payments.create(stackspay.PaymentRequest(
     amount=50000,
     currency='sbtc',
     description='Premium subscription'

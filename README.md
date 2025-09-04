@@ -14,6 +14,7 @@
 StacksPay is a full-stack payment processing solution that bridges traditional e-commerce with the Stacks Bitcoin Layer. It enables merchants to accept Bitcoin, STX, and sBTC payments with the same ease as traditional payment processors like Stripe.
 
 ### Key Value Propositions
+
 - **Multi-Currency Support**: Accept Bitcoin, STX, and sBTC payments - settle in sBTC
 - **Stripe-like Experience**: Familiar APIs and integration patterns
 - **No Stacks Knowledge Required**: Merchants can start without understanding blockchain
@@ -23,14 +24,16 @@ StacksPay is a full-stack payment processing solution that bridges traditional e
 ## 🚀 Key Features
 
 ### For Merchants
+
 - **Zero-Crypto Onboarding**: Start accepting payments without owning crypto
-- **Payment Links**: Generate shareable payment links instantly  
+- **Payment Links**: Generate shareable payment links instantly
 - **Real-time Dashboard**: Track payments, revenue, and customer analytics
 - **Multi-Wallet Support**: Leather, Xverse, and all major Stacks wallets
 - **QR Code Payments**: Mobile-friendly payment experience
 - **Automated Settlement**: All payments auto-convert to sBTC
 
 ### For Developers
+
 - **RESTful API**: Complete payment processing API (Stripe-compatible)
 - **SDKs Available**: Node.js and Python SDKs with more coming
 - **Webhook Support**: Real-time payment notifications
@@ -38,6 +41,7 @@ StacksPay is a full-stack payment processing solution that bridges traditional e
 - **Test Environment**: Full sandbox for testing
 
 ### Technical Innovation
+
 - **sBTC Native**: First payment gateway built specifically for sBTC
 - **Cross-Chain Bridge**: Seamless Bitcoin ↔ sBTC conversion
 - **Smart Contract Backend**: Secure, decentralized payment processing
@@ -80,17 +84,20 @@ sbtc-payment-gateway/
 ## 🚦 Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
 - MongoDB
 - Git
 
 ### 1. Clone Repository
+
 ```bash
 git clone https://github.com/TheSoftNode/sbtc-payment-gateway
 cd sbtc-payment-gateway
 ```
 
 ### 2. Setup Backend
+
 ```bash
 cd backend
 npm install
@@ -100,6 +107,7 @@ npm run dev
 ```
 
 ### 3. Setup Frontend
+
 ```bash
 cd frontend
 npm install
@@ -109,6 +117,7 @@ npm run dev
 ```
 
 ### 4. Deploy Contracts (Optional)
+
 ```bash
 cd contracts
 npm install
@@ -126,6 +135,7 @@ clarinet deploy --testnet
 ### Environment Variables
 
 **Backend (.env)**
+
 ```env
 MONGODB_URI=mongodb://localhost:27017/sbtc_payment_gateway
 JWT_SECRET=your-secret-key
@@ -134,54 +144,72 @@ BITCOIN_NETWORK=testnet
 ```
 
 **Frontend (.env.local)**
+
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:4000
 NEXT_PUBLIC_STACKS_NETWORK=testnet
 ```
 
-## 📖 StacksPay API Usage
+## � Complete Documentation
 
-### Create Payment (Stripe-like)
-```javascript
-POST /api/payments
+**👉 [View Complete Documentation](./docs/README.md)**
 
-{
-  "amount": 1000000,
-  "currency": "BTC",
-  "description": "Order #123",
-  "successUrl": "https://example.com/success"
-}
+### Quick Links
+
+- **[🚀 Integration Guide](./docs/integration-guide.md)** - Get started in 5 minutes
+- **[🛠️ SDK Guide](./docs/sdk-guide.md)** - Official Node.js and Python SDKs
+- **[📘 API Reference](./docs/api-reference.md)** - Complete API documentation
+- **[🏗️ System Architecture](./docs/architecture.md)** - How everything works and connects
+
+### SDK Installation
+
+**Node.js SDK**
+
+```bash
+npm install @stackspay/node
 ```
 
-### SDK Example
+**Python SDK**
+
+```bash
+pip install stackspay
+```
+
+### Quick API Example
+
 ```javascript
-const StacksPay = require('@stackspay/node');
-const client = new StacksPay('your-api-key');
+const StacksPay = require("@stackspay/node");
+const client = new StacksPay("your-api-key");
 
 const payment = await client.payments.create({
   amount: 1000000,
-  currency: 'BTC',
-  description: 'Order #123'
+  currency: "BTC",
+  description: "Order #123",
 });
 
 console.log(payment.checkoutUrl);
 ```
 
+**📖 [View Full SDK Documentation](./docs/sdk-guide.md)**
+
 ## 🏅 Hackathon Highlights
 
 ### Innovation
+
 - **First sBTC Payment Gateway**: Native support for wrapped Bitcoin on Stacks
 - **Stripe for Web3**: Familiar developer experience for crypto payments
 - **No-Crypto Onboarding**: Merchants can start without blockchain knowledge
 - **Cross-Chain Payments**: Seamless Bitcoin ↔ sBTC conversion
 
 ### Impact
+
 - **Merchant Adoption**: Easy integration for e-commerce platforms
 - **Ecosystem Growth**: Tools to drive Stacks adoption
 - **Bitcoin Utility**: Enhanced Bitcoin use cases through sBTC
 - **Developer Experience**: Reduce crypto payment integration from weeks to hours
 
 ### Technical Excellence
+
 - **Production Ready**: Full error handling, monitoring, security
 - **Scalable Design**: Microservices architecture ready for scale
 - **Real Money**: Processes actual sBTC testnet transactions
@@ -208,17 +236,20 @@ console.log(payment.checkoutUrl);
 ## 🤝 Why StacksPay Wins
 
 ### For Judges
+
 - **Real Innovation**: First sBTC-native payment processor
 - **Immediate Impact**: Solves real merchant pain points
 - **Technical Depth**: Full-stack solution with smart contracts
 - **Demo-Ready**: Works with real money on testnet
 
 ### For Ecosystem
+
 - **Drives Adoption**: Makes Stacks accessible to traditional businesses
 - **Developer Tools**: Reduces integration complexity
 - **Network Effects**: More merchants = more users = more value
 
 ### For Users
+
 - **Choice**: Pay with BTC, STX, or sBTC
 - **Speed**: STX payments confirm in 6 seconds
 - **Cost**: Lower fees than traditional processors
