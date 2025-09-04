@@ -61,7 +61,7 @@ router.post('/', asyncHandler(paymentController.createPayment.bind(paymentContro
 
 /**
  * @swagger
- * /api/v1/payments/{id}:
+ * /api/v1/payments/{paymentId}:
  *   get:
  *     tags: [Payments]
  *     summary: Get payment details
@@ -69,7 +69,7 @@ router.post('/', asyncHandler(paymentController.createPayment.bind(paymentContro
  *       - ApiKeyAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: paymentId
  *         required: true
  *         schema:
  *           type: string
@@ -99,10 +99,10 @@ router.get('/:paymentId', asyncHandler(paymentController.getPayment.bind(payment
  *           type: integer
  *           default: 10
  *       - in: query
- *         name: offset
+ *         name: page
  *         schema:
  *           type: integer
- *           default: 0
+ *           default: 1
  *     responses:
  *       200:
  *         description: Payments retrieved successfully
@@ -111,7 +111,7 @@ router.get('/', asyncHandler(paymentController.listPayments.bind(paymentControll
 
 /**
  * @swagger
- * /api/v1/payments/{id}/verify:
+ * /api/v1/payments/{paymentId}/verify:
  *   post:
  *     tags: [Payments]
  *     summary: Verify payment with blockchain transaction
@@ -119,7 +119,7 @@ router.get('/', asyncHandler(paymentController.listPayments.bind(paymentControll
  *       - ApiKeyAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: paymentId
  *         required: true
  *         schema:
  *           type: string
@@ -152,6 +152,41 @@ router.get('/', asyncHandler(paymentController.listPayments.bind(paymentControll
  *         description: Payment verified successfully
  */
 router.post('/:paymentId/verify', asyncHandler(paymentController.verifyPayment.bind(paymentController)));
+
+/**
+ * @swagger
+ * /api/v1/payments/{paymentId}/confirm:
+ *   post:
+ *     tags: [Payments]
+ *     summary: Confirm payment with blockchain transaction
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: paymentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - txHash
+ *             properties:
+ *               txHash:
+ *                 type: string
+ *               signature:
+ *                 type: string
+ *               publicKey:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Payment confirmed successfully
+ */
+router.post('/:paymentId/confirm', asyncHandler(paymentController.verifyPayment.bind(paymentController)));
 
 /**
  * @swagger

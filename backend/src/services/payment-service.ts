@@ -1,7 +1,7 @@
 import { connectToDatabase } from '@/config/database';
 import { conversionService } from './conversion-service';
 import { webhookService } from './webhook-service';
-// Multi-wallet auth service moved to frontend
+import { signatureVerificationService } from './signature-verification-service';
 import { Payment } from '@/models/Payment';
 import { Merchant } from '@/models/Merchant';
 
@@ -376,10 +376,24 @@ export class PaymentService {
     error?: string;
   }> {
     try {
-      // Use MultiWalletAuthService for wallet verification
-      const authResult = await multiWalletAuthService.verifyWalletSignature(authRequest);
+      // Use SignatureVerificationService for wallet verification
+      const authResult = await signatureVerificationService.verifyPaymentAuthorization({
+        address: authRequest.address,
+        signature: authRequest.signature,
+        message: authRequest.message,
+        publicKey: authRequest.publicKey,
+        walletType: authRequest.walletType,
+        paymentId: authRequest.paymentId,
+        amount: authRequest.amount,
+      });
       
-      return authResult;
+      return {
+        success: authResult.success,
+        verified: authResult.verified,
+        walletType: authResult.walletType,
+        paymentMethod: authResult.paymentMethod,
+        error: authResult.error,
+      };
     } catch (error) {
       console.error('Wallet authentication error:', error);
       return {
@@ -520,14 +534,14 @@ export class PaymentService {
     paymentId?: string,
     amount?: number
   ): string {
-    return multiWalletAuthService.generateWalletChallenge(address, walletType, paymentId, amount);
+    return signatureVerificationService.generatePaymentChallenge(address, walletType, paymentId || '', amount || 0);
   }
 
   /**
    * Get supported wallets for payment options
    */
   getSupportedWallets() {
-    return multiWalletAuthService.getSupportedWallets();
+    return signatureVerificationService.getSupportedWallets();
   }
 
   /**
@@ -644,16 +658,25 @@ export class PaymentService {
     switch (method) {
       case 'btc':
       case 'sbtc':
-        qrData = `bitcoin:${address}?amount=${amount}`;
+        // Bitcoin URI scheme for wallet compatibility
+        qrData = `bitcoin:${address}?amount=${amount / 100000000}`; // Convert satoshis to BTC
         break;
       case 'stx':
-        qrData = `stacks:${address}?amount=${amount}`;
+        // Stacks payment URI
+        qrData = `stacks:${address}?amount=${amount / 1000000}`; // Convert microSTX to STX
         break;
       default:
         qrData = address;
     }
     
-    return await QRCode.toDataURL(qrData);
+    return await QRCode.toDataURL(qrData, {
+      width: 256,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
   }
 
   /**

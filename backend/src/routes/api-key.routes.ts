@@ -1,5 +1,5 @@
 import express from 'express';
-import { authMiddleware } from '@/middleware/auth.middleware';
+import { sessionMiddleware } from '@/middleware/auth.middleware';
 import { asyncHandler } from '@/middleware/error.middleware';
 import { createLogger } from '@/utils/logger';
 import { Merchant } from '@/models/Merchant';
@@ -10,7 +10,7 @@ const router = express.Router();
 const logger = createLogger('ApiKeyController');
 
 // Apply JWT middleware to all API key routes (merchant dashboard only)
-router.use(authMiddleware);
+router.use(sessionMiddleware);
 
 /**
  * Generate new API key for merchant
@@ -130,8 +130,8 @@ router.get('/', asyncHandler(async (req: express.Request, res: express.Response)
 
     // Return API keys without sensitive data
     const apiKeys = merchant.apiKeys
-      .filter(key => key.isActive)
-      .map(key => ({
+      .filter((key: any) => key.isActive)
+      .map((key: any) => ({
         keyId: key.keyId,
         name: key.name,
         keyPreview: key.keyPreview,
@@ -185,7 +185,7 @@ router.delete('/:keyId', asyncHandler(async (req: express.Request, res: express.
     }
 
     // Find and deactivate the API key
-    const apiKey = merchant.apiKeys.find(key => key.keyId === keyId);
+    const apiKey = merchant.apiKeys.find((key: any) => key.keyId === keyId);
     if (!apiKey) {
       res.status(404).json({
         success: false,
@@ -243,7 +243,7 @@ router.put('/:keyId', asyncHandler(async (req: express.Request, res: express.Res
     }
 
     // Find and update the API key
-    const apiKey = merchant.apiKeys.find(key => key.keyId === keyId);
+    const apiKey = merchant.apiKeys.find((key: any) => key.keyId === keyId);
     if (!apiKey) {
       res.status(404).json({
         success: false,

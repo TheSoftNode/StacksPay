@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/config/database';
 import { coinbaseCommerceService } from './coinbase-commerce-service';
 import { webhookService } from './webhook-service';
 import { circleApiService } from './circle';
+import { ConversionRate, ConversionResult, ConversionExecution } from '../interfaces/conversion.interface';
 
 
 /**

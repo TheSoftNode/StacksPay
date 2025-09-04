@@ -6,6 +6,7 @@ import {
   PaymentUpdateRequest, 
   PaymentListQuery 
 } from '@/interfaces/payment.interface';
+import * as QRCode from 'qrcode';
 
 const logger = createLogger('PaymentController');
 
@@ -491,13 +492,21 @@ export class PaymentController {
         url: `${process.env.FRONTEND_URL}/pay/${paymentId}`
       };
 
-      // Generate QR code (you'll need to implement QR generation)
-      // For now, return the data that would be in the QR code
+      // Generate actual QR code using the installed qrcode library
+      const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {
+        width: size,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+
       res.json({
         success: true,
         data: {
           qrData: JSON.stringify(qrData),
-          qrUrl: `data:image/svg+xml;base64,${Buffer.from(JSON.stringify(qrData)).toString('base64')}`,
+          qrUrl: qrCodeDataUrl,
           size
         }
       });
@@ -549,11 +558,21 @@ export class PaymentController {
         expiresAt: payment.expiresAt
       };
 
+      // Generate actual QR code using the installed qrcode library
+      const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {
+        width: size,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+
       res.json({
         success: true,
         data: {
           qrData: JSON.stringify(qrData),
-          qrUrl: `data:image/svg+xml;base64,${Buffer.from(JSON.stringify(qrData)).toString('base64')}`,
+          qrUrl: qrCodeDataUrl,
           size,
           expiresAt: payment.expiresAt
         }

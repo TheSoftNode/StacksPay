@@ -4,377 +4,13 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from '@/utils/errors';
 import { createLogger } from '@/utils/logger';
-import config from '@/config';
+import { PaymentGatewayError, ErrorCode, createStandardError } from '@/utils/error-codes';
 
-const logger = createLogger('ErrorHandler');
-
-interface ErrorResponse {
-  success: false;
-  error: {
-    message: string;
-    code?: string;
-    details?: any;
-    timestamp: string;
-    requestId?: string;
-  };
-  stack?: string;
-}
+const logger = createLogger('ErrorMiddleware');
 
 /**
- * Main error handling middleware
- * Should be the last middleware in the chain
- */
-export const errorHandler = (
-  error: Error | AppError,
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
-  const isDevelopment = config.nodeEnv === 'development';
-  const isProduction = config.nodeEnv === 'production';
-
-  // Generate unique request ID for tracking
-  const requestId = req.headers['x-request-id'] as string || generateRequestId();
-
-  // Log the error with context
-  logError(error, req, requestId);
-
-  // Handle different error types
-  if (error instanceof AppError) {
-    handleAppError(error, req, res, requestId, isDevelopment);
-  } else if (error.name === 'ValidationError') {
-    handleValidationError(error, req, res, requestId);
-  } else if (error.name === 'CastError') {
-    handleCastError(error, req, res, requestId);
-  } else if (error.name === 'MongoError' || error.name === 'MongoServerError') {
-    handleMongoError(error, req, res, requestId);
-  } else if (error.name === 'JsonWebTokenError') {
-    handleJWTError(error, req, res, requestId);
-  } else if (error.name === 'TokenExpiredError') {
-    handleTokenExpiredError(error, req, res, requestId);
-  } else if (error.name === 'MulterError') {
-    handleMulterError(error, req, res, requestId);
-  } else {
-    handleGenericError(error, req, res, requestId, isDevelopment);
-  }
-};
-
-/**
- * Handle custom AppError instances
- */
-function handleAppError(
-  error: AppError,
-  req: Request,
-  res: Response,
-  requestId: string,
-  isDevelopment: boolean
-): void {
-  const response: ErrorResponse = {
-    success: false,
-    error: {
-      message: error.message,
-      code: error.errorCode,
-      details: error.details,
-      timestamp: new Date().toISOString(),
-      requestId
-    }
-  };
-
-  if (isDevelopment) {
-    response.stack = error.stack;
-  }
-
-  res.status(error.statusCode).json(response);
-}
-
-/**
- * Handle MongoDB validation errors
- */
-function handleValidationError(
-  error: any,
-  req: Request,
-  res: Response,
-  requestId: string
-): void {
-  const errors = Object.values(error.errors).map((err: any) => ({
-    field: err.path,
-    message: err.message,
-    value: err.value
-  }));
-
-  const response: ErrorResponse = {
-    success: false,
-    error: {
-      message: 'Validation failed',
-      code: 'VALIDATION_ERROR',
-      details: { errors },
-      timestamp: new Date().toISOString(),
-      requestId
-    }
-  };
-
-  res.status(400).json(response);
-}
-
-/**
- * Handle MongoDB cast errors (invalid ObjectId, etc.)
- */
-function handleCastError(
-  error: any,
-  req: Request,
-  res: Response,
-  requestId: string
-): void {
-  const response: ErrorResponse = {
-    success: false,
-    error: {
-      message: `Invalid ${error.path}: ${error.value}`,
-      code: 'INVALID_DATA_FORMAT',
-      details: {
-        field: error.path,
-        value: error.value,
-        expectedType: error.kind
-      },
-      timestamp: new Date().toISOString(),
-      requestId
-    }
-  };
-
-  res.status(400).json(response);
-}
-
-/**
- * Handle MongoDB errors
- */
-function handleMongoError(
-  error: any,
-  req: Request,
-  res: Response,
-  requestId: string
-): void {
-  let message = 'Database operation failed';
-  let statusCode = 500;
-  let details: any = {};
-
-  // Handle duplicate key error
-  if (error.code === 11000) {
-    const field = Object.keys(error.keyValue)[0];
-    message = `${field} already exists`;
-    statusCode = 409;
-    details = {
-      field,
-      value: error.keyValue[field]
-    };
-  }
-
-  const response: ErrorResponse = {
-    success: false,
-    error: {
-      message,
-      code: 'DATABASE_ERROR',
-      details,
-      timestamp: new Date().toISOString(),
-      requestId
-    }
-  };
-
-  res.status(statusCode).json(response);
-}
-
-/**
- * Handle JWT errors
- */
-function handleJWTError(
-  error: any,
-  req: Request,
-  res: Response,
-  requestId: string
-): void {
-  const response: ErrorResponse = {
-    success: false,
-    error: {
-      message: 'Invalid authentication token',
-      code: 'INVALID_TOKEN',
-      timestamp: new Date().toISOString(),
-      requestId
-    }
-  };
-
-  res.status(401).json(response);
-}
-
-/**
- * Handle expired JWT tokens
- */
-function handleTokenExpiredError(
-  error: any,
-  req: Request,
-  res: Response,
-  requestId: string
-): void {
-  const response: ErrorResponse = {
-    success: false,
-    error: {
-      message: 'Authentication token has expired',
-      code: 'TOKEN_EXPIRED',
-      timestamp: new Date().toISOString(),
-      requestId
-    }
-  };
-
-  res.status(401).json(response);
-}
-
-/**
- * Handle file upload errors
- */
-function handleMulterError(
-  error: any,
-  req: Request,
-  res: Response,
-  requestId: string
-): void {
-  let message = 'File upload failed';
-  let statusCode = 400;
-
-  switch (error.code) {
-    case 'LIMIT_FILE_SIZE':
-      message = 'File too large';
-      break;
-    case 'LIMIT_FILE_COUNT':
-      message = 'Too many files';
-      break;
-    case 'LIMIT_UNEXPECTED_FILE':
-      message = 'Unexpected file field';
-      break;
-  }
-
-  const response: ErrorResponse = {
-    success: false,
-    error: {
-      message,
-      code: 'FILE_UPLOAD_ERROR',
-      details: { originalError: error.code },
-      timestamp: new Date().toISOString(),
-      requestId
-    }
-  };
-
-  res.status(statusCode).json(response);
-}
-
-/**
- * Handle generic/unknown errors
- */
-function handleGenericError(
-  error: Error,
-  req: Request,
-  res: Response,
-  requestId: string,
-  isDevelopment: boolean
-): void {
-  const response: ErrorResponse = {
-    success: false,
-    error: {
-      message: isDevelopment ? error.message : 'Internal server error',
-      code: 'INTERNAL_ERROR',
-      timestamp: new Date().toISOString(),
-      requestId
-    }
-  };
-
-  if (isDevelopment) {
-    response.stack = error.stack;
-    response.error.details = {
-      name: error.name,
-      cause: error.cause
-    };
-  }
-
-  res.status(500).json(response);
-}
-
-/**
- * Log error with context information
- */
-function logError(error: Error, req: Request, requestId: string): void {
-  const errorInfo = {
-    requestId,
-    method: req.method,
-    url: req.originalUrl,
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
-    body: req.method !== 'GET' ? sanitizeRequestBody(req.body) : undefined,
-    query: req.query,
-    params: req.params,
-    headers: sanitizeHeaders(req.headers),
-    error: {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-      ...(error instanceof AppError && {
-        statusCode: error.statusCode,
-        errorCode: error.errorCode,
-        isOperational: error.isOperational,
-        details: error.details
-      })
-    },
-    timestamp: new Date().toISOString()
-  };
-
-  if (error instanceof AppError && error.isOperational) {
-    logger.warn('Operational error occurred:', errorInfo);
-  } else {
-    logger.error('System error occurred:', errorInfo);
-  }
-}
-
-/**
- * Sanitize request body to remove sensitive information
- */
-function sanitizeRequestBody(body: any): any {
-  if (!body || typeof body !== 'object') return body;
-
-  const sensitiveFields = ['password', 'token', 'secret', 'key', 'privateKey', 'mnemonic'];
-  const sanitized = { ...body };
-
-  for (const field of sensitiveFields) {
-    if (sanitized[field]) {
-      sanitized[field] = '[REDACTED]';
-    }
-  }
-
-  return sanitized;
-}
-
-/**
- * Sanitize headers to remove sensitive information
- */
-function sanitizeHeaders(headers: any): any {
-  const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key'];
-  const sanitized = { ...headers };
-
-  for (const header of sensitiveHeaders) {
-    if (sanitized[header]) {
-      sanitized[header] = '[REDACTED]';
-    }
-  }
-
-  return sanitized;
-}
-
-/**
- * Generate unique request ID
- */
-function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
-/**
- * Async error wrapper for route handlers
- * Usage: asyncHandler(async (req, res, next) => { ... })
+ * Async handler wrapper to catch async function errors
  */
 export const asyncHandler = (fn: Function) => {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -383,30 +19,204 @@ export const asyncHandler = (fn: Function) => {
 };
 
 /**
- * 404 handler middleware
- * Should be placed before the error handler
+ * Enhanced error handling middleware with standardized error codes
  */
-export const notFoundHandler = (req: Request, res: Response, next: NextFunction): void => {
+export const errorHandler = (
+  error: Error | PaymentGatewayError,
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  // Generate unique request ID for tracking
   const requestId = req.headers['x-request-id'] as string || generateRequestId();
-  
-  const response: ErrorResponse = {
-    success: false,
-    error: {
-      message: `Route ${req.method} ${req.originalUrl} not found`,
-      code: 'ROUTE_NOT_FOUND',
-      timestamp: new Date().toISOString(),
-      requestId
-    }
-  };
 
-  logger.warn('Route not found:', {
-    requestId,
+  // Check if it's our custom PaymentGatewayError
+  if (error instanceof PaymentGatewayError) {
+    logger.warn('Payment Gateway Error:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      path: req.path,
+      method: req.method,
+      merchantId: req.merchant?.id,
+      requestId,
+    });
+
+    const errorResponse = error.toJSON();
+    res.status(error.httpStatus).json({
+      ...errorResponse,
+      requestId,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  // Handle validation errors (from Mongoose, Joi, etc.)
+  if (error.name === 'ValidationError') {
+    const validationError = createStandardError(ErrorCode.VALIDATION_ERROR, {
+      validationErrors: error.message,
+    });
+    
+    logger.warn('Validation Error:', {
+      error: error.message,
+      path: req.path,
+      method: req.method,
+      requestId,
+    });
+
+    res.status(validationError.httpStatus).json({
+      ...validationError.toJSON(),
+      requestId,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  // Handle MongoDB duplicate key errors
+  if (error.name === 'MongoError' && (error as any).code === 11000) {
+    const duplicateError = createStandardError(ErrorCode.VALIDATION_ERROR, {
+      duplicateField: Object.keys((error as any).keyValue || {})[0],
+    }, 'Duplicate field value');
+
+    logger.warn('Duplicate key error:', {
+      error: error.message,
+      path: req.path,
+      method: req.method,
+      requestId,
+    });
+
+    res.status(duplicateError.httpStatus).json({
+      ...duplicateError.toJSON(),
+      requestId,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  // Handle JWT errors
+  if (error.name === 'JsonWebTokenError') {
+    const jwtError = createStandardError(ErrorCode.INVALID_SESSION, null, 'Invalid token');
+    
+    logger.warn('JWT Error:', {
+      error: error.message,
+      path: req.path,
+      method: req.method,
+      requestId,
+    });
+
+    res.status(jwtError.httpStatus).json({
+      ...jwtError.toJSON(),
+      requestId,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  if (error.name === 'TokenExpiredError') {
+    const expiredError = createStandardError(ErrorCode.INVALID_SESSION, null, 'Token expired');
+    
+    logger.warn('JWT Expired:', {
+      error: error.message,
+      path: req.path,
+      method: req.method,
+      requestId,
+    });
+
+    res.status(expiredError.httpStatus).json({
+      ...expiredError.toJSON(),
+      requestId,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  // Handle rate limiting errors
+  if ((error as any).status === 429) {
+    const rateLimitError = createStandardError(ErrorCode.RATE_LIMIT_EXCEEDED, {
+      retryAfter: (error as any).retryAfter,
+    });
+
+    logger.warn('Rate limit exceeded:', {
+      error: error.message,
+      path: req.path,
+      method: req.method,
+      ip: req.ip,
+      requestId,
+    });
+
+    res.status(rateLimitError.httpStatus).json({
+      ...rateLimitError.toJSON(),
+      requestId,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  // Handle network/timeout errors
+  if (error.message.includes('timeout') || error.message.includes('ECONNREFUSED')) {
+    const networkError = createStandardError(ErrorCode.NETWORK_ERROR, {
+      originalError: error.message,
+    });
+
+    logger.error('Network Error:', {
+      error: error.message,
+      path: req.path,
+      method: req.method,
+      requestId,
+    });
+
+    res.status(networkError.httpStatus).json({
+      ...networkError.toJSON(),
+      requestId,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  // Default to generic database error for unknown errors
+  const genericError = createStandardError(ErrorCode.DATABASE_ERROR, {
+    originalError: error.message,
+  }, 'An unexpected error occurred');
+
+  logger.error('Unexpected Error:', {
+    error: error.message,
+    stack: error.stack,
+    path: req.path,
     method: req.method,
-    url: req.originalUrl,
-    ip: req.ip
+    merchantId: req.merchant?.id,
+    requestId,
   });
 
-  res.status(404).json(response);
+  res.status(genericError.httpStatus).json({
+    ...genericError.toJSON(),
+    requestId,
+    timestamp: new Date().toISOString(),
+  });
+};
+
+/**
+ * 404 handler for unmatched routes
+ */
+export const notFoundHandler = (req: Request, res: Response): void => {
+  const requestId = req.headers['x-request-id'] as string || generateRequestId();
+  
+  logger.warn('Route not found:', {
+    path: req.path,
+    method: req.method,
+    ip: req.ip,
+    requestId,
+  });
+
+  res.status(404).json({
+    success: false,
+    error: {
+      code: 'ROUTE_NOT_FOUND',
+      message: `Route ${req.method} ${req.path} not found`,
+      userMessage: 'The requested endpoint was not found.',
+    },
+    requestId,
+    timestamp: new Date().toISOString(),
+  });
 };
 
 /**
@@ -419,3 +229,17 @@ export const requestIdMiddleware = (req: Request, res: Response, next: NextFunct
   res.setHeader('X-Request-ID', requestId);
   next();
 };
+
+/**
+ * Helper function to throw standardized errors in services
+ */
+export const throwError = (code: ErrorCode, details?: any, customMessage?: string): never => {
+  throw new PaymentGatewayError(code, details, customMessage);
+};
+
+/**
+ * Generate unique request ID
+ */
+function generateRequestId(): string {
+  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}

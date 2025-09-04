@@ -1,4 +1,4 @@
-interface ConversionRate {
+export interface ConversionRate {
   from: string;
   to: string;
   rate: number;
@@ -6,7 +6,7 @@ interface ConversionRate {
   source: string;
 }
 
-interface ConversionResult {
+export interface ConversionResult {
   success: boolean;
   fromAmount: number;
   fromCurrency: string;
@@ -23,7 +23,7 @@ interface ConversionResult {
   maxAmount: number;
 }
 
-interface ConversionExecution {
+export interface ConversionExecution {
   success: boolean;
   transactionId: string;
   fromTxId?: string;
