@@ -5,27 +5,20 @@ import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { 
   Save,
-  User,
-  Building,
   Globe,
   Bell,
   Shield,
   CreditCard,
   Key,
   Smartphone,
-  Mail,
-  Phone,
-  MapPin,
-  Camera,
-  Edit3,
-  Trash2,
-  Plus,
-  Check,
-  X,
-  AlertTriangle,
   Lock,
   ExternalLink,
-  ArrowRight
+  ArrowRight,
+  Zap,
+  Webhook,
+  Monitor,
+  AlertTriangle,
+  Settings
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -51,21 +44,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
-
-interface BusinessProfile {
-  name: string
-  description: string
-  website: string
-  businessType: string
-  country: string
-  address: string
-  city: string
-  postalCode: string
-  phone: string
-  taxId: string
-}
 
 interface NotificationSettings {
   emailNotifications: boolean
@@ -76,22 +55,25 @@ interface NotificationSettings {
   marketingEmails: boolean
 }
 
+interface PaymentSettings {
+  defaultCurrency: string
+  autoConvert: boolean
+  minimumAmount: number
+  maximumAmount: number
+  confirmationsRequired: number
+}
+
+interface SBTCSettings {
+  network: 'testnet' | 'mainnet'
+  walletAddress: string
+  enableAutoDeposit: boolean
+  minimumBalance: number
+}
+
 const SettingsPage = () => {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('profile')
+  const [activeTab, setActiveTab] = useState('payments')
   const [loading, setLoading] = useState(false)
-  const [businessProfile, setBusinessProfile] = useState<BusinessProfile>({
-    name: 'Acme Corp',
-    description: 'Digital services and consulting',
-    website: 'https://acme.com',
-    businessType: 'consulting',
-    country: 'United States',
-    address: '123 Business Ave',
-    city: 'San Francisco',
-    postalCode: '94102',
-    phone: '+1 (555) 123-4567',
-    taxId: '12-3456789'
-  })
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     emailNotifications: true,
@@ -102,27 +84,37 @@ const SettingsPage = () => {
     marketingEmails: false
   })
 
-  const [personalInfo, setPersonalInfo] = useState({
-    name: 'John Doe',
-    email: 'john@acme.com',
-    avatar: '',
-    timezone: 'America/Los_Angeles',
-    language: 'en'
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({
+    defaultCurrency: 'USD',
+    autoConvert: true,
+    minimumAmount: 1,
+    maximumAmount: 10000,
+    confirmationsRequired: 3
+  })
+
+  const [sbtcSettings, setSBTCSettings] = useState<SBTCSettings>({
+    network: 'testnet',
+    walletAddress: '',
+    enableAutoDeposit: false,
+    minimumBalance: 0.001
   })
 
   const handleSave = async (section: string) => {
     setLoading(true)
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000))
     setLoading(false)
   }
 
-  const updateBusinessProfile = (field: keyof BusinessProfile, value: string) => {
-    setBusinessProfile(prev => ({ ...prev, [field]: value }))
-  }
-
   const updateNotificationSetting = (field: keyof NotificationSettings, value: boolean) => {
     setNotifications(prev => ({ ...prev, [field]: value }))
+  }
+
+  const updatePaymentSetting = (field: keyof PaymentSettings, value: any) => {
+    setPaymentSettings(prev => ({ ...prev, [field]: value }))
+  }
+
+  const updateSBTCSetting = (field: keyof SBTCSettings, value: any) => {
+    setSBTCSettings(prev => ({ ...prev, [field]: value }))
   }
 
   return (
@@ -134,7 +126,7 @@ const SettingsPage = () => {
             Settings
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage your sBTC Gateway account and business settings
+            Configure payment preferences, security, and system settings
           </p>
         </div>
       </div>
@@ -144,369 +136,331 @@ const SettingsPage = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
               <TabsList className="grid w-full grid-cols-4 max-w-lg bg-gray-100 dark:bg-gray-800">
-                <TabsTrigger value="profile" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Profile</TabsTrigger>
-                <TabsTrigger value="business" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Business</TabsTrigger>
+                <TabsTrigger value="payments" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Payments</TabsTrigger>
+                <TabsTrigger value="sbtc" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">sBTC</TabsTrigger>
                 <TabsTrigger value="notifications" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Notifications</TabsTrigger>
                 <TabsTrigger value="security" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Security</TabsTrigger>
               </TabsList>
             </div>
             
             <div className="p-6">
-
-              <TabsContent value="profile" className="mt-0">
+              <TabsContent value="payments" className="mt-0">
                 <Card className="bg-white dark:bg-gray-900 border shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <User className="h-5 w-5" />
-                <span>Personal Information</span>
-              </CardTitle>
-              <CardDescription>
-                Update your personal details and preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Avatar */}
-              <div className="flex items-center space-x-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={personalInfo.avatar} alt={personalInfo.name} />
-                  <AvatarFallback className="bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300 text-xl">
-                    {personalInfo.name.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="space-y-2">
-                  <Button variant="outline" size="sm">
-                    <Camera className="mr-2 h-4 w-4" />
-                    Change Avatar
-                  </Button>
-                  <p className="text-xs text-gray-500">
-                    JPG, PNG up to 2MB
-                  </p>
-                </div>
-              </div>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <CreditCard className="h-5 w-5" />
+                      <span>Payment Configuration</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Configure your payment processing preferences and limits
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="defaultCurrency">Default Currency</Label>
+                        <Select 
+                          value={paymentSettings.defaultCurrency}
+                          onValueChange={(value) => updatePaymentSetting('defaultCurrency', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USD">USD - US Dollar</SelectItem>
+                            <SelectItem value="EUR">EUR - Euro</SelectItem>
+                            <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                            <SelectItem value="BTC">BTC - Bitcoin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={personalInfo.name}
-                    onChange={(e) => setPersonalInfo(prev => ({ ...prev, name: e.target.value }))}
-                  />
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmations">Required Confirmations</Label>
+                        <Select 
+                          value={paymentSettings.confirmationsRequired.toString()}
+                          onValueChange={(value) => updatePaymentSetting('confirmationsRequired', parseInt(value))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 Confirmation</SelectItem>
+                            <SelectItem value="3">3 Confirmations</SelectItem>
+                            <SelectItem value="6">6 Confirmations</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={personalInfo.email}
-                    onChange={(e) => setPersonalInfo(prev => ({ ...prev, email: e.target.value }))}
-                  />
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="minimumAmount">Minimum Payment Amount ($)</Label>
+                        <Input
+                          id="minimumAmount"
+                          type="number"
+                          step="0.01"
+                          value={paymentSettings.minimumAmount}
+                          onChange={(e) => updatePaymentSetting('minimumAmount', parseFloat(e.target.value))}
+                        />
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="timezone">Timezone</Label>
-                  <Select 
-                    value={personalInfo.timezone}
-                    onValueChange={(value) => setPersonalInfo(prev => ({ ...prev, timezone: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                      <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                      <SelectItem value="Europe/London">GMT</SelectItem>
-                      <SelectItem value="Europe/Berlin">CET</SelectItem>
-                      <SelectItem value="Asia/Tokyo">JST</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="maximumAmount">Maximum Payment Amount ($)</Label>
+                        <Input
+                          id="maximumAmount"
+                          type="number"
+                          step="0.01"
+                          value={paymentSettings.maximumAmount}
+                          onChange={(e) => updatePaymentSetting('maximumAmount', parseFloat(e.target.value))}
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="language">Language</Label>
-                  <Select 
-                    value={personalInfo.language}
-                    onValueChange={(value) => setPersonalInfo(prev => ({ ...prev, language: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="es">Spanish</SelectItem>
-                      <SelectItem value="fr">French</SelectItem>
-                      <SelectItem value="de">German</SelectItem>
-                      <SelectItem value="ja">Japanese</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div>
+                        <h4 className="text-sm font-medium">Auto-convert to USD</h4>
+                        <p className="text-sm text-gray-500">Automatically convert Bitcoin payments to USD</p>
+                      </div>
+                      <Switch
+                        checked={paymentSettings.autoConvert}
+                        onCheckedChange={(checked) => updatePaymentSetting('autoConvert', checked)}
+                      />
+                    </div>
 
-              <div className="flex justify-end">
-                <Button 
-                  onClick={() => handleSave('profile')} 
-                  disabled={loading}
-                  className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
-                >
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Save Changes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    <div className="flex justify-end">
+                      <Button 
+                        onClick={() => handleSave('payments')} 
+                        disabled={loading}
+                        className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+                      >
+                        {loading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Save Changes
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-              <TabsContent value="business" className="mt-0">
+              <TabsContent value="sbtc" className="mt-0">
                 <Card className="bg-white dark:bg-gray-900 border shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Building className="h-5 w-5" />
-                <span>Business Information</span>
-              </CardTitle>
-              <CardDescription>
-                Update your business details and contact information
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="businessName">Business Name</Label>
-                  <Input
-                    id="businessName"
-                    value={businessProfile.name}
-                    onChange={(e) => updateBusinessProfile('name', e.target.value)}
-                  />
-                </div>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Zap className="h-5 w-5" />
+                      <span>sBTC Configuration</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Manage your sBTC wallet and network settings
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="network">Network</Label>
+                        <Select 
+                          value={sbtcSettings.network}
+                          onValueChange={(value) => updateSBTCSetting('network', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="testnet">Testnet</SelectItem>
+                            <SelectItem value="mainnet">Mainnet</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="businessType">Business Type</Label>
-                  <Select 
-                    value={businessProfile.businessType}
-                    onValueChange={(value) => updateBusinessProfile('businessType', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ecommerce">E-commerce</SelectItem>
-                      <SelectItem value="saas">SaaS/Software</SelectItem>
-                      <SelectItem value="marketplace">Marketplace</SelectItem>
-                      <SelectItem value="nonprofit">Non-profit</SelectItem>
-                      <SelectItem value="consulting">Consulting</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="walletAddress">Wallet Address</Label>
+                        <Input
+                          id="walletAddress"
+                          value={sbtcSettings.walletAddress}
+                          onChange={(e) => updateSBTCSetting('walletAddress', e.target.value)}
+                          placeholder="SP1ABC..."
+                        />
+                      </div>
 
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="description">Business Description</Label>
-                  <Textarea
-                    id="description"
-                    value={businessProfile.description}
-                    onChange={(e) => updateBusinessProfile('description', e.target.value)}
-                    rows={3}
-                  />
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="minimumBalance">Minimum Balance (sBTC)</Label>
+                        <Input
+                          id="minimumBalance"
+                          type="number"
+                          step="0.000001"
+                          value={sbtcSettings.minimumBalance}
+                          onChange={(e) => updateSBTCSetting('minimumBalance', parseFloat(e.target.value))}
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    id="website"
-                    type="url"
-                    value={businessProfile.website}
-                    onChange={(e) => updateBusinessProfile('website', e.target.value)}
-                  />
-                </div>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div>
+                        <h4 className="text-sm font-medium">Enable Auto Deposit</h4>
+                        <p className="text-sm text-gray-500">Automatically deposit received sBTC to your wallet</p>
+                      </div>
+                      <Switch
+                        checked={sbtcSettings.enableAutoDeposit}
+                        onCheckedChange={(checked) => updateSBTCSetting('enableAutoDeposit', checked)}
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={businessProfile.phone}
-                    onChange={(e) => updateBusinessProfile('phone', e.target.value)}
-                  />
-                </div>
+                    <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                      <div className="flex items-start space-x-3">
+                        <Zap className="h-5 w-5 text-orange-600 mt-0.5" />
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium text-orange-900 dark:text-orange-100">
+                            Network Status: {sbtcSettings.network === 'testnet' ? 'Testnet' : 'Mainnet'}
+                          </h4>
+                          <p className="text-sm text-orange-700 dark:text-orange-300">
+                            {sbtcSettings.network === 'testnet' 
+                              ? 'You are currently using the test network. Switch to mainnet for live transactions.'
+                              : 'You are using the live network. All transactions are real and irreversible.'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    value={businessProfile.address}
-                    onChange={(e) => updateBusinessProfile('address', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    value={businessProfile.city}
-                    onChange={(e) => updateBusinessProfile('city', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="postalCode">Postal Code</Label>
-                  <Input
-                    id="postalCode"
-                    value={businessProfile.postalCode}
-                    onChange={(e) => updateBusinessProfile('postalCode', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="country">Country</Label>
-                  <Select 
-                    value={businessProfile.country}
-                    onValueChange={(value) => updateBusinessProfile('country', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="United States">United States</SelectItem>
-                      <SelectItem value="Canada">Canada</SelectItem>
-                      <SelectItem value="United Kingdom">United Kingdom</SelectItem>
-                      <SelectItem value="Germany">Germany</SelectItem>
-                      <SelectItem value="France">France</SelectItem>
-                      <SelectItem value="Japan">Japan</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="taxId">Tax ID</Label>
-                  <Input
-                    id="taxId"
-                    value={businessProfile.taxId}
-                    onChange={(e) => updateBusinessProfile('taxId', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button 
-                  onClick={() => handleSave('business')} 
-                  disabled={loading}
-                  className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
-                >
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Save Changes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    <div className="flex justify-end">
+                      <Button 
+                        onClick={() => handleSave('sbtc')} 
+                        disabled={loading}
+                        className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+                      >
+                        {loading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Save Changes
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
               <TabsContent value="notifications" className="mt-0">
                 <Card className="bg-white dark:bg-gray-900 border shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Bell className="h-5 w-5" />
-                <span>Notification Preferences</span>
-              </CardTitle>
-              <CardDescription>
-                Choose how you want to receive notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Email Notifications</h4>
-                    <p className="text-sm text-gray-500">Receive notifications via email</p>
-                  </div>
-                  <Switch
-                    checked={notifications.emailNotifications}
-                    onCheckedChange={(checked) => updateNotificationSetting('emailNotifications', checked)}
-                  />
-                </div>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Bell className="h-5 w-5" />
+                      <span>Notification Preferences</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Choose how you want to receive notifications
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-medium">Email Notifications</h4>
+                          <p className="text-sm text-gray-500">Receive notifications via email</p>
+                        </div>
+                        <Switch
+                          checked={notifications.emailNotifications}
+                          onCheckedChange={(checked) => updateNotificationSetting('emailNotifications', checked)}
+                        />
+                      </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">SMS Notifications</h4>
-                    <p className="text-sm text-gray-500">Receive notifications via SMS</p>
-                  </div>
-                  <Switch
-                    checked={notifications.smsNotifications}
-                    onCheckedChange={(checked) => updateNotificationSetting('smsNotifications', checked)}
-                  />
-                </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-medium">SMS Notifications</h4>
+                          <p className="text-sm text-gray-500">Receive notifications via SMS</p>
+                        </div>
+                        <Switch
+                          checked={notifications.smsNotifications}
+                          onCheckedChange={(checked) => updateNotificationSetting('smsNotifications', checked)}
+                        />
+                      </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Webhook Notifications</h4>
-                    <p className="text-sm text-gray-500">Send notifications to your webhook endpoints</p>
-                  </div>
-                  <Switch
-                    checked={notifications.webhookNotifications}
-                    onCheckedChange={(checked) => updateNotificationSetting('webhookNotifications', checked)}
-                  />
-                </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-medium">Webhook Notifications</h4>
+                          <p className="text-sm text-gray-500">Send notifications to your webhook endpoints</p>
+                        </div>
+                        <Switch
+                          checked={notifications.webhookNotifications}
+                          onCheckedChange={(checked) => updateNotificationSetting('webhookNotifications', checked)}
+                        />
+                      </div>
 
-                <Separator />
+                      <Separator />
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Payment Alerts</h4>
-                    <p className="text-sm text-gray-500">Get notified about successful payments</p>
-                  </div>
-                  <Switch
-                    checked={notifications.paymentAlerts}
-                    onCheckedChange={(checked) => updateNotificationSetting('paymentAlerts', checked)}
-                  />
-                </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-medium">Payment Alerts</h4>
+                          <p className="text-sm text-gray-500">Get notified about successful payments</p>
+                        </div>
+                        <Switch
+                          checked={notifications.paymentAlerts}
+                          onCheckedChange={(checked) => updateNotificationSetting('paymentAlerts', checked)}
+                        />
+                      </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Security Alerts</h4>
-                    <p className="text-sm text-gray-500">Important security notifications</p>
-                  </div>
-                  <Switch
-                    checked={notifications.securityAlerts}
-                    onCheckedChange={(checked) => updateNotificationSetting('securityAlerts', checked)}
-                  />
-                </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-medium">Security Alerts</h4>
+                          <p className="text-sm text-gray-500">Important security notifications</p>
+                        </div>
+                        <Switch
+                          checked={notifications.securityAlerts}
+                          onCheckedChange={(checked) => updateNotificationSetting('securityAlerts', checked)}
+                        />
+                      </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Marketing Emails</h4>
-                    <p className="text-sm text-gray-500">Product updates and tips</p>
-                  </div>
-                  <Switch
-                    checked={notifications.marketingEmails}
-                    onCheckedChange={(checked) => updateNotificationSetting('marketingEmails', checked)}
-                  />
-                </div>
-              </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-medium">Marketing Emails</h4>
+                          <p className="text-sm text-gray-500">Product updates and tips</p>
+                        </div>
+                        <Switch
+                          checked={notifications.marketingEmails}
+                          onCheckedChange={(checked) => updateNotificationSetting('marketingEmails', checked)}
+                        />
+                      </div>
+                    </div>
 
-              <div className="flex justify-end">
-                <Button 
-                  onClick={() => handleSave('notifications')} 
-                  disabled={loading}
-                  className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
-                >
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Save Changes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900/10">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <Webhook className="h-4 w-4 text-blue-600" />
+                            <h3 className="font-medium text-gray-900 dark:text-gray-100">Webhook Management</h3>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Configure webhook endpoints and manage event subscriptions
+                          </p>
+                        </div>
+                        <Button 
+                          variant="outline"
+                          onClick={() => router.push('/dashboard/webhooks')}
+                        >
+                          Manage Webhooks
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button 
+                        onClick={() => handleSave('notifications')} 
+                        disabled={loading}
+                        className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+                      >
+                        {loading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Save Changes
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
               <TabsContent value="security" className="mt-0">
                 <div className="space-y-6">
@@ -539,7 +493,7 @@ const SettingsPage = () => {
                         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                              <Globe className="h-4 w-4 text-blue-600" />
+                              <Monitor className="h-4 w-4 text-blue-600" />
                             </div>
                             <div>
                               <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Active Sessions</p>

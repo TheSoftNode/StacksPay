@@ -12,7 +12,8 @@ import {
   Shield, 
   ArrowRight,
   Database,
-  GitBranch
+  GitBranch,
+  LayoutDashboard
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Logo from '../shared/Logo'
@@ -345,11 +346,27 @@ const Navbar = () => {
                           className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
                         >
                           <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-700 transition-colors">
-                            <User className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                            <LayoutDashboard className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                           </div>
                           <div>
                             <div className="text-gray-900 dark:text-gray-100 font-medium">Dashboard</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">Manage your account</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">Overview & insights</div>
+                          </div>
+                        </button>
+                        
+                        <button
+                          onClick={() => {
+                            router.push('/dashboard/profile');
+                            setShowUserDropdown(false);
+                          }}
+                          className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                        >
+                          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-700 transition-colors">
+                            <User className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                          </div>
+                          <div>
+                            <div className="text-gray-900 dark:text-gray-100 font-medium">Profile</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">Personal & business info</div>
                           </div>
                         </button>
                         
@@ -549,8 +566,20 @@ const Navbar = () => {
                           setIsMobileMenuOpen(false);
                         }}
                       >
-                        <User className="mr-2 h-4 w-4" />
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
                         Dashboard
+                      </Button>
+                      
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-start text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                        onClick={() => {
+                          router.push("/dashboard/profile");
+                          setIsMobileMenuOpen(false);
+                        }}
+                      >
+                        <User className="mr-2 h-4 w-4" />
+                        Profile
                       </Button>
                       
                       <Button 

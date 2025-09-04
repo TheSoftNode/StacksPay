@@ -21,7 +21,8 @@ import {
   Zap,
   Globe,
   ArrowUpDown,
-  Rocket
+  Rocket,
+  User
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -71,6 +72,11 @@ const navigation: NavItem[] = [
     name: 'Analytics',
     href: '/dashboard/analytics',
     icon: BarChart3,
+  },
+  {
+    name: 'Profile',
+    href: '/dashboard/profile',
+    icon: User,
   },
   {
     name: 'API Keys',

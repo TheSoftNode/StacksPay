@@ -154,18 +154,18 @@ export default function ProfilePage() {
         {/* Profile Overview */}
         <div className="lg:col-span-1 space-y-6">
           {/* Avatar & Status */}
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
             <CardContent className="p-6 text-center">
               <div className="space-y-4">
                 <div className="relative mx-auto w-24 h-24">
                   <Avatar className="w-24 h-24">
                     <AvatarImage src="" alt={user?.name} />
-                    <AvatarFallback className="bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300 text-2xl">
+                    <AvatarFallback className="bg-gradient-to-br from-orange-500 to-orange-600 text-white text-2xl font-semibold">
                       {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   {isEditing && (
-                    <Button size="sm" className="absolute -bottom-2 -right-2 h-8 w-8 p-0 rounded-full">
+                    <Button size="sm" className="absolute -bottom-2 -right-2 h-8 w-8 p-0 rounded-full bg-orange-600 hover:bg-orange-700">
                       <Camera className="h-4 w-4" />
                     </Button>
                   )}
@@ -183,19 +183,19 @@ export default function ProfilePage() {
           </Card>
 
           {/* Profile Completion */}
-          <Card>
-            <CardHeader>
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
+            <CardHeader className="pb-4">
               <CardTitle className="text-lg">Profile Completion</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">Progress</span>
-                  <span className="font-medium">{getProfileCompletion()}%</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{getProfileCompletion()}%</span>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2.5">
                   <div 
-                    className="bg-orange-600 h-2 rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-orange-500 to-orange-600 h-2.5 rounded-full transition-all duration-300"
                     style={{ width: `${getProfileCompletion()}%` }}
                   />
                 </div>
@@ -239,8 +239,8 @@ export default function ProfilePage() {
           </Card>
 
           {/* Verification Level */}
-          <Card>
-            <CardHeader>
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
+            <CardHeader className="pb-4">
               <CardTitle className="flex items-center space-x-2">
                 <Shield className="h-5 w-5 text-orange-600" />
                 <span>Verification Level</span>
@@ -248,20 +248,20 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Current Level</span>
-                <Badge variant={user?.verificationLevel === 'full' ? 'default' : 'secondary'}>
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Current Level</span>
+                <Badge variant={user?.verificationLevel === 'full' ? 'default' : 'secondary'} className="capitalize">
                   {user?.verificationLevel || 'none'}
                 </Badge>
               </div>
               
               <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <p>• <strong>Basic:</strong> Email verified</p>
-                <p>• <strong>Advanced:</strong> Business details + wallet</p>
-                <p>• <strong>Full:</strong> Complete verification</p>
+                <p>• <strong className="text-gray-700 dark:text-gray-300">Basic:</strong> Email verified</p>
+                <p>• <strong className="text-gray-700 dark:text-gray-300">Advanced:</strong> Business details + wallet</p>
+                <p>• <strong className="text-gray-700 dark:text-gray-300">Full:</strong> Complete verification</p>
               </div>
               
               {user?.verificationLevel !== 'full' && (
-                <Button size="sm" variant="outline" className="w-full">
+                <Button size="sm" variant="outline" className="w-full border-orange-200 hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-900/20">
                   <Shield className="mr-2 h-4 w-4" />
                   Increase Level
                 </Button>
@@ -272,7 +272,7 @@ export default function ProfilePage() {
 
         {/* Main Profile Content */}
         <div className="lg:col-span-2">
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
             <CardContent className="p-0">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
@@ -296,18 +296,18 @@ export default function ProfilePage() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="fullName">Full Name</Label>
+                            <Label htmlFor="fullName" className="text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</Label>
                             <Input
                               id="fullName"
                               value={profileData.name}
                               onChange={(e) => updateProfileData('name', e.target.value)}
                               disabled={!isEditing}
-                              className={!isEditing ? 'bg-gray-50 dark:bg-gray-800' : ''}
+                              className={!isEditing ? 'bg-gray-50/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500'}
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="email" className="flex items-center space-x-2">
+                            <Label htmlFor="email" className="flex items-center space-x-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                               <span>Email Address</span>
                               {user?.emailVerified ? (
                                 <CheckCircle className="h-4 w-4 text-green-600" />
@@ -321,7 +321,7 @@ export default function ProfilePage() {
                               value={profileData.email}
                               onChange={(e) => updateProfileData('email', e.target.value)}
                               disabled={!isEditing}
-                              className={!isEditing ? 'bg-gray-50 dark:bg-gray-800' : ''}
+                              className={!isEditing ? 'bg-gray-50/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500'}
                             />
                             {!user?.emailVerified && (
                               <p className="text-xs text-yellow-600 dark:text-yellow-400">
@@ -333,17 +333,18 @@ export default function ProfilePage() {
                       </div>
 
                       {isEditing && (
-                        <div className="flex justify-end space-x-3">
+                        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-800">
                           <Button 
                             variant="outline" 
                             onClick={() => setIsEditing(false)}
+                            className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                           >
                             Cancel
                           </Button>
                           <Button 
                             onClick={handleSave}
                             disabled={loading}
-                            className="bg-orange-600 hover:bg-orange-700"
+                            className="bg-orange-600 hover:bg-orange-700 text-white"
                           >
                             {loading ? (
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -366,16 +367,16 @@ export default function ProfilePage() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="businessType">Business Type</Label>
+                            <Label htmlFor="businessType" className="text-sm font-medium text-gray-700 dark:text-gray-300">Business Type</Label>
                             <Select 
                               value={profileData.businessType}
                               onValueChange={(value) => updateProfileData('businessType', value)}
                               disabled={!isEditing}
                             >
-                              <SelectTrigger className={!isEditing ? 'bg-gray-50 dark:bg-gray-800' : ''}>
+                              <SelectTrigger className={!isEditing ? 'bg-gray-50/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500'}>
                                 <SelectValue placeholder="Select business type" />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
                                 <SelectItem value="ecommerce">E-commerce</SelectItem>
                                 <SelectItem value="saas">SaaS Platform</SelectItem>
                                 <SelectItem value="marketplace">Marketplace</SelectItem>
@@ -388,7 +389,7 @@ export default function ProfilePage() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="website">Website</Label>
+                            <Label htmlFor="website" className="text-sm font-medium text-gray-700 dark:text-gray-300">Website</Label>
                             <Input
                               id="website"
                               type="url"
@@ -396,12 +397,12 @@ export default function ProfilePage() {
                               onChange={(e) => updateProfileData('website', e.target.value)}
                               placeholder="https://your-website.com"
                               disabled={!isEditing}
-                              className={!isEditing ? 'bg-gray-50 dark:bg-gray-800' : ''}
+                              className={!isEditing ? 'bg-gray-50/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500'}
                             />
                           </div>
 
                           <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="description">Business Description</Label>
+                            <Label htmlFor="description" className="text-sm font-medium text-gray-700 dark:text-gray-300">Business Description</Label>
                             <Textarea
                               id="description"
                               value={profileData.description}
@@ -409,12 +410,12 @@ export default function ProfilePage() {
                               placeholder="Brief description of your business"
                               rows={3}
                               disabled={!isEditing}
-                              className={!isEditing ? 'bg-gray-50 dark:bg-gray-800' : ''}
+                              className={!isEditing ? 'bg-gray-50/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500'}
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="phone">Phone Number</Label>
+                            <Label htmlFor="phone" className="text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</Label>
                             <Input
                               id="phone"
                               type="tel"
@@ -422,21 +423,21 @@ export default function ProfilePage() {
                               onChange={(e) => updateProfileData('phone', e.target.value)}
                               placeholder="+1 (555) 123-4567"
                               disabled={!isEditing}
-                              className={!isEditing ? 'bg-gray-50 dark:bg-gray-800' : ''}
+                              className={!isEditing ? 'bg-gray-50/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500'}
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="country">Country</Label>
+                            <Label htmlFor="country" className="text-sm font-medium text-gray-700 dark:text-gray-300">Country</Label>
                             <Select 
                               value={profileData.country}
                               onValueChange={(value) => updateProfileData('country', value)}
                               disabled={!isEditing}
                             >
-                              <SelectTrigger className={!isEditing ? 'bg-gray-50 dark:bg-gray-800' : ''}>
+                              <SelectTrigger className={!isEditing ? 'bg-gray-50/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500'}>
                                 <SelectValue placeholder="Select country" />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
                                 <SelectItem value="us">United States</SelectItem>
                                 <SelectItem value="ca">Canada</SelectItem>
                                 <SelectItem value="gb">United Kingdom</SelectItem>
@@ -449,67 +450,68 @@ export default function ProfilePage() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="address">Business Address</Label>
+                            <Label htmlFor="address" className="text-sm font-medium text-gray-700 dark:text-gray-300">Business Address</Label>
                             <Input
                               id="address"
                               value={profileData.address}
                               onChange={(e) => updateProfileData('address', e.target.value)}
                               placeholder="Street address"
                               disabled={!isEditing}
-                              className={!isEditing ? 'bg-gray-50 dark:bg-gray-800' : ''}
+                              className={!isEditing ? 'bg-gray-50/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500'}
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="city">City</Label>
+                            <Label htmlFor="city" className="text-sm font-medium text-gray-700 dark:text-gray-300">City</Label>
                             <Input
                               id="city"
                               value={profileData.city}
                               onChange={(e) => updateProfileData('city', e.target.value)}
                               placeholder="City"
                               disabled={!isEditing}
-                              className={!isEditing ? 'bg-gray-50 dark:bg-gray-800' : ''}
+                              className={!isEditing ? 'bg-gray-50/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500'}
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="postalCode">Postal Code</Label>
+                            <Label htmlFor="postalCode" className="text-sm font-medium text-gray-700 dark:text-gray-300">Postal Code</Label>
                             <Input
                               id="postalCode"
                               value={profileData.postalCode}
                               onChange={(e) => updateProfileData('postalCode', e.target.value)}
                               placeholder="ZIP/Postal code"
                               disabled={!isEditing}
-                              className={!isEditing ? 'bg-gray-50 dark:bg-gray-800' : ''}
+                              className={!isEditing ? 'bg-gray-50/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500'}
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="taxId">Tax ID</Label>
+                            <Label htmlFor="taxId" className="text-sm font-medium text-gray-700 dark:text-gray-300">Tax ID</Label>
                             <Input
                               id="taxId"
                               value={profileData.taxId}
                               onChange={(e) => updateProfileData('taxId', e.target.value)}
                               placeholder="Business tax identification"
                               disabled={!isEditing}
-                              className={!isEditing ? 'bg-gray-50 dark:bg-gray-800' : ''}
+                              className={!isEditing ? 'bg-gray-50/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500'}
                             />
                           </div>
                         </div>
                       </div>
 
                       {isEditing && (
-                        <div className="flex justify-end space-x-3">
+                        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-800">
                           <Button 
                             variant="outline" 
                             onClick={() => setIsEditing(false)}
+                            className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                           >
                             Cancel
                           </Button>
                           <Button 
                             onClick={handleSave}
                             disabled={loading}
-                            className="bg-orange-600 hover:bg-orange-700"
+                            className="bg-orange-600 hover:bg-orange-700 text-white"
                           >
                             {loading ? (
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -530,8 +532,8 @@ export default function ProfilePage() {
       </div>
 
       {/* Connected Accounts */}
-      <Card>
-        <CardHeader>
+      <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
+        <CardHeader className="pb-4">
           <CardTitle className="flex items-center space-x-2">
             <Wallet className="h-5 w-5 text-orange-600" />
             <span>Connected Accounts</span>
@@ -542,25 +544,30 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center">
-                  <Wallet className="h-4 w-4 text-purple-600" />
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center shadow-sm">
+                  <Wallet className="h-5 w-5 text-white" />
                 </div>
                 <div>
                   <p className="font-medium text-gray-900 dark:text-gray-100">Stacks Wallet</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
                     {user?.stacksAddress ? `${user.stacksAddress.slice(0, 6)}...${user.stacksAddress.slice(-4)}` : 'Not connected'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
                 {user?.walletConnected ? (
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">
-                    Connected
-                  </Badge>
+                  <>
+                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                      Connected
+                    </Badge>
+                    <Button size="sm" variant="ghost" className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </>
                 ) : (
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" className="border-orange-200 hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-900/20">
                     Connect
                   </Button>
                 )}
