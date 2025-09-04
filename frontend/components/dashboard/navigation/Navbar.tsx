@@ -1,5 +1,6 @@
 'use client'
 
+import { Wallet, Copy, CheckCircle } from 'lucide-react'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { 
@@ -41,10 +42,15 @@ import { cn } from '@/lib/utils'
 interface NavbarProps {
   onMenuToggle: () => void
   user: {
+    id: string
     name: string
-    email: string
-    avatar?: string
-    businessName?: string
+    email?: string | null
+    stacksAddress?: string
+    authMethod?: 'email' | 'wallet'
+    walletConnected?: boolean
+    emailVerified?: boolean
+    verificationLevel?: string
+    businessType?: string
   } | null
 }
 
@@ -87,10 +93,29 @@ const mockNotifications: Notification[] = [
 const Navbar = ({ onMenuToggle, user }: NavbarProps) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [notifications, setNotifications] = useState(mockNotifications)
+  const [copiedAddress, setCopiedAddress] = useState(false)
   const { theme, setTheme } = useTheme()
   const { logout } = useAuth()
 
   const unreadCount = notifications.filter(n => !n.read).length
+
+  // Helper function to copy wallet address to clipboard
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  // Helper function to truncate wallet address
+  const truncateAddress = (address: string, startLength = 6, endLength = 4) => {
+    if (!address) return '';
+    if (address.length <= startLength + endLength) return address;
+    return `${address.slice(0, startLength)}...${address.slice(-endLength)}`;
+  };
 
   const markAsRead = (id: string) => {
     setNotifications(prev => 
@@ -238,23 +263,63 @@ const Navbar = ({ onMenuToggle, user }: NavbarProps) => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.avatar} alt={user?.name || 'User'} />
+                  <AvatarImage src="" alt={user?.name || 'User'} />
                   <AvatarFallback className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
                     {user?.name?.charAt(0)?.toUpperCase() || 'D'}
                   </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuContent className="w-80" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user?.name || 'Demo User'}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user?.email || 'demo@example.com'}
-                  </p>
-                  {user?.businessName && (
-                    <p className="text-xs leading-none text-muted-foreground mt-1">
-                      {user.businessName}
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <p className="text-sm font-medium leading-none">{user?.name || 'Demo User'}</p>
+                    {user?.authMethod === 'wallet' && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gradient-to-r from-orange-100 to-yellow-100 dark:from-orange-900/30 dark:to-yellow-900/30 text-orange-700 dark:text-orange-400 font-medium border border-orange-200 dark:border-orange-800">
+                        <Wallet className="w-3 h-3 mr-1" />
+                        Wallet Account
+                      </span>
+                    )}
+                  </div>
+                  
+                  {user?.stacksAddress ? (
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Wallet Address</span>
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={() => copyToClipboard(user.stacksAddress!)}
+                            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors group"
+                            title="Copy address"
+                          >
+                            {copiedAddress ? (
+                              <CheckCircle className="w-3 h-3 text-green-500" />
+                            ) : (
+                              <Copy className="w-3 h-3 text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="font-mono text-xs text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 px-2 py-1 rounded border break-all">
+                        {user.stacksAddress}
+                      </div>
+                    </div>
+                  ) : user?.email ? (
+                    <div className="space-y-1">
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                      {user?.authMethod === 'email' && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium">
+                          <User className="w-3 h-3 mr-1" />
+                          Email Account
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs leading-none text-muted-foreground">
+                      No contact info
                     </p>
                   )}
                 </div>
@@ -274,7 +339,7 @@ const Navbar = ({ onMenuToggle, user }: NavbarProps) => {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
-                onClick={logout}
+                onClick={() => logout()}
                 className="text-red-600 dark:text-red-400"
               >
                 <LogOut className="mr-2 h-4 w-4" />

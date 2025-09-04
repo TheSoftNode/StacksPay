@@ -4,14 +4,13 @@ import { devtools, persist } from 'zustand/middleware';
 export interface User {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   stacksAddress?: string;
   emailVerified: boolean;
-  verificationLevel: 'none' | 'basic' | 'advanced';
-  businessType?: string;
+  verificationLevel: 'none' | 'basic' | 'full';
+  businessType: string;
   walletConnected: boolean;
-  profileComplete?: boolean; // Indicates if user still needs to complete profile
-  authMethod?: 'email' | 'wallet'; // How the user authenticated
+  authMethod: 'email' | 'wallet';
 }
 
 export interface AuthState {

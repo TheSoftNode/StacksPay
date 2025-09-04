@@ -101,9 +101,8 @@ export class AuthService {
         undefined;
 
       // Create merchant with enhanced security fields
-      const merchant = new Merchant({
+      const merchantData: any = {
         name: data.name.trim(),
-        email: data.email ? data.email.toLowerCase().trim() : '',
         passwordHash,
         businessType: data.businessType,
         stacksAddress: data.stacksAddress,
@@ -119,7 +118,14 @@ export class AuthService {
           totalPayments: 0,
           totalVolume: 0,
         },
-      });
+      };
+
+      // Only set email if provided and not empty
+      if (data.email && data.email.trim()) {
+        merchantData.email = data.email.toLowerCase().trim();
+      }
+
+      const merchant = new Merchant(merchantData);
 
       await merchant.save();
 
@@ -655,7 +661,7 @@ export class AuthService {
     const schema = Joi.object({
       name: Joi.string().min(2).max(100).required(),
       email: isWalletRegistration ? 
-        Joi.string().email().allow('').optional() : // Allow empty email for wallet registrations
+        Joi.string().email().allow('', null).optional() : // Allow empty/null email for wallet registrations
         Joi.string().email().required(), // Require email for normal registrations
       password: Joi.string().min(this.PASSWORD_MIN_LENGTH).required(),
       businessType: Joi.string().required(),

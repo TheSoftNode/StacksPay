@@ -2,7 +2,7 @@ import { Schema, model, models, Document } from 'mongoose';
 
 export interface IMerchant extends Document {
   name: string;
-  email: string;
+  email?: string;
   businessType: string;
   website?: string;
   passwordHash?: string;
@@ -99,7 +99,7 @@ const merchantSchema = new Schema<IMerchant>({
   email: {
     type: String,
     required: false, // Allow empty email for wallet registrations
-    default: '',
+    // No default value - field will be undefined if not provided
   },
   businessType: {
     type: String,
@@ -304,7 +304,17 @@ const merchantSchema = new Schema<IMerchant>({
   collection: 'merchants'
 });
 
-merchantSchema.index({ email: 1 }, { unique: true });
+// Create partial index that only applies to documents with email field present
+merchantSchema.index(
+  { email: 1 }, 
+  { 
+    unique: true, 
+    partialFilterExpression: { 
+      email: { $type: "string" } 
+    },
+    name: 'email_1_partial'
+  }
+);
 merchantSchema.index({ stacksAddress: 1 });
 merchantSchema.index({ isActive: 1 });
 merchantSchema.index({ 'apiKeys.keyId': 1 });
