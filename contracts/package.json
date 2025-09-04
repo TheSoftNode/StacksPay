@@ -1,8 +1,8 @@
 
 {
-  "name": "contracts-tests",
+  "name": "stackspay-contracts",
   "version": "1.0.0",
-  "description": "Run unit tests on this project.",
+  "description": "StacksPay Smart Contracts - sBTC payment processing on Stacks",
   "type": "module",
   "private": true,
   "scripts": {

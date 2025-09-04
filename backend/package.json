@@ -1,7 +1,7 @@
 {
-  "name": "sbtc-payment-gateway-backend",
+  "name": "stackspay-backend",
   "version": "1.0.0",
-  "description": "sBTC Payment Gateway Backend API - The Stripe Experience for Bitcoin Payments",
+  "description": "StacksPay Backend API - The Stripe Experience for Bitcoin Payments",
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node -r tsconfig-paths/register src/index.ts",

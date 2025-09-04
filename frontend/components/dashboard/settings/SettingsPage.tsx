@@ -5,23 +5,19 @@ import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { 
   Save,
-  Globe,
   Bell,
   Shield,
   CreditCard,
   Key,
   Smartphone,
   Lock,
-  ExternalLink,
-  ArrowRight,
   Zap,
   Webhook,
   Monitor,
   AlertTriangle,
-  Settings,
   Wallet,
   Landmark,
-  Info
+  ArrowRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,7 +26,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -38,15 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+
 import { Separator } from '@/components/ui/separator'
 import { apiClient } from '@/lib/api/auth-api'
 import { walletApiClient } from '@/lib/api/wallet-api'
@@ -54,14 +41,6 @@ import { useAuth } from '@/hooks/use-auth'
 import { TwoFactorSetup } from './TwoFactorSetup'
 import { TwoFactorDisable } from './TwoFactorDisable'
 import { PasswordUpdate } from './PasswordUpdate'
-
-// Debug import for development
-const isDevelopment = process.env.NODE_ENV === 'development'
-if (isDevelopment && typeof window !== 'undefined') {
-  import('@/test/debug-stx-balance').then(module => {
-    (window as any).debugStxBalance = module.debugStxBalance;
-  });
-}
 
 interface NotificationSettings {
   emailNotifications: boolean
@@ -213,7 +192,7 @@ const SettingsPage = () => {
 
           // If we have wallet addresses, also load and display balances
           if (data.walletBalances) {
-            console.log('Wallet balances from backend:', data.walletBalances);
+            // Wallet balances loaded from backend
             setWalletBalances({
               stx: data.walletBalances.stxBalance?.amount || '0',
               btc: data.walletBalances.btcBalance?.amount || '0',
@@ -235,12 +214,12 @@ const SettingsPage = () => {
   const handleSyncWallet = async () => {
     setSyncingWallet(true);
     try {
-      console.log('🔄 Starting wallet sync...');
+      // Starting wallet sync...
       
       // First get balances directly from frontend services to show immediate feedback
       const balancesResult = await walletApiClient.getAllWalletBalances();
       if (balancesResult.success && balancesResult.data) {
-        console.log('📊 Current wallet balances:', balancesResult.data);
+        // Current wallet balances retrieved
         
         const walletData = balancesResult.data; // Store data in variable to avoid TS errors
         
@@ -262,7 +241,7 @@ const SettingsPage = () => {
       // Then sync with backend
       const result = await walletApiClient.syncWalletConnection();
       if (result.success) {
-        console.log('✅ Wallet synced with backend successfully');
+        // Wallet synced with backend successfully
         
         // Reload settings to get any additional backend data
         const response = await apiClient.getSettings();
