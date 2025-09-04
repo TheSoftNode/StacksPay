@@ -2,14 +2,6 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "env": {
-    "NEXT_PUBLIC_API_URL": "@stackspay-api-url"
-  },
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_API_URL": "@stackspay-api-url"
-    }
-  },
   "functions": {
     "app/**/*.ts": {
       "maxDuration": 30
