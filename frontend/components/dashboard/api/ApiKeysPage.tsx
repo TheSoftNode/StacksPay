@@ -425,9 +425,11 @@ const ApiKeysPage = () => {
 
       {/* API Keys List */}
       <div className="space-y-4">
-        {apiKeys.map((apiKey, index) => (
+        {(apiKeys || []).map((apiKey, index) => {
+          if (!apiKey) return null;
+          return (
           <motion.div
-            key={apiKey.keyId}
+            key={apiKey.keyId || index}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
@@ -438,7 +440,7 @@ const ApiKeysPage = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-3 mb-3">
                       <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        {apiKey.name}
+                        {apiKey.name || 'Unnamed API Key'}
                       </h3>
                       {getEnvironmentBadge(apiKey.environment)}
                       {getStatusBadge(apiKey.isActive)}
@@ -447,8 +449,8 @@ const ApiKeysPage = () => {
                     <div className="flex items-center space-x-3 mb-4">
                       <div className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 font-mono text-sm">
                         {showKeys[apiKey.keyId] 
-                          ? apiKey.keyPreview // Show more of the preview since we don't have full key
-                          : `${apiKey.keyPreview.substring(0, 12)}${'•'.repeat(20)}`
+                          ? (apiKey.keyPreview || 'sk_***') // Show more of the preview since we don't have full key
+                          : `${(apiKey.keyPreview || 'sk_').substring(0, 12)}${'•'.repeat(20)}`
                         }
                       </div>
                       <Button
@@ -466,7 +468,7 @@ const ApiKeysPage = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => copyToClipboard(apiKey.keyPreview)}
+                        onClick={() => copyToClipboard(apiKey.keyPreview || 'sk_')}
                         className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
                         <Copy className="h-4 w-4" />
@@ -476,7 +478,7 @@ const ApiKeysPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-gray-400">
                       <div>
                         <span className="font-medium">Created:</span>
-                        <p>{formatDate(apiKey.createdAt)}</p>
+                        <p>{apiKey.createdAt ? formatDate(apiKey.createdAt) : 'Unknown'}</p>
                       </div>
                       <div>
                         <span className="font-medium">Last Used:</span>
@@ -484,12 +486,12 @@ const ApiKeysPage = () => {
                       </div>
                       <div>
                         <span className="font-medium">Permissions:</span>
-                        <p>{apiKey.permissions.length} permission{apiKey.permissions.length !== 1 ? 's' : ''}</p>
+                        <p>{(apiKey.permissions || []).length} permission{(apiKey.permissions || []).length !== 1 ? 's' : ''}</p>
                       </div>
                     </div>
                     
                     <div className="mt-3 flex flex-wrap gap-1">
-                      {apiKey.permissions.map(permission => (
+                      {(apiKey.permissions || []).map(permission => (
                         <Badge key={permission} variant="secondary" className="text-xs">
                           {availablePermissions.find(p => p.id === permission)?.name || permission}
                         </Badge>
@@ -527,10 +529,11 @@ const ApiKeysPage = () => {
               </CardContent>
             </Card>
           </motion.div>
-        ))}
+          );
+        })}
       </div>
 
-      {apiKeys.length === 0 && (
+      {(apiKeys || []).length === 0 && (
         <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardContent className="p-8 text-center">
             <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto mb-4">
