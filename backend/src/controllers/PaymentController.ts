@@ -79,17 +79,17 @@ export class PaymentController {
       const { paymentId } = req.params;
       const merchantId = req.merchant?.id;
 
-      const result = await this.paymentService.getPayment(paymentId, merchantId);
+      const payment = await this.paymentService.getPayment(paymentId, merchantId);
 
-      if (result.success) {
+      if (payment) {
         res.json({
           success: true,
-          data: result.payment
+          data: payment
         });
       } else {
         res.status(404).json({
           success: false,
-          error: result.error
+          error: 'Payment not found'
         });
       }
 
@@ -116,10 +116,32 @@ export class PaymentController {
         return;
       }
 
+      // Map controller status to service status
+      let serviceStatus: 'confirmed' | 'failed';
+      switch (updateData.status) {
+        case 'completed':
+          serviceStatus = 'confirmed';
+          break;
+        case 'failed':
+        case 'cancelled':
+          serviceStatus = 'failed';
+          break;
+        default:
+          res.status(400).json({
+            success: false,
+            error: 'Invalid status. Use: completed, failed, or cancelled'
+          });
+          return;
+      }
+
       const result = await this.paymentService.updatePaymentStatus(
         paymentId, 
-        updateData.status, 
-        { merchantId, ...updateData.metadata }
+        serviceStatus, 
+        updateData.transactionId ? {
+          txId: updateData.transactionId,
+          confirmations: updateData.confirmations,
+          timestamp: new Date()
+        } : undefined
       );
 
       if (result.success) {
@@ -131,7 +153,7 @@ export class PaymentController {
 
         res.json({
           success: true,
-          data: result.payment
+          message: 'Payment updated successfully'
         });
       } else {
         res.status(400).json({
@@ -195,8 +217,11 @@ export class PaymentController {
 
       const result = await this.paymentService.updatePaymentStatus(
         paymentId, 
-        'cancelled', 
-        { merchantId, cancelledBy: 'merchant' }
+        'failed', // Map cancelled to failed status 
+        { 
+          timestamp: new Date(),
+          fromAddress: merchantId // Include merchant ID for tracking
+        }
       );
 
       if (result.success) {
@@ -229,30 +254,149 @@ export class PaymentController {
     try {
       const { paymentId } = req.params;
 
-      const result = await this.paymentService.getPayment(paymentId);
+      const payment = await this.paymentService.getPayment(paymentId);
 
-      if (result.success) {
+      if (payment) {
         res.json({
           success: true,
           data: {
-            id: result.data?.id,
-            status: result.data?.status,
-            amount: result.data?.amount,
-            currency: result.data?.currency,
-            paymentMethod: result.data?.paymentMethod,
-            expiresAt: result.data?.expiresAt,
-            depositAddress: result.data?.depositAddress,
+            id: payment._id?.toString() || payment.id,
+            status: payment.status,
+            amount: payment.amount || payment.paymentAmount,
+            currency: payment.currency || payment.paymentCurrency,
+            paymentMethod: payment.paymentMethod,
+            expiresAt: payment.expiresAt,
+            depositAddress: payment.depositAddress || payment.paymentAddress,
           }
         });
       } else {
         res.status(404).json({
+          success: false,
+          error: 'Payment not found'
+        });
+      }
+
+    } catch (error) {
+      logger.error('Get payment status API error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
+
+  async verifyPayment(req: Request, res: Response): Promise<void> {
+    try {
+      const { paymentId } = req.params;
+      const { signature, blockchainData, customerWalletAddress } = req.body;
+
+      if (!signature) {
+        res.status(400).json({
+          success: false,
+          error: 'Wallet signature is required for payment verification'
+        });
+        return;
+      }
+
+      const verificationData = {
+        paymentId,
+        signature,
+        blockchainData,
+        customerWalletAddress,
+        txHash: blockchainData?.txId || blockchainData?.txHash
+      };
+
+      const result = await this.paymentService.verifyPaymentSignature(verificationData);
+
+      if (result.success) {
+        logger.info('Payment verified via API', {
+          paymentId,
+          txId: blockchainData?.txId
+        });
+
+        res.json({
+          success: true,
+          message: 'Payment verified and confirmed',
+          data: {
+            txId: blockchainData?.txId,
+            status: 'confirmed'
+          }
+        });
+      } else {
+        res.status(400).json({
           success: false,
           error: result.error
         });
       }
 
     } catch (error) {
-      logger.error('Get payment status API error:', error);
+      logger.error('Payment verification API error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
+
+  async refundPayment(req: Request, res: Response): Promise<void> {
+    try {
+      const { paymentId } = req.params;
+      const merchantId = req.merchant?.id;
+      const { amount, reason, blockchainRefundData } = req.body;
+
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Merchant authentication required'
+        });
+        return;
+      }
+
+      if (!blockchainRefundData?.transactionId) {
+        res.status(400).json({
+          success: false,
+          error: 'Blockchain refund transaction data is required'
+        });
+        return;
+      }
+
+      const result = await this.paymentService.refundPayment(
+        paymentId,
+        merchantId,
+        {
+          amount,
+          reason,
+          blockchainRefundData: {
+            transactionId: blockchainRefundData.transactionId,
+            blockHeight: blockchainRefundData.blockHeight,
+            status: blockchainRefundData.status || 'confirmed',
+            feesPaid: blockchainRefundData.feesPaid
+          }
+        }
+      );
+
+      if (result.success) {
+        logger.info('Payment refunded via API', {
+          paymentId,
+          merchantId,
+          refundTxId: blockchainRefundData.transactionId,
+          amount
+        });
+
+        res.json({
+          success: true,
+          message: 'Refund processed successfully',
+          data: result.refund
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+
+    } catch (error) {
+      logger.error('Refund payment API error:', error);
       res.status(500).json({
         success: false,
         error: 'Internal server error'

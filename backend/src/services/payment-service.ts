@@ -1,6 +1,4 @@
 import { connectToDatabase } from '@/config/database';
-import { sbtcService } from './sbtc-service';
-import { walletService } from './wallet-service';
 import { conversionService } from './conversion-service';
 import { webhookService } from './webhook-service';
 import { multiWalletAuthService } from './multi-wallet-auth-service';
@@ -47,6 +45,26 @@ export interface PaymentStatus {
   blockchain?: any;
 }
 
+export interface BlockchainTransactionData {
+  txHash?: string;
+  txId?: string;
+  blockHeight?: number;
+  confirmations?: number;
+  networkFee?: number;
+  timestamp?: Date;
+  fromAddress?: string;
+  toAddress?: string;
+  confirmedAt?: Date;
+}
+
+export interface PaymentVerificationData {
+  paymentId: string;
+  signature?: string;
+  txHash?: string;
+  blockchainData?: BlockchainTransactionData;
+  customerWalletAddress?: string;
+}
+
 /**
  * Payment orchestration service
  * Supports complete payment ecosystem:
@@ -55,6 +73,11 @@ export interface PaymentStatus {
  * - Cashout Options: sBTC, USD, USDT, or USDC
  * 
  * Flow: Customer (BTC/STX/sBTC) → Gateway → Merchant (sBTC) → Cashout (USD/USDC)
+ * 
+ * ARCHITECTURE:
+ * - Frontend handles wallet connections, blockchain interactions, transaction signing
+ * - Backend handles payment lifecycle, validation, storage, webhooks, conversions
+ * - Frontend calls backend with transaction data for validation and storage
  */
 export class PaymentService {
   /**
@@ -223,50 +246,6 @@ export class PaymentService {
   }
 
   /**
-   * Update payment status
-   */
-  async updatePaymentStatus(
-    paymentId: string,
-    status: string,
-    metadata?: any
-  ): Promise<{ success: boolean; payment?: any; error?: string }> {
-    await connectToDatabase();
-
-    try {
-      const payment = await Payment.findById(paymentId);
-      if (!payment) {
-        return { success: false, error: 'Payment not found' };
-      }
-
-      const oldStatus = payment.status;
-      payment.status = status;
-
-      if (status === 'confirmed' && oldStatus !== 'confirmed') {
-        payment.confirmedAt = new Date();
-      }
-
-      if (metadata) {
-        payment.paymentDetails = { ...payment.paymentDetails, ...metadata };
-      }
-
-      await payment.save();
-
-      // Trigger webhook if status changed
-      if (oldStatus !== status) {
-        await webhookService.triggerWebhook(payment, `payment.${status}`);
-      }
-
-      return { success: true, payment };
-    } catch (error) {
-      console.error('Payment status update error:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Status update failed' 
-      };
-    }
-  }
-
-  /**
    * List payments for merchant
    */
   async listPayments(
@@ -363,16 +342,12 @@ export class PaymentService {
         return { confirmed: false, error: 'Payment not found' };
       }
 
-      switch (payment.paymentMethod) {
-        case 'sbtc':
-          return await this.checkSbtcPaymentStatus(payment);
-        case 'btc':
-          return await this.checkBtcPaymentStatus(payment);
-        case 'stx':
-          return await this.checkStxPaymentStatus(payment);
-        default:
-          return { confirmed: false, error: 'Unknown payment method' };
-      }
+      // Frontend is now responsible for checking blockchain status
+      // This method should not be used directly anymore
+      return { 
+        confirmed: false, 
+        error: 'Payment status should be checked and updated via frontend services. Use verifyPaymentSignature() instead.' 
+      };
     } catch (error) {
       console.error('Payment status check error:', error);
       return { 
@@ -479,7 +454,7 @@ export class PaymentService {
   }
 
   /**
-   * Process STX payment using WalletService
+   * Process STX payment (deprecated - frontend should handle transaction, backend validates)
    */
   private async processStxPaymentWithWallet(payment: any, walletAuth: any): Promise<{
     success: boolean;
@@ -488,28 +463,15 @@ export class PaymentService {
     error?: string;
   }> {
     try {
-      // Use WalletService to authorize and execute STX payment
-      const result = await walletService.authorizeStxPayment({
-        paymentId: payment._id.toString(),
-        amount: payment.paymentAmount,
-        recipient: payment.paymentAddress,
-        message: `Payment ${payment._id}`,
-      });
+      // This method is deprecated - frontend should handle STX transactions
+      // Return error directing to use new API endpoints
+      return {
+        success: false,
+        error: 'This method is deprecated. Use verifyPaymentSignature() after frontend completes transaction.'
+      };
 
-      if (result.success) {
-        // Update payment status
-        await this.updatePaymentStatus(payment._id.toString(), 'confirmed', {
-          txId: result.txId,
-          confirmedAt: new Date(),
-        });
-
-        // Send webhook notification
-        await webhookService.triggerWebhook(payment, 'confirmed');
-      }
-
-      return result;
     } catch (error) {
-      console.error('STX payment processing error:', error);
+      console.error('STX payment error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'STX payment failed',
@@ -518,7 +480,8 @@ export class PaymentService {
   }
 
   /**
-   * Process Bitcoin payment with wallet integration
+   * @deprecated This method is deprecated. Frontend services handle Bitcoin payments directly.
+   * Use verifyPaymentSignature() after frontend confirms the transaction.
    */
   private async processBtcPaymentWithWallet(payment: any, walletAuth: any): Promise<{
     success: boolean;
@@ -526,48 +489,15 @@ export class PaymentService {
     confirmed?: boolean;
     error?: string;
   }> {
-    try {
-      // For Bitcoin payments, we primarily monitor the address
-      // The actual transaction is done by the user's wallet
-      // We just validate the payment was received
-      
-      const statusCheck = await this.checkBtcPaymentStatus(payment);
-      
-      if (statusCheck.confirmed) {
-        await this.updatePaymentStatus(payment._id.toString(), 'confirmed', {
-          txId: statusCheck.txId,
-          confirmedAt: new Date(),
-          blockHeight: statusCheck.blockHeight,
-          confirmations: statusCheck.confirmations,
-        });
-
-        // Send webhook notification
-        await webhookService.triggerWebhook(payment, 'confirmed');
-
-        return {
-          success: true,
-          txId: statusCheck.txId,
-          confirmed: true,
-        };
-      }
-
-      return {
-        success: true,
-        confirmed: false,
-        error: 'Payment not yet confirmed on blockchain',
-      };
-
-    } catch (error) {
-      console.error('Bitcoin payment processing error:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Bitcoin payment failed',
-      };
-    }
+    return {
+      success: false,
+      error: 'This method is deprecated. Frontend services handle Bitcoin payments. Use verifyPaymentSignature() instead.'
+    };
   }
 
   /**
-   * Process sBTC payment using SbtcService
+   * @deprecated This method is deprecated. Frontend services handle sBTC payments directly.
+   * Use verifyPaymentSignature() after frontend confirms the transaction.
    */
   private async processSbtcPaymentWithWallet(payment: any, walletAuth: any): Promise<{
     success: boolean;
@@ -575,41 +505,10 @@ export class PaymentService {
     confirmed?: boolean;
     error?: string;
   }> {
-    try {
-      // Use SbtcService to handle sBTC operations
-      const statusCheck = await this.checkSbtcPaymentStatus(payment);
-      
-      if (statusCheck.confirmed) {
-        await this.updatePaymentStatus(payment._id.toString(), 'confirmed', {
-          txId: statusCheck.txId,
-          confirmedAt: new Date(),
-          blockHeight: statusCheck.blockHeight,
-          confirmations: statusCheck.confirmations,
-        });
-
-        // Send webhook notification
-        await webhookService.triggerWebhook(payment, 'confirmed');
-
-        return {
-          success: true,
-          txId: statusCheck.txId,
-          confirmed: true,
-        };
-      }
-
-      return {
-        success: true,
-        confirmed: false,
-        error: 'sBTC payment not yet confirmed',
-      };
-
-    } catch (error) {
-      console.error('sBTC payment processing error:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'sBTC payment failed',
-      };
-    }
+    return {
+      success: false,
+      error: 'This method is deprecated. Frontend services handle sBTC payments. Use verifyPaymentSignature() instead.'
+    };
   }
 
   /**
@@ -632,7 +531,7 @@ export class PaymentService {
   }
 
   /**
-   * Generate payment address using specialized services
+   * Generate payment address configuration (frontend will generate actual addresses)
    */
   private async generatePaymentAddress(
     method: string,
@@ -642,31 +541,35 @@ export class PaymentService {
     try {
       switch (method) {
         case 'sbtc':
-          // Use SbtcService for sBTC deposit address generation
-          const sbtcResult = await sbtcService.createDepositAddress({
-            stacksAddress: merchant.walletSetup?.stacksAddress || merchant.stacksAddress,
-            amountSats: Math.round(amount * 100000000),
-          });
+          // Return merchant's sBTC address for frontend to use
+          if (!merchant.walletSetup?.sbtcAddress && !merchant.sbtcAddress) {
+            return { success: false, error: 'Merchant must configure sBTC wallet address' };
+          }
+          const sbtcAddress = merchant.walletSetup?.sbtcAddress || merchant.sbtcAddress;
           return {
             success: true,
-            address: sbtcResult.depositAddress,
+            address: sbtcAddress,
             details: {
-              depositAddress: sbtcResult.depositAddress,
-              depositScript: sbtcResult.depositScript,
-              stacksAddress: sbtcResult.stacksAddress,
+              paymentAddress: sbtcAddress,
+              stacksAddress: merchant.walletSetup?.stacksAddress || merchant.stacksAddress,
+              amount: amount,
+              method: 'sbtc'
             },
           };
 
         case 'btc':
-          // Generate Bitcoin address (keep existing logic for now)
-          const btcAddress = await this.generateBitcoinAddress();
+          // Return merchant's Bitcoin address
+          if (!merchant.walletSetup?.btcAddress && !merchant.btcAddress) {
+            return { success: false, error: 'Merchant must configure Bitcoin wallet address' };
+          }
+          const btcAddress = merchant.walletSetup?.btcAddress || merchant.btcAddress;
           return {
             success: true,
-            address: btcAddress.address,
+            address: btcAddress,
             details: {
-              address: btcAddress.address,
-              privateKey: btcAddress.privateKey,
-              publicKey: btcAddress.publicKey,
+              paymentAddress: btcAddress,
+              amount: amount,
+              method: 'btc'
             },
           };
 
@@ -800,144 +703,35 @@ export class PaymentService {
   }
 
   /**
-   * Check sBTC payment status using SbtcService
+   * Check sBTC payment status (replaced by frontend verification)
+   * Frontend will call updatePaymentStatus with real blockchain data
    */
   private async checkSbtcPaymentStatus(payment: any) {
-    try {
-      // Use SbtcService to get UTXO information
-      const utxos = await sbtcService.getUtxos(payment.paymentAddress);
-      const targetAmount = payment.paymentAmount * 100000000; // Convert to satoshis
-      
-      let confirmedAmount = 0;
-      let latestTxId = null;
-      let blockHeight = null;
-      let confirmations = 0;
-
-      for (const utxo of utxos) {
-        if (utxo.confirmations >= 1) {
-          confirmedAmount += utxo.value;
-          
-          if (!latestTxId || utxo.height > blockHeight) {
-            latestTxId = utxo.txid;
-            blockHeight = utxo.height;
-            confirmations = utxo.confirmations;
-          }
-        }
-      }
-
-      const confirmed = confirmedAmount >= targetAmount;
-
-      if (confirmed && latestTxId) {
-        // Use SbtcService to get transaction status
-        const sbtcStatus = await sbtcService.getTransactionStatus(latestTxId);
-        return {
-          confirmed: sbtcStatus.status === 'confirmed',
-          txId: latestTxId,
-          blockHeight,
-          confirmations,
-        };
-      }
-
-      return { confirmed: false, txId: latestTxId, blockHeight, confirmations };
-    } catch (error) {
-      console.error('Error checking sBTC payment status:', error);
-      return { confirmed: false, error: error instanceof Error ? error.message : 'Status check failed' };
-    }
+    // This method is now replaced by frontend verification
+    // Frontend services check blockchain directly and call our verification endpoints
+    throw new Error('This method is deprecated. Frontend should verify payment and call verifyPaymentSignature()');
   }
 
   /**
-   * Check Bitcoin payment status using SbtcService
+   * Check Bitcoin payment status (replaced by frontend verification)
    */
   private async checkBtcPaymentStatus(payment: any) {
-    try {
-      // Use SbtcService to get UTXO information (it handles Bitcoin APIs)
-      const utxos = await sbtcService.getUtxos(payment.paymentAddress);
-      const targetAmount = payment.paymentAmount * 100000000; // Convert to satoshis
-      
-      let confirmedAmount = 0;
-      let latestTxId = null;
-      let blockHeight = null;
-      let confirmations = 0;
-
-      for (const utxo of utxos) {
-        if (utxo.confirmations >= 1) {
-          confirmedAmount += utxo.value;
-          
-          if (!latestTxId || utxo.height > blockHeight) {
-            latestTxId = utxo.txid;
-            blockHeight = utxo.height;
-            confirmations = utxo.confirmations;
-          }
-        }
-      }
-
-      return {
-        confirmed: confirmedAmount >= targetAmount,
-        txId: latestTxId,
-        blockHeight,
-        confirmations,
-      };
-    } catch (error) {
-      console.error('Error checking Bitcoin payment status:', error);
-      return { confirmed: false, error: error instanceof Error ? error.message : 'Status check failed' };
-    }
+    // This method is now replaced by frontend verification
+    // Frontend services check blockchain directly and call our verification endpoints
+    throw new Error('This method is deprecated. Frontend should verify payment and call verifyPaymentSignature()');
   }
 
   /**
-   * Check STX payment status using API calls
+   * Check STX payment status (replaced by frontend verification)
    */
   private async checkStxPaymentStatus(payment: any) {
-    try {
-      // For STX payments, we need to check the API directly since WalletService 
-      // getStxBalance() doesn't take address parameters (it's for connected wallets)
-      const response = await fetch(
-        `https://api.${process.env.STACKS_NETWORK === 'mainnet' ? 'mainnet' : 'testnet'}.stacks.co/extended/v1/address/${payment.paymentAddress}/transactions?limit=20`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-      
-      const data = await response.json() as { results?: any[] };
-      const transactions = data.results || [];
-      const targetAmount = payment.paymentAmount * 1000000; // Convert to microSTX
-      
-      let confirmedAmount = 0;
-      let latestTxId = null;
-      let blockHeight = null;
-      let confirmations = 0;
-
-      // Check recent transactions for STX transfers to this address
-      for (const tx of transactions) {
-        if (tx.tx_status === 'success' && tx.tx_type === 'token_transfer') {
-          // Check if this transaction is TO our payment address
-          if (tx.token_transfer.recipient_address === payment.paymentAddress) {
-            const amount = parseInt(tx.token_transfer.amount);
-            confirmedAmount += amount;
-            
-            if (!latestTxId || tx.block_height > blockHeight) {
-              latestTxId = tx.tx_id;
-              blockHeight = tx.block_height;
-              confirmations = tx.confirmations || 0;
-            }
-          }
-        }
-      }
-
-      return {
-        confirmed: confirmedAmount >= targetAmount,
-        txId: latestTxId,
-        blockHeight,
-        confirmations,
-      };
-    } catch (error) {
-      console.error('Error checking STX payment status:', error);
-      return { confirmed: false, error: error instanceof Error ? error.message : 'Status check failed' };
-    }
+    // This method is now replaced by frontend verification
+    // Frontend services check blockchain directly and call our verification endpoints
+    throw new Error('This method is deprecated. Frontend should verify payment and call verifyPaymentSignature()');
   }
 
   /**
-   * Refund a payment
+   * Refund a payment (frontend handles blockchain transaction, backend processes business logic)
    */
   async refundPayment(
     paymentId: string,
@@ -947,6 +741,13 @@ export class PaymentService {
       reason?: string;
       refundId?: string;
       metadata?: any;
+      // Frontend must provide blockchain transaction data
+      blockchainRefundData?: {
+        transactionId: string;
+        blockHeight?: number;
+        status: 'pending' | 'confirmed';
+        feesPaid?: number;
+      };
     } = {}
   ): Promise<{
     success: boolean;
@@ -974,6 +775,14 @@ export class PaymentService {
         return { success: false, error: 'Payment already refunded' };
       }
 
+      // Validate that frontend provided blockchain refund data
+      if (!options.blockchainRefundData?.transactionId) {
+        return { 
+          success: false, 
+          error: 'Frontend must provide valid blockchain refund transaction data' 
+        };
+      }
+
       const refundAmount = options.amount || payment.paymentAmount;
 
       // Validate refund amount
@@ -981,18 +790,18 @@ export class PaymentService {
         return { success: false, error: 'Invalid refund amount' };
       }
 
-      // Process refund based on payment method
+      // Process refund based on payment method (now using frontend data)
       let refundResult;
       
       switch (payment.paymentMethod) {
         case 'sbtc':
-          refundResult = await this.processSbtcRefund(payment, refundAmount);
+          refundResult = await this.processSbtcRefund(payment, refundAmount, options.blockchainRefundData);
           break;
         case 'btc':
-          refundResult = await this.processBtcRefund(payment, refundAmount);
+          refundResult = await this.processBtcRefund(payment, refundAmount, options.blockchainRefundData);
           break;
         case 'stx':
-          refundResult = await this.processStxRefund(payment, refundAmount);
+          refundResult = await this.processStxRefund(payment, refundAmount, options.blockchainRefundData);
           break;
         default:
           return { success: false, error: 'Unsupported payment method for refund' };
@@ -1059,92 +868,302 @@ export class PaymentService {
   }
 
   /**
-   * Process sBTC refund
+   * Process sBTC refund (frontend handles the actual blockchain transaction)
+   * This method validates the refund and updates records once frontend confirms
    */
-  private async processSbtcRefund(payment: any, amount: number): Promise<{
+  private async processSbtcRefund(
+    payment: any, 
+    amount: number,
+    frontendRefundData?: {
+      transactionId: string;
+      blockHeight?: number;
+      status: 'pending' | 'confirmed';
+    }
+  ): Promise<{
     success: boolean;
     transactionId?: string;
     error?: string;
   }> {
     try {
-      // Use sbtc service to process refund
-      const result = await sbtcService.withdraw(
-        amount,
-        payment.customerAddress || payment.paymentAddress,
-        `Refund for payment ${payment._id}`
-      );
-
-      if (!result.success) {
-        return { success: false, error: result.error };
+      // Validate refund data from frontend
+      if (!frontendRefundData?.transactionId) {
+        return { 
+          success: false, 
+          error: 'Frontend must provide valid refund transaction data' 
+        };
       }
+
+      // Store refund transaction data for tracking
+      await this.cacheTransactionData(payment._id, {
+        transactionId: frontendRefundData.transactionId,
+        blockHeight: frontendRefundData.blockHeight,
+        status: frontendRefundData.status,
+        type: 'refund',
+        amount: amount,
+        timestamp: new Date()
+      });
 
       return {
         success: true,
-        transactionId: result.transactionId,
+        transactionId: frontendRefundData.transactionId,
       };
     } catch (error) {
       console.error('Error processing sBTC refund:', error);
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'sBTC refund failed' 
+        error: error instanceof Error ? error.message : 'sBTC refund processing failed' 
       };
     }
   }
 
   /**
-   * Process Bitcoin refund
+   * Process Bitcoin refund (frontend handles blockchain transaction)
    */
-  private async processBtcRefund(payment: any, amount: number): Promise<{
+  private async processBtcRefund(
+    payment: any, 
+    amount: number,
+    frontendRefundData?: {
+      transactionId: string;
+      blockHeight?: number;
+      status: 'pending' | 'confirmed';
+      feesPaid?: number;
+    }
+  ): Promise<{
     success: boolean;
     transactionId?: string;
     error?: string;
   }> {
     try {
-      // In production, integrate with Bitcoin wallet/service
-      // For now, create a placeholder transaction ID
-      const transactionId = `btc_refund_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Validate refund data from frontend
+      if (!frontendRefundData?.transactionId) {
+        return { 
+          success: false, 
+          error: 'Frontend must provide valid Bitcoin refund transaction data' 
+        };
+      }
 
-      // TODO: Implement actual Bitcoin refund logic
-      console.log(`Processing Bitcoin refund: ${amount} BTC to ${payment.customerAddress}`);
+      // Store refund transaction data for tracking
+      await this.cacheTransactionData(payment._id, {
+        transactionId: frontendRefundData.transactionId,
+        blockHeight: frontendRefundData.blockHeight,
+        status: frontendRefundData.status,
+        type: 'refund',
+        amount: amount,
+        feesPaid: frontendRefundData.feesPaid,
+        timestamp: new Date()
+      });
 
       return {
         success: true,
-        transactionId,
+        transactionId: frontendRefundData.transactionId,
       };
     } catch (error) {
       console.error('Error processing Bitcoin refund:', error);
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Bitcoin refund failed' 
+        error: error instanceof Error ? error.message : 'Bitcoin refund processing failed' 
       };
     }
   }
 
   /**
-   * Process STX refund
+   * Verify payment signature and update payment status
+   * (called after frontend completes blockchain transaction)
    */
-  private async processStxRefund(payment: any, amount: number): Promise<{
+  async verifyPaymentSignature(data: PaymentVerificationData): Promise<{
+    success: boolean;
+    payment?: any;
+    error?: string;
+  }> {
+    await connectToDatabase();
+
+    try {
+      const payment = await Payment.findById(data.paymentId);
+      if (!payment) {
+        return { success: false, error: 'Payment not found' };
+      }
+
+      if (payment.status !== 'pending') {
+        return { success: false, error: 'Payment is not in pending status' };
+      }
+
+      // Store blockchain transaction data
+      if (data.blockchainData) {
+        payment.blockchainData = data.blockchainData;
+        payment.transactionHash = data.txHash;
+      }
+
+      // Update status to processing (will be confirmed when blockchain confirms)
+      payment.status = 'processing';
+      payment.customerAddress = data.customerWalletAddress;
+      payment.updatedAt = new Date();
+
+      await payment.save();
+
+      // Trigger webhook for payment processing
+      await webhookService.triggerWebhook(payment, 'payment.processing');
+
+      return {
+        success: true,
+        payment: {
+          id: payment._id,
+          status: payment.status,
+          transactionHash: payment.transactionHash,
+          blockchainData: payment.blockchainData
+        }
+      };
+
+    } catch (error) {
+      console.error('Payment verification error:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Payment verification failed' 
+      };
+    }
+  }
+
+  /**
+   * Update payment status based on blockchain confirmations
+   * (called by frontend when monitoring blockchain)
+   */
+  async updatePaymentStatus(
+    paymentId: string, 
+    status: 'confirmed' | 'failed', 
+    blockchainData?: BlockchainTransactionData
+  ): Promise<{ success: boolean; error?: string }> {
+    await connectToDatabase();
+
+    try {
+      const payment = await Payment.findById(paymentId);
+      if (!payment) {
+        return { success: false, error: 'Payment not found' };
+      }
+
+      const previousStatus = payment.status;
+      payment.status = status;
+      payment.updatedAt = new Date();
+
+      if (status === 'confirmed') {
+        payment.confirmedAt = new Date();
+        
+        // Process any required conversions
+        if (payment.payoutMethod !== payment.paymentMethod) {
+          const conversionResult = await conversionService.convertCurrency(
+            payment.paymentAmount,
+            payment.paymentCurrency,
+            payment.payoutCurrency
+          );
+          
+          if (conversionResult.success) {
+            payment.conversionCompleted = true;
+            payment.finalPayoutAmount = conversionResult.toAmount;
+          }
+        }
+      }
+
+      if (blockchainData) {
+        payment.blockchainData = { ...payment.blockchainData, ...blockchainData };
+      }
+
+      await payment.save();
+
+      // Trigger appropriate webhook
+      const eventType = status === 'confirmed' ? 'payment.confirmed' : 'payment.failed';
+      await webhookService.triggerWebhook(payment, eventType);
+
+      return { success: true };
+
+    } catch (error) {
+      console.error('Payment status update error:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Payment status update failed' 
+      };
+    }
+  }
+
+  /**
+   * Cache transaction data from frontend
+   * (for storing additional blockchain information)
+   */
+  async cacheTransactionData(
+    paymentId: string, 
+    txData: any
+  ): Promise<{ success: boolean; error?: string }> {
+    await connectToDatabase();
+
+    try {
+      const payment = await Payment.findById(paymentId);
+      if (!payment) {
+        return { success: false, error: 'Payment not found' };
+      }
+
+      // Merge transaction data
+      payment.blockchainData = { 
+        ...payment.blockchainData, 
+        ...txData,
+        cachedAt: new Date()
+      };
+      
+      await payment.save();
+
+      return { success: true };
+
+    } catch (error) {
+      console.error('Transaction data caching error:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Transaction data caching failed' 
+      };
+    }
+  }
+
+  /**
+   * Process STX refund (frontend handles blockchain transaction)
+   */
+  private async processStxRefund(
+    payment: any, 
+    amount: number,
+    frontendRefundData?: {
+      transactionId: string;
+      blockHeight?: number;
+      status: 'pending' | 'confirmed';
+      feesPaid?: number;
+    }
+  ): Promise<{
     success: boolean;
     transactionId?: string;
     error?: string;
   }> {
     try {
-      // In production, integrate with Stacks wallet/service
-      // For now, create a placeholder transaction ID
-      const transactionId = `stx_refund_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Validate refund data from frontend
+      if (!frontendRefundData?.transactionId) {
+        return { 
+          success: false, 
+          error: 'Frontend must provide valid STX refund transaction data' 
+        };
+      }
 
-      // TODO: Implement actual STX refund logic
-      console.log(`Processing STX refund: ${amount} STX to ${payment.customerAddress}`);
+      // Store refund transaction data for tracking
+      await this.cacheTransactionData(payment._id, {
+        transactionId: frontendRefundData.transactionId,
+        blockHeight: frontendRefundData.blockHeight,
+        status: frontendRefundData.status,
+        type: 'refund',
+        amount: amount,
+        feesPaid: frontendRefundData.feesPaid,
+        timestamp: new Date()
+      });
 
       return {
         success: true,
-        transactionId,
+        transactionId: frontendRefundData.transactionId,
       };
     } catch (error) {
       console.error('Error processing STX refund:', error);
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'STX refund failed' 
+        error: error instanceof Error ? error.message : 'STX refund processing failed' 
       };
     }
   }

@@ -44,6 +44,28 @@ export interface IMerchant extends Document {
       isConfigured: boolean;
     };
   };
+  // Add wallet balances and addresses
+  walletBalances: {
+    stxBalance: {
+      amount: string; // Store as string to preserve precision
+      lastUpdated: Date;
+    };
+    btcBalance: {
+      amount: string;
+      lastUpdated: Date;
+    };
+    sbtcBalance: {
+      amount: string;
+      lastUpdated: Date;
+    };
+  };
+  // Store actual wallet addresses from connected wallets
+  connectedWallets: {
+    stacksAddress?: string;
+    bitcoinAddress?: string;
+    lastConnected?: Date;
+    walletType?: string; // 'leather', 'xverse', etc.
+  };
   sbtcSettings: {
     autoConvert: boolean;
     minAmount: number;
@@ -214,6 +236,48 @@ const merchantSchema = new Schema<IMerchant>({
         default: false,
       },
     },
+  },
+
+  // Add wallet balances and addresses
+  walletBalances: {
+    stxBalance: {
+      amount: {
+        type: String,
+        default: '0',
+      },
+      lastUpdated: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+    btcBalance: {
+      amount: {
+        type: String,
+        default: '0',
+      },
+      lastUpdated: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+    sbtcBalance: {
+      amount: {
+        type: String,
+        default: '0',
+      },
+      lastUpdated: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  },
+
+  // Store actual wallet addresses from connected wallets
+  connectedWallets: {
+    stacksAddress: String,
+    bitcoinAddress: String,
+    lastConnected: Date,
+    walletType: String, // 'leather', 'xverse', etc.
   },
   
   sbtcSettings: {

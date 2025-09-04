@@ -16,7 +16,8 @@ import {
   Shield,
   Zap,
   Globe,
-  ArrowUpDown
+  ArrowUpDown,
+  User
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -59,6 +60,11 @@ const navigation: NavItem[] = [
     name: 'Analytics',
     href: '/dashboard/analytics',
     icon: BarChart3,
+  },
+  {
+    name: 'Profile',
+    href: '/dashboard/profile',
+    icon: User,
   },
   {
     name: 'API Keys',

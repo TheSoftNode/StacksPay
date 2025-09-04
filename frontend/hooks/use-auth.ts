@@ -10,11 +10,11 @@ export const useAuth = () => {
   const router = useRouter();
   const { user, isAuthenticated, setUser, setLoading, setError, logout: storeLogout } = useAuthStore();
 
-  // Get current user query
+  // Get current user query - only enabled on client side and when authenticated
   const { data: currentUser, isLoading: isLoadingUser } = useQuery({
     queryKey: ['auth', 'currentUser'],
     queryFn: () => apiClient.getCurrentUser(),
-    enabled: isAuthenticated && !!localStorage.getItem('authToken'),
+    enabled: typeof window !== 'undefined' && isAuthenticated && !!localStorage?.getItem('authToken'),
     retry: false,
     staleTime: 0, // Always fresh data for verification status
     refetchOnWindowFocus: true,

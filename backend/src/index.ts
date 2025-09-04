@@ -9,6 +9,7 @@ import authRoutes from '@/routes/auth.routes';
 import notificationRoutes from '@/routes/notification.routes';
 import errorRoutes from '@/routes/error.routes';
 import testRoutes from '@/routes/test.routes';
+import walletRoutes from '@/routes/wallet';
 import config from '@/config';
 import { createLogger } from '@/utils/logger';
 import { 
@@ -122,6 +123,7 @@ class sBTCPaymentGatewayServer {
     this.app.use('/api/notifications', notificationRoutes);
     this.app.use('/api/monitoring', errorRoutes);
     this.app.use('/api/test', testRoutes);
+    this.app.use('/api/wallet', walletRoutes);
 
     // 404 handler for unmatched routes (must be before error handler)
     this.app.use('*', notFoundHandler);

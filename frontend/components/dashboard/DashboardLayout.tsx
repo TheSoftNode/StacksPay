@@ -17,23 +17,23 @@ interface DashboardLayoutProps {
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const { user, loading } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
   // Redirect if not authenticated - TEMPORARILY DISABLED FOR DEVELOPMENT
   // useEffect(() => {
-  //   if (!loading && !user) {
+  //   if (!isLoading && !user) {
   //     router.push('/')
   //   }
-  // }, [user, loading, router])
+  // }, [user, isLoading, router])
 
   // Close mobile sidebar when route changes
   useEffect(() => {
     setSidebarOpen(false)
   }, [pathname])
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
@@ -86,7 +86,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         />
 
         {/* Email Verification Banner */}
-        {user && <EmailVerificationBanner user={user} />}
+        {user && user.email && <EmailVerificationBanner user={{ emailVerified: user.emailVerified, email: user.email }} />}
 
         {/* Page Content */}
         <main className="flex-1">

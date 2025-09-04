@@ -49,10 +49,19 @@ import {
 } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { apiClient } from '@/lib/api/auth-api'
+import { walletApiClient } from '@/lib/api/wallet-api'
 import { useAuth } from '@/hooks/use-auth'
 import { TwoFactorSetup } from './TwoFactorSetup'
 import { TwoFactorDisable } from './TwoFactorDisable'
 import { PasswordUpdate } from './PasswordUpdate'
+
+// Debug import for development
+const isDevelopment = process.env.NODE_ENV === 'development'
+if (isDevelopment && typeof window !== 'undefined') {
+  import('@/test/debug-stx-balance').then(module => {
+    (window as any).debugStxBalance = module.debugStxBalance;
+  });
+}
 
 interface NotificationSettings {
   emailNotifications: boolean
@@ -78,7 +87,6 @@ interface PaymentSettings {
   preferredProvider: string
   enableTestMode: boolean
   // Wallet addresses
-  sbtcAddress: string
   btcAddress: string
   stxAddress: string
   // Bank account
@@ -104,6 +112,16 @@ const SettingsPage = () => {
   const [show2FADisable, setShow2FADisable] = useState(false)
   const [showPasswordUpdate, setShowPasswordUpdate] = useState(false)
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
+  const [syncingWallet, setSyncingWallet] = useState(false)
+  const [walletBalances, setWalletBalances] = useState<{
+    stx: string;
+    btc: string;
+    sbtc: string;
+  }>({
+    stx: '0',
+    btc: '0',
+    sbtc: '0'
+  })
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     emailNotifications: true,
@@ -129,7 +147,6 @@ const SettingsPage = () => {
     preferredProvider: 'circle',
     enableTestMode: false,
     // Wallet addresses
-    sbtcAddress: '',
     btcAddress: '',
     stxAddress: '',
     // Bank account
@@ -174,6 +191,15 @@ const SettingsPage = () => {
               confirmationsRequired: data.sbtcSettings?.confirmationThreshold || 3
             }));
           }
+
+          // Update wallet addresses from the new backend API
+          if (data.connectedWallets) {
+            setPaymentSettings(prev => ({
+              ...prev,
+              btcAddress: data.connectedWallets.bitcoinAddress || '',
+              stxAddress: data.connectedWallets.stacksAddress || ''
+            }));
+          }
           
           // Update sBTC settings
           if (data.walletSetup?.sBTCWallet) {
@@ -183,6 +209,16 @@ const SettingsPage = () => {
               enableAutoDeposit: data.sbtcSettings?.autoConvert || false,
               minimumBalance: data.sbtcSettings?.minAmount ? data.sbtcSettings.minAmount / 100000000 : 0.001
             }));
+          }
+
+          // If we have wallet addresses, also load and display balances
+          if (data.walletBalances) {
+            console.log('Wallet balances from backend:', data.walletBalances);
+            setWalletBalances({
+              stx: data.walletBalances.stxBalance?.amount || '0',
+              btc: data.walletBalances.btcBalance?.amount || '0',
+              sbtc: data.walletBalances.sbtcBalance?.amount || '0'
+            });
           }
         }
       } catch (error) {
@@ -194,6 +230,74 @@ const SettingsPage = () => {
 
     loadSettings();
   }, [user]);
+
+  // Sync wallet data from connected wallet
+  const handleSyncWallet = async () => {
+    setSyncingWallet(true);
+    try {
+      console.log('🔄 Starting wallet sync...');
+      
+      // First get balances directly from frontend services to show immediate feedback
+      const balancesResult = await walletApiClient.getAllWalletBalances();
+      if (balancesResult.success && balancesResult.data) {
+        console.log('📊 Current wallet balances:', balancesResult.data);
+        
+        const walletData = balancesResult.data; // Store data in variable to avoid TS errors
+        
+        // Update local state immediately
+        setWalletBalances({
+          stx: walletData.stxBalance,
+          btc: walletData.btcBalance,
+          sbtc: walletData.sbtcBalance
+        });
+        
+        // Update addresses immediately
+        setPaymentSettings(prev => ({
+          ...prev,
+          stxAddress: walletData.addresses.stacks,
+          btcAddress: walletData.addresses.bitcoin || ''
+        }));
+      }
+      
+      // Then sync with backend
+      const result = await walletApiClient.syncWalletConnection();
+      if (result.success) {
+        console.log('✅ Wallet synced with backend successfully');
+        
+        // Reload settings to get any additional backend data
+        const response = await apiClient.getSettings();
+        if (response.success && response.data) {
+          const data = response.data;
+          
+          // Update wallet addresses from backend
+          if (data.connectedWallets) {
+            setPaymentSettings(prev => ({
+              ...prev,
+              btcAddress: data.connectedWallets.bitcoinAddress || prev.btcAddress,
+              stxAddress: data.connectedWallets.stacksAddress || prev.stxAddress
+            }));
+          }
+
+          // Update wallet balances from backend
+          if (data.walletBalances) {
+            setWalletBalances({
+              stx: data.walletBalances.stxBalance?.amount || walletBalances.stx,
+              btc: data.walletBalances.btcBalance?.amount || walletBalances.btc,
+              sbtc: data.walletBalances.sbtcBalance?.amount || walletBalances.sbtc
+            });
+          }
+        }
+        
+      } else {
+        console.error('❌ Failed to sync with backend:', result.error);
+        // Still show success for frontend data even if backend sync failed
+      }
+    } catch (error) {
+      console.error('❌ Error syncing wallet:', error);
+    } finally {
+      setSyncingWallet(false);
+    }
+  };
 
   const handleSave = async (section: string) => {
     setLoading(true)
@@ -507,26 +611,45 @@ const SettingsPage = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>sBTC Address</Label>
-                      <Input
-                        value={paymentSettings.sbtcAddress}
-                        onChange={(e) => updatePaymentSetting('sbtcAddress', e.target.value)}
-                        placeholder="SP1ABC..."
-                        className="font-mono text-sm"
-                      />
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        Your sBTC wallet address for receiving synthetic Bitcoin
-                      </p>
+                    <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div>
+                        <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">Sync from Connected Wallet</h4>
+                        <p className="text-sm text-blue-700 dark:text-blue-300">Update addresses and balances from your connected wallet</p>
+                      </div>
+                      <Button
+                        onClick={handleSyncWallet}
+                        disabled={syncingWallet}
+                        variant="outline"
+                        size="sm"
+                        className="border-blue-200 text-blue-700 hover:bg-blue-100"
+                      >
+                        {syncingWallet ? (
+                          <>
+                            <Monitor className="h-4 w-4 mr-2 animate-spin" />
+                            Syncing...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="h-4 w-4 mr-2" />
+                            Sync Wallet
+                          </>
+                        )}
+                      </Button>
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Bitcoin Address</Label>
+                      <div className="flex items-center justify-between">
+                        <Label>Bitcoin Address</Label>
+                        <Badge variant="outline" className="text-xs">
+                          Balance: {parseFloat(walletBalances.btc).toFixed(8)} BTC
+                        </Badge>
+                      </div>
                       <Input
                         value={paymentSettings.btcAddress}
                         onChange={(e) => updatePaymentSetting('btcAddress', e.target.value)}
                         placeholder="bc1q..."
                         className="font-mono text-sm"
+                        readOnly={!!paymentSettings.btcAddress}
                       />
                       <p className="text-xs text-gray-600 dark:text-gray-400">
                         Your Bitcoin wallet address for receiving BTC
@@ -534,12 +657,23 @@ const SettingsPage = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Stacks Address</Label>
+                      <div className="flex items-center justify-between">
+                        <Label>Stacks Address</Label>
+                        <div className="flex gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            STX: {parseFloat(walletBalances.stx).toFixed(6)}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            sBTC: {parseFloat(walletBalances.sbtc).toFixed(8)}
+                          </Badge>
+                        </div>
+                      </div>
                       <Input
                         value={paymentSettings.stxAddress}
                         onChange={(e) => updatePaymentSetting('stxAddress', e.target.value)}
                         placeholder="SP..."
                         className="font-mono text-sm"
+                        readOnly={!!paymentSettings.stxAddress}
                       />
                       <p className="text-xs text-gray-600 dark:text-gray-400">
                         Your Stacks wallet address for receiving STX tokens

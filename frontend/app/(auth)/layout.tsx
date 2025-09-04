@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Logo from '@/components/shared/Logo';
 import ThemeToggle from '@/components/shared/ThemeToggle';
-import { ThemeProvider } from '@/components/providers/theme-provider';
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -16,19 +15,8 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 relative">
-
       {/* Elegant Top Bar */}
-      
-
-      {/* Main Content */}
-      <div className="relative z-10">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
-        <motion.header
+      <motion.header
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
@@ -46,10 +34,11 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
           </div>
         </div>
       </motion.header>
-        {children}
-        </ThemeProvider>
-      </div>
 
+      {/* Main Content */}
+      <div className="relative z-10">
+        {children}
+      </div>
     </div>
   );
 }

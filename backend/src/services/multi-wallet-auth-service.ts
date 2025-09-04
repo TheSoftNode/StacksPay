@@ -1,4 +1,3 @@
-import { verifyMessageSignature } from '@stacks/encryption';
 import { walletService } from './wallet-service';
 import { AuthEvent } from '@/models/auth-event';
 import { connectToDatabase } from '@/config/database';

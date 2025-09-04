@@ -2,10 +2,9 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -20,6 +19,8 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
               }
               return failureCount < 3;
             },
+            // Disable query on server side to prevent hydration issues
+            enabled: typeof window !== 'undefined',
           },
           mutations: {
             retry: (failureCount, error: any) => {
@@ -34,19 +35,10 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       })
   );
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Only render QueryClientProvider after mount to prevent hydration issues
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      {process.env.NODE_ENV === 'development' && (
+      {process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (
         <ReactQueryDevtools initialIsOpen={false} />
       )}
     </QueryClientProvider>

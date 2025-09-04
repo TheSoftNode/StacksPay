@@ -38,22 +38,23 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
-        <ClientOnly fallback={<div className="min-h-screen bg-background" />}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <QueryProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <QueryProvider>
+            <ClientOnly fallback={<div className="min-h-screen bg-background" />}>
               <ConditionalNavbar />
               {children}
               <ChatBot />
               <Toaster />
-            </QueryProvider>
-          </ThemeProvider>
-        </ClientOnly>
+            </ClientOnly>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

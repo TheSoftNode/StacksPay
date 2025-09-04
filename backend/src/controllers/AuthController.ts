@@ -1476,7 +1476,19 @@ export class AuthController {
           twoFactorEnabled: merchant.twoFactorEnabled,
           walletSetup: merchant.walletSetup,
           webhookUrl: merchant.webhookUrl,
-          webhookEvents: merchant.webhookEvents || []
+          webhookEvents: merchant.webhookEvents || [],
+          // Add wallet balances and connected wallet data
+          walletBalances: merchant.walletBalances || {
+            stxBalance: { amount: '0', lastUpdated: new Date() },
+            btcBalance: { amount: '0', lastUpdated: new Date() },
+            sbtcBalance: { amount: '0', lastUpdated: new Date() },
+          },
+          connectedWallets: {
+            stacksAddress: merchant.connectedWallets?.stacksAddress || merchant.stacksAddress,
+            bitcoinAddress: merchant.connectedWallets?.bitcoinAddress || merchant.bitcoinAddress,
+            walletType: merchant.connectedWallets?.walletType,
+            lastConnected: merchant.connectedWallets?.lastConnected,
+          },
         }
       });
 

@@ -1,5 +1,7 @@
+import { StxBalanceResponse, WalletInfo } from '@/types/wallet';
 import { 
   connect, 
+  isConnected,
   disconnect,
   request,
   getLocalStorage
@@ -79,150 +81,114 @@ class WalletService {
   }
 
   /**
-   * Connect to Stacks wallet - this ONLY handles wallet connection
-   * Authentication with backend happens separately via API calls
+   * Connect to a Stacks wallet
    */
-  async connectWallet(): Promise<WalletConnectionResult> {
+  async connectWallet(appDetails?: {
+    name: string;
+    icon: string;
+  }): Promise<WalletInfo> {
     try {
-      console.log('🔌 StacksPay: Connecting to Stacks wallet...');
+      console.log("Starting wallet connection...");
+      const response = await connect();
+      console.log("Wallet connection response:", response);
+
+      const userData = getLocalStorage();
+      console.log("User Data:", userData);
       
-      if (typeof window === 'undefined') {
-        throw new Error('Wallet connection requires browser environment');
-      }
-
-      // Check if wallet is already connected
-      const existingData = this.extractWalletData();
-
-      console.log('existing data:', existingData)
-      if (existingData) {
-        console.log('✅ Using existing wallet connection');
+      // Helper to safely access wallet response
+      const getWalletAddresses = (response: any) => {
         return {
-          address: existingData.address,
-          publicKey: existingData.publicKey,
-          profile: existingData.profile,
-          isConnected: true,
-          walletType: this.detectWalletType(),
-          network: this.network === STACKS_MAINNET ? 'mainnet' : 'testnet',
+          stx: response?.addresses?.stx?.[0]?.address,
+          btc: response?.addresses?.btc?.[0]?.address
         };
-      }
-
-      // Use the modern connect API for Stacks addresses
-      console.log('🔄 Initiating new wallet connection...');
-      
-      // First, try to get Stacks addresses specifically
-      let result;
-      try {
-        result = await request('stx_getAddresses', {
-          network: this.network === STACKS_MAINNET ? 'mainnet' : 'testnet'
-        });
-      } catch (stacksError) {
-        console.warn('⚠️ Failed to get Stacks addresses, trying general connect...', stacksError);
-        // Fallback to general connect
-        result = await connect();
-      }
-
-      if (!result.addresses || result.addresses.length === 0) {
-        throw new Error('No addresses returned from wallet');
-      }
-
-      console.log("result: ", result)
-
-      // Find the Stacks address
-      let stacksAddress = result.addresses[0];
-      
-      // If we have multiple addresses, try to find the Stacks one
-      if (result.addresses.length > 1) {
-        const stxAddr = result.addresses.find(addr => 
-          addr.symbol === 'STX' || 
-          (typeof addr.address === 'string' && (addr.address.startsWith('ST') || addr.address.startsWith('SP')))
-        );
-        if (stxAddr) {
-          stacksAddress = stxAddr;
-        }
-      }
-
-      console.log('✅ Wallet connection successful:', stacksAddress);
-      console.log('🏠 Address type check:', {
-        address: stacksAddress.address,
-        isStacksAddress: stacksAddress.address?.startsWith('ST') || stacksAddress.address?.startsWith('SP'),
-        symbol: stacksAddress.symbol
-      });
-
-      // Store connection data for future use
-      const walletData: WalletConnectionResult = {
-        address: stacksAddress.address,
-        publicKey: stacksAddress.publicKey,
-        isConnected: true,
-        walletType: this.detectWalletType(),
-        network: this.network === STACKS_MAINNET ? 'mainnet' : 'testnet',
       };
 
-      // Store in localStorage for persistence
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('stacksWalletData', JSON.stringify(walletData));
+      const { stx, btc } = getWalletAddresses(userData);
+      console.log("Extracted addresses:", { stx, btc });
+      
+      if (stx && btc) {
+        return {
+          address: stx,
+          publicKey: (userData as any)?.profile?.publicKey || (userData as any)?.publicKey || '',
+          profile: (userData as any)?.profile || userData,
+          isConnected: true,
+        };
+      } else {
+        throw new Error("Failed to retrieve wallet addresses");
       }
-
-      console.log('✅ StacksPay wallet connected:', walletData);
-
-      return walletData;
-
     } catch (error) {
-      console.error('❌ Wallet connection failed:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to connect wallet');
+      console.error('Error connecting wallet:', error);
+      throw new Error('Failed to connect wallet');
     }
   }
 
   /**
-   * Extract wallet data from browser storage
-   */
-  private extractWalletData(): { address: string; publicKey: string; profile?: any } | null {
-    try {
-      if (typeof window === 'undefined') return null;
-
-      // First check our custom localStorage (from modern connect API)
-      const stored = localStorage.getItem('stacksWalletData');
-      if (stored) {
-        const data = JSON.parse(stored);
-        if (data.address && data.publicKey) {
-          return {
-            address: data.address,
-            publicKey: data.publicKey,
-            profile: data.profile || {}
-          };
+     * Get STX balance for connected wallet
+     */
+    async getStxBalance(): Promise<bigint> {
+      try {
+        const address = await this.getCurrentAddress();
+        if (!address) {
+          throw new Error('No wallet connected');
         }
-      }
-
-      // Fallback: Try legacy storage methods
-      // Note: In modern API, we primarily rely on our custom storage
-      const legacySession = localStorage.getItem('blockstack-session');
-      if (legacySession) {
-        const parsed = JSON.parse(legacySession);
-        const userData = parsed.userData;
+  
+        // Use the better API endpoint (v2)
+        const apiUrl = this.network === STACKS_MAINNET 
+          ? 'https://api.hiro.so'
+          : 'https://api.testnet.hiro.so';
+  
+        const response = await fetch(`${apiUrl}/extended/v2/addresses/${address}/balances/stx?include_mempool=false`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch balance');
+        }
+  
+        const data = await response.json() as StxBalanceResponse;
+        console.log("STX Balance Response:", data);
         
-        if (userData && userData.profile) {
-          const stxAddress = userData.profile.stxAddress;
-          const publicKey = userData.profile.publicKey;
+        // Return balance in microSTX
+        return BigInt(data.balance || '0');
+      } catch (error) {
+        console.error('Error getting STX balance:', error);
+        throw new Error('Failed to get STX balance');
+      }
+    }
+  
+    /**
+     * Get network info
+     */
+    getNetworkInfo() {
+      return {
+        network: this.network,
+        isMainnet: this.network === STACKS_MAINNET,
+        stacksApiUrl: this.network === STACKS_MAINNET 
+          ? 'https://api.mainnet.hiro.so'
+          : 'https://api.testnet.hiro.so',
+      };
+    }
 
-          if (!stxAddress || !publicKey) return null;
-
-          // Get the appropriate address for current network
-          const address = this.network === STACKS_MAINNET 
-            ? stxAddress.mainnet 
-            : stxAddress.testnet;
-
-          if (!address) return null;
-
-          return {
-            address,
-            publicKey,
-            profile: userData.profile
-          };
-        }
+  /**
+   * Get current wallet address
+   */
+  async getCurrentAddress(): Promise<string | null> {
+    try {
+      if (!isConnected()) {
+        return null;
       }
 
-      return null;
+      const userData = getLocalStorage();
+      
+      // Helper to safely access wallet response
+      const getWalletAddresses = (response: any) => {
+        return {
+          stx: response?.addresses?.stx?.[0]?.address,
+          btc: response?.addresses?.btc?.[0]?.address
+        };
+      };
+
+      const { stx } = getWalletAddresses(userData);
+      return stx || null;
     } catch (error) {
-      console.error('❌ Failed to extract wallet data:', error);
+      console.error('Error getting wallet address:', error);
       return null;
     }
   }
@@ -240,40 +206,94 @@ class WalletService {
     }
   }
 
-  /**
-   * Check if wallet is connected
-   */
+
   async isWalletConnected(): Promise<boolean> {
     try {
-      const walletData = this.extractWalletData();
-      return walletData !== null;
+      return await isConnected();
     } catch (error) {
-      console.error('❌ Failed to check wallet connection:', error);
+      console.error('Error checking wallet connection:', error);
       return false;
     }
   }
+
+  
 
   /**
    * Get current wallet data if connected
    */
   async getCurrentWalletData(): Promise<WalletConnectionResult | null> {
     try {
-      const isConnected = await this.isWalletConnected();
-      if (!isConnected) return null;
+      const connected = await isConnected();
+      if (!connected) return null;
 
-      const walletData = this.extractWalletData();
+      const walletData = getLocalStorage();
       if (!walletData) return null;
 
+      console.log("walletData", walletData)
+
+      // Helper to safely access wallet response
+      const getWalletAddresses = (response: any) => {
+        return {
+          stx: response?.addresses?.stx?.[0]?.address,
+          btc: response?.addresses?.btc?.[0]?.address
+        };
+      };
+
+      const { stx, btc } = getWalletAddresses(walletData);
+
       return {
-        address: walletData.address,
-        publicKey: walletData.publicKey,
-        profile: walletData.profile,
+        address: stx,
+        publicKey: (walletData as any)?.profile?.publicKey || (walletData as any)?.publicKey || '',
+        profile: (walletData as any)?.profile || walletData,
         isConnected: true,
         walletType: this.detectWalletType(),
         network: this.network === STACKS_MAINNET ? 'mainnet' : 'testnet',
       };
     } catch (error) {
       console.error('❌ Failed to get current wallet data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get current Bitcoin address from connected wallet
+   */
+  async getCurrentBitcoinAddress(): Promise<string | null> {
+    try {
+      const connected = await isConnected();
+      if (!connected) return null;
+
+      const walletData = getLocalStorage();
+      if (!walletData) return null;
+
+      console.log("Bitcoin address lookup - walletData structure:", JSON.stringify(walletData, null, 2));
+
+      // Helper to safely access wallet response
+      const getWalletAddresses = (response: any) => {
+        console.log("Getting wallet addresses from:", response);
+        
+        // Try different possible structures
+        const addresses = {
+          stx: response?.addresses?.stx?.[0]?.address || response?.addresses?.stx?.address,
+          btc: response?.addresses?.btc?.[0]?.address || response?.addresses?.btc?.address || response?.addresses?.bitcoin?.address
+        };
+        
+        console.log("Extracted addresses:", addresses);
+        return addresses;
+      };
+
+      const { btc } = getWalletAddresses(walletData);
+      
+      if (!btc) {
+        console.warn("No Bitcoin address found in wallet data. Available properties:", Object.keys(walletData));
+        if (walletData.addresses) {
+          console.warn("Available address properties:", Object.keys(walletData.addresses));
+        }
+      }
+      
+      return btc || null;
+    } catch (error) {
+      console.error('❌ Failed to get current Bitcoin address:', error);
       return null;
     }
   }
