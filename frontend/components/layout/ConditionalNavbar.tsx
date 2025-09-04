@@ -19,7 +19,8 @@ export default function ConditionalNavbar() {
   
   if (pathname?.startsWith('/dashboard')
       || pathname?.startsWith('/login')
-      || pathname?.startsWith('/register')) {
+      || pathname?.startsWith('/register')
+      || pathname?.startsWith('/checkout')) {
     return null
   }
   

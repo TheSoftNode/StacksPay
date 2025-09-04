@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTheme } from 'next-themes'
 import { 
   QrCode, 
   Wallet, 
@@ -14,7 +15,10 @@ import {
   RefreshCw,
   ArrowLeft,
   AlertTriangle,
-  CreditCard
+  CreditCard,
+  Sun,
+  Moon,
+  Home
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,12 +38,12 @@ interface PaymentData {
   description: string
   status: 'pending' | 'processing' | 'confirmed' | 'failed' | 'expired' | 'cancelled'
   expiresAt: string
-  qrCode: string
-  merchantInfo: {
+  qrCode?: string
+  merchantInfo?: {
     name: string
     logo?: string
   }
-  paymentInstructions: {
+  paymentInstructions?: {
     title: string
     steps: string[]
     amount: string
@@ -51,6 +55,7 @@ export default function CheckoutPage() {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
+  const { theme, setTheme } = useTheme()
   const paymentId = params.paymentId as string
   
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null)
@@ -97,12 +102,56 @@ export default function CheckoutPage() {
     fetchPaymentData()
   }, [paymentId])
 
-  // Update payment data when status changes
+  // Real-time payment monitoring
   useEffect(() => {
-    if (statusData && paymentData) {
+    if (!paymentData || paymentData.status === 'confirmed') return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiUrl}/api/public/payments/${paymentId}/status`);
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            const currentStatus = paymentData.status;
+            const newStatus = result.data.status;
+            
+            // Update payment data if status changed
+            if (currentStatus !== newStatus) {
+              setPaymentData(result.data);
+              
+              // Show notification for status changes
+              if (newStatus === 'confirmed') {
+                toast({
+                  title: "Payment Confirmed!",
+                  description: "Your payment has been successfully processed.",
+                });
+                clearInterval(pollInterval); // Stop polling
+              } else if (newStatus === 'processing') {
+                toast({
+                  title: "Payment Detected",
+                  description: "Your payment is being processed...",
+                });
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error polling payment status:', error);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    // Clean up interval on unmount or when payment is confirmed
+    return () => clearInterval(pollInterval);
+  }, [paymentData, paymentId, toast]);
+
+  // Update payment data when status changes from the hook (but avoid infinite loops)
+  useEffect(() => {
+    if (statusData && paymentData && statusData.status !== paymentData.status) {
       setPaymentData(prev => prev ? { ...prev, status: statusData.status as PaymentData['status'] } : null)
     }
-  }, [statusData, paymentData])
+  }, [statusData?.status, paymentData?.status])
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -120,27 +169,27 @@ export default function CheckoutPage() {
 
   const connectWallet = async () => {
     try {
-      // Use the multi-wallet service to connect
-      if (typeof window !== 'undefined' && (window as any).StacksProvider) {
-        const stacksProvider = (window as any).StacksProvider
-        const userSession = await stacksProvider.requestAuth()
-        setWalletConnected(true)
-        toast({
-          title: "Wallet Connected",
-          description: "You can now send payment from your wallet",
-        })
-      } else {
-        toast({
-          title: "Wallet Not Found", 
-          description: "Please install a Stacks wallet (Hiro Wallet, Xverse, etc.)",
-          variant: "destructive"
-        })
-      }
+      // Import wallet service dynamically to avoid SSR issues
+      const { walletService } = await import('@/lib/services/wallet-service')
+      
+      // Connect using the proper wallet service
+      const walletData = await walletService.connectWallet({
+        name: 'StacksPay Checkout',
+        icon: window.location.origin + '/icons/apple-touch-icon.png'
+      })
+      
+      console.log('Wallet connected:', walletData)
+      setWalletConnected(true)
+      
+      toast({
+        title: "Wallet Connected",
+        description: `Connected ${walletData.address.slice(0, 6)}...${walletData.address.slice(-4)}`,
+      })
     } catch (err) {
       console.error('Wallet connection failed:', err)
       toast({
         title: "Connection Failed",
-        description: "Failed to connect wallet. Please try again.",
+        description: err instanceof Error ? err.message : "Failed to connect wallet. Please try again.",
         variant: "destructive"
       })
     }
@@ -152,8 +201,20 @@ export default function CheckoutPage() {
     try {
       setTransactionSent(true)
       
-      // This would integrate with the actual wallet to send the transaction
-      // For now, we'll call the backend to mark as processing
+      // Import wallet service dynamically
+      const { walletService } = await import('@/lib/services/wallet-service')
+      
+      // Get current wallet data
+      const walletData = await walletService.getCurrentWalletData()
+      if (!walletData) {
+        throw new Error('Wallet not connected')
+      }
+
+      // Generate a mock transaction ID for demo purposes
+      // In a real implementation, this would be the actual blockchain transaction ID
+      const mockTxId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+      // Call the backend to process the payment
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       const response = await fetch(`${apiUrl}/api/public/payments/${paymentId}/process`, {
         method: 'POST',
@@ -161,13 +222,10 @@ export default function CheckoutPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          signature: 'mock_signature_from_wallet',
-          customerWalletAddress: 'mock_customer_address',
-          blockchainData: {
-            txId: `mock_tx_${Date.now()}`,
-            confirmations: 0,
-            timestamp: new Date().toISOString()
-          }
+          walletAddress: walletData.address,
+          transactionId: mockTxId,
+          paymentMethod: paymentData.paymentMethod,
+          signature: 'mock_signature_for_demo', // In real implementation, this would be a wallet signature
         })
       })
 
@@ -178,6 +236,9 @@ export default function CheckoutPage() {
           title: "Payment Sent!",
           description: "Your payment is being processed. You'll see confirmation shortly.",
         })
+        
+        // Update payment data to reflect the new status
+        setPaymentData(prev => prev ? { ...prev, status: 'processing' } : null)
       } else {
         throw new Error(result.error || 'Payment processing failed')
       }
@@ -229,6 +290,32 @@ export default function CheckoutPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        {/* Theme toggle for loading state */}
+        <div className="absolute top-4 right-4 flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/')}
+            className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          >
+            <Home className="h-4 w-4 mr-2" />
+            Home
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+        </div>
+        
         <div className="text-center space-y-4">
           <RefreshCw className="h-8 w-8 animate-spin text-orange-500 mx-auto" />
           <p className="text-gray-600 dark:text-gray-400">Loading payment details...</p>
@@ -240,6 +327,32 @@ export default function CheckoutPage() {
   if (error || !paymentData) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        {/* Theme toggle for error state */}
+        <div className="absolute top-4 right-4 flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/')}
+            className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          >
+            <Home className="h-4 w-4 mr-2" />
+            Home
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+        </div>
+
         <Card className="max-w-md w-full">
           <CardHeader className="text-center">
             <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
@@ -248,10 +361,14 @@ export default function CheckoutPage() {
               {error || 'This payment link may be invalid or expired'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="text-center">
-            <Button onClick={() => router.back()} variant="outline">
+          <CardContent className="text-center space-y-3">
+            <Button onClick={() => router.back()} variant="outline" className="mr-2">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Go Back
+            </Button>
+            <Button onClick={() => router.push('/')} variant="default">
+              <Home className="mr-2 h-4 w-4" />
+              Go Home
             </Button>
           </CardContent>
         </Card>
@@ -270,10 +387,10 @@ export default function CheckoutPage() {
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              {paymentData.merchantInfo.logo && (
+              {paymentData.merchantInfo?.logo && (
                 <Image
                   src={paymentData.merchantInfo.logo}
-                  alt={paymentData.merchantInfo.name}
+                  alt={paymentData.merchantInfo?.name || 'Merchant'}
                   width={40}
                   height={40}
                   className="rounded-lg"
@@ -281,18 +398,47 @@ export default function CheckoutPage() {
               )}
               <div>
                 <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                  Payment to {paymentData.merchantInfo.name}
+                  Payment to {paymentData.merchantInfo?.name || 'StacksPay Merchant'}
                 </h1>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Powered by StacksPay
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              {getStatusIcon(paymentData.status)}
-              <Badge className={getStatusColor(paymentData.status)}>
-                {paymentData.status.charAt(0).toUpperCase() + paymentData.status.slice(1)}
-              </Badge>
+            <div className="flex items-center space-x-4">
+              {/* Home Link */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/')}
+                className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              >
+                <Home className="h-4 w-4 mr-2" />
+                Home
+              </Button>
+              
+              {/* Theme Toggle */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+              
+              {/* Payment Status */}
+              <div className="flex items-center space-x-2">
+                {getStatusIcon(paymentData.status)}
+                <Badge className={getStatusColor(paymentData.status)}>
+                  {paymentData.status.charAt(0).toUpperCase() + paymentData.status.slice(1)}
+                </Badge>
+              </div>
             </div>
           </div>
         </div>
@@ -446,32 +592,36 @@ export default function CheckoutPage() {
                 </Card>
 
                 {/* Payment Instructions */}
-                <Card className="bg-white dark:bg-gray-900">
-                  <CardHeader>
-                    <CardTitle>{paymentData.paymentInstructions.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      {paymentData.paymentInstructions.steps.map((step, index) => (
-                        <div key={index} className="flex items-start space-x-3">
-                          <div className="flex-shrink-0 w-6 h-6 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
-                            <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
-                              {index + 1}
-                            </span>
+                {paymentData.paymentInstructions && (
+                  <Card className="bg-white dark:bg-gray-900">
+                    <CardHeader>
+                      <CardTitle>{paymentData.paymentInstructions.title || 'Payment Instructions'}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        {(paymentData.paymentInstructions.steps || []).map((step, index) => (
+                          <div key={index} className="flex items-start space-x-3">
+                            <div className="flex-shrink-0 w-6 h-6 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                                {index + 1}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700 dark:text-gray-300">{step}</p>
                           </div>
-                          <p className="text-sm text-gray-700 dark:text-gray-300">{step}</p>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <Alert>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        {paymentData.paymentInstructions.note}
-                      </AlertDescription>
-                    </Alert>
-                  </CardContent>
-                </Card>
+                        ))}
+                      </div>
+                      
+                      {paymentData.paymentInstructions.note && (
+                        <Alert>
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>
+                            {paymentData.paymentInstructions.note}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Wallet Integration */}
                 <Card className="bg-white dark:bg-gray-900">
@@ -579,12 +729,24 @@ export default function CheckoutPage() {
 
         {/* Footer */}
         <div className="mt-12 text-center text-sm text-gray-500">
-          <p>
-            Secured by StacksPay • 
-            <a href="https://stackspay.com" className="text-orange-600 hover:underline ml-1">
-              Learn more
-            </a>
-          </p>
+          <div className="flex items-center justify-center space-x-4">
+            <p>
+              Secured by StacksPay • 
+              <a href="https://stackspay.com" className="text-orange-600 hover:underline ml-1">
+                Learn more
+              </a>
+            </p>
+            <span>•</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/')}
+              className="text-gray-500 hover:text-orange-600 p-0 h-auto"
+            >
+              <Home className="h-3 w-3 mr-1" />
+              Back to Home
+            </Button>
+          </div>
         </div>
       </div>
     </div>
