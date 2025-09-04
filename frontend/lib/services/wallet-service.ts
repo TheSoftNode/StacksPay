@@ -65,6 +65,9 @@ export interface WalletRegistrationData extends WalletAuthData {
  * 4. Registration and login flows with backend
  * 
  * The backend handles all signature verification and user management.
+ * 
+ * IMPORTANT: This service now properly tracks explicit wallet connections
+ * and doesn't automatically use installed wallet addresses without user consent.
  */
 class WalletService {
   private network: StacksNetwork;
@@ -74,21 +77,57 @@ class WalletService {
     icon: typeof window !== 'undefined' ? window.location.origin + '/icons/apple-touch-icon.png' : '',
   };
 
+  // Track explicit wallet connection state
+  private explicitlyConnected: boolean = false;
+
   constructor() {
     const isMainnet = process.env.NEXT_PUBLIC_STACKS_NETWORK === 'mainnet';
     this.network = isMainnet ? STACKS_MAINNET : STACKS_TESTNET;
     this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    
+    // Check if there's a stored explicit connection
+    if (typeof window !== 'undefined') {
+      this.explicitlyConnected = localStorage.getItem('stackspay_wallet_explicitly_connected') === 'true';
+    }
+  }
+
+  /**
+   * Mark wallet as explicitly connected
+   */
+  private markAsExplicitlyConnected(): void {
+    this.explicitlyConnected = true;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('stackspay_wallet_explicitly_connected', 'true');
+    }
+  }
+
+  /**
+   * Clear explicit connection state
+   */
+  private clearExplicitConnection(): void {
+    this.explicitlyConnected = false;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('stackspay_wallet_explicitly_connected');
+    }
+  }
+
+  /**
+   * Check if wallet is explicitly connected through our app
+   */
+  isExplicitlyConnected(): boolean {
+    return this.explicitlyConnected;
   }
 
   /**
    * Connect to a Stacks wallet
+   * This method explicitly connects the wallet and marks it as connected through our app
    */
   async connectWallet(appDetails?: {
     name: string;
     icon: string;
   }): Promise<WalletInfo> {
     try {
-      console.log("Starting wallet connection...");
+      console.log("Starting explicit wallet connection...");
       const response = await connect();
       console.log("Wallet connection response:", response);
 
@@ -107,6 +146,9 @@ class WalletService {
       console.log("Extracted addresses:", { stx, btc });
       
       if (stx && btc) {
+        // Mark as explicitly connected ONLY after successful connection
+        this.markAsExplicitlyConnected();
+        
         return {
           address: stx,
           publicKey: (userData as any)?.profile?.publicKey || (userData as any)?.publicKey || '',
@@ -127,6 +169,12 @@ class WalletService {
      */
     async getStxBalance(): Promise<bigint> {
       try {
+        // First check if wallet was explicitly connected through our app
+        if (!this.explicitlyConnected) {
+          console.log("Wallet not explicitly connected through StacksPay app");
+          return BigInt(0);
+        }
+
         const address = await this.getCurrentAddress();
         if (!address) {
           throw new Error('No wallet connected');
@@ -167,11 +215,19 @@ class WalletService {
     }
 
   /**
-   * Get current wallet address
+   * Get current wallet address if explicitly connected
    */
   async getCurrentAddress(): Promise<string | null> {
     try {
+      // First check if wallet was explicitly connected through our app
+      if (!this.explicitlyConnected) {
+        console.log("Wallet not explicitly connected through StacksPay app");
+        return null;
+      }
+
       if (!isConnected()) {
+        // Clear our explicit connection flag if Stacks connect says not connected
+        this.clearExplicitConnection();
         return null;
       }
 
@@ -219,17 +275,32 @@ class WalletService {
   
 
   /**
-   * Get current wallet data if connected
+   * Get current wallet data if explicitly connected through our app
+   * This prevents automatic wallet detection without user consent
    */
   async getCurrentWalletData(): Promise<WalletConnectionResult | null> {
     try {
+      // First check if wallet was explicitly connected through our app
+      if (!this.explicitlyConnected) {
+        console.log("Wallet not explicitly connected through StacksPay app");
+        return null;
+      }
+
       const connected = await isConnected();
-      if (!connected) return null;
+      if (!connected) {
+        console.log("Stacks wallet not connected");
+        // Clear our explicit connection flag if Stacks connect says not connected
+        this.clearExplicitConnection();
+        return null;
+      }
 
       const walletData = getLocalStorage();
-      if (!walletData) return null;
+      if (!walletData) {
+        console.log("No wallet data available");
+        return null;
+      }
 
-      console.log("walletData", walletData)
+      console.log("Explicitly connected walletData", walletData)
 
       // Helper to safely access wallet response
       const getWalletAddresses = (response: any) => {
@@ -240,6 +311,11 @@ class WalletService {
       };
 
       const { stx, btc } = getWalletAddresses(walletData);
+
+      if (!stx) {
+        console.log("No Stacks address found in wallet data");
+        return null;
+      }
 
       return {
         address: stx,
@@ -400,6 +476,14 @@ class WalletService {
   }
 
   /**
+   * Get stored authentication token from localStorage
+   */
+  private getStoredToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('authToken');
+  }
+
+  /**
    * Get challenge from backend for wallet authentication
    * The backend generates a unique challenge that the wallet must sign
    */
@@ -522,6 +606,73 @@ class WalletService {
     } catch (error) {
       console.error('❌ Wallet registration failed:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to register with wallet');
+    }
+  }
+
+  /**
+   * Connect wallet for existing user (email sign-in users)
+   * This goes through the full authentication flow: connect -> sign -> verify
+   */
+  async connectWalletForExistingUser(): Promise<{
+    success: boolean;
+    address?: string;
+    error?: string;
+  }> {
+    try {
+      console.log('🔄 Starting wallet connection for existing user...');
+
+      // Step 1: Connect wallet and get wallet data
+      const walletData = await this.connectWallet();
+      console.log('✅ Wallet connected:', walletData.address);
+
+      // Step 2: Get challenge from backend for wallet connection
+      const { challenge } = await this.getChallengeFromBackend(walletData.address, 'connection');
+      console.log('✅ Challenge received from backend');
+
+      // Step 3: Sign the challenge
+      const signatureData = await this.signMessage(challenge);
+      console.log('✅ Message signed by wallet');
+
+      // Step 4: Send wallet connection data to backend for verification and account linking
+      const connectionData = {
+        address: walletData.address,
+        signature: signatureData.signature,
+        message: challenge,
+        publicKey: signatureData.publicKey,
+        walletType: 'stacks', // Default to stacks for now
+      };
+
+      const response = await fetch(`${this.baseURL}/api/auth/connect-wallet`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.getStoredToken()}`, // Use existing user's token
+        },
+        body: JSON.stringify(connectionData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Wallet connected and verified by backend:', result);
+
+      // Mark as explicitly connected
+      this.markAsExplicitlyConnected();
+
+      return {
+        success: true,
+        address: walletData.address,
+      };
+
+    } catch (error) {
+      console.error('❌ Wallet connection failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to connect wallet',
+      };
     }
   }
 

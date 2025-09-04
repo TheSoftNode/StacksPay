@@ -13,13 +13,25 @@ import {
   Shield,
   Zap,
   Info,
-  Download
+  Download,
+  Edit3,
+  User,
+  ArrowRight,
+  Check,
+  X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { useAuth } from '@/hooks/use-auth'
+import { useAuthStore } from '@/stores/auth-store'
+import { walletService } from '@/lib/services/wallet-service'
+import { walletApiClient } from '@/lib/api/wallet-api'
 import { OnboardingData } from '../MerchantOnboardingWizard'
 
 interface WalletSetupStepProps {
@@ -30,113 +42,90 @@ interface WalletSetupStepProps {
   setIsLoading: (loading: boolean) => void
 }
 
-const supportedWallets = [
-  {
-    name: 'Hiro Wallet',
-    description: 'Official Stacks wallet with full sBTC support',
-    icon: '🟠',
-    downloadUrl: 'https://wallet.hiro.so',
-    features: ['sBTC Support', 'Desktop & Mobile', 'Hardware Integration'],
-    recommended: true
-  },
-  {
-    name: 'Xverse',
-    description: 'Bitcoin & Stacks wallet with sBTC functionality',
-    icon: '⚡',
-    downloadUrl: 'https://xverse.app',
-    features: ['Multi-chain', 'Mobile First', 'NFT Support']
-  },
-  {
-    name: 'Leather',
-    description: 'Advanced Stacks wallet for power users',
-    icon: '🔷',
-    downloadUrl: 'https://leather.io',
-    features: ['Advanced Features', 'Developer Tools', 'Multi-account']
-  }
-]
-
 const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading }: WalletSetupStepProps) => {
+  const { user } = useAuth()
+  const [setupMode, setSetupMode] = useState<'detect' | 'connect' | 'manual' | 'confirm'>('detect')
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle')
-  const [walletAddress, setWalletAddress] = useState('')
-  const [signature, setSignature] = useState('')
-  const [challengeMessage, setChallengeMessage] = useState('')
+  const [manualAddress, setManualAddress] = useState('')
+  const [isValidAddress, setIsValidAddress] = useState(false)
+  const [connectedWalletAddress, setConnectedWalletAddress] = useState('')
+  const [existingWalletAddress, setExistingWalletAddress] = useState('')
+  const [showAddressOptions, setShowAddressOptions] = useState(false)
 
   const walletInfo = data.walletInfo
 
-  const generateChallenge = async () => {
-    try {
-      // Generate challenge message from backend
-      const response = await fetch('/api/auth/wallet/challenge?address=' + walletAddress + '&type=connection')
-      const challengeData = await response.json()
-      
-      if (challengeData.success) {
-        setChallengeMessage(challengeData.challenge)
-        return challengeData.challenge
+  // Check user's authentication method and existing wallet data on component mount
+  useEffect(() => {
+    const checkUserWalletStatus = async () => {
+      try {
+        const isWalletUser = user?.authMethod === 'wallet'
+        const isEmailUser = user?.authMethod === 'email'
+        
+        // For wallet users, check if they already have an address
+        if (isWalletUser && user?.stacksAddress) {
+          setExistingWalletAddress(user.stacksAddress)
+          setSetupMode('confirm')
+          setShowAddressOptions(true)
+          return
+        }
+
+        // For email users or wallet users without addresses, check current session
+        const currentWalletData = await walletService.getCurrentWalletData()
+        if (currentWalletData?.address) {
+          setConnectedWalletAddress(currentWalletData.address)
+          setSetupMode('confirm')
+          setShowAddressOptions(true)
+        } else {
+          // Default to connect mode for both user types
+          setSetupMode('connect')
+        }
+      } catch (error) {
+        console.error('Error checking wallet status:', error)
+        setSetupMode('connect')
       }
-    } catch (error) {
-      console.error('Error generating challenge:', error)
     }
-    return null
+
+    checkUserWalletStatus()
+  }, [user])
+
+  // Validate Stacks address format
+  const validateStacksAddress = (address: string) => {
+    const stacksAddressRegex = /^S[TP][0-9A-HJKMNP-Z]{38,40}$/
+    return stacksAddressRegex.test(address)
   }
+
+  useEffect(() => {
+    setIsValidAddress(validateStacksAddress(manualAddress))
+  }, [manualAddress])
 
   const connectWallet = async () => {
     setIsLoading(true)
     setConnectionStatus('connecting')
 
     try {
-      // Check if Stacks wallet is available
-      if (typeof window !== 'undefined' && (window as any).StacksProvider) {
-        const stacks = (window as any).StacksProvider
-        
-        // Request wallet connection
-        const response = await stacks.connect()
-        
-        if (response && response.address) {
-          setWalletAddress(response.address)
-          
-          // Generate challenge message
-          const challenge = await generateChallenge()
-          if (!challenge) throw new Error('Failed to generate challenge')
-          
-          // Request signature
-          const signatureResponse = await stacks.signMessage(challenge)
-          
-          if (signatureResponse && signatureResponse.signature) {
-            setSignature(signatureResponse.signature)
-            
-            // Verify signature with backend
-            const verifyResponse = await fetch('/api/auth/wallet/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                address: response.address,
-                signature: signatureResponse.signature,
-                message: challenge,
-                publicKey: signatureResponse.publicKey || response.publicKey,
-                walletType: 'stacks'
-              })
-            })
-            
-            const verificationResult = await verifyResponse.json()
-            
-            if (verificationResult.success && verificationResult.verified) {
-              // Update onboarding data
-              updateData('walletInfo', {
-                stacksAddress: response.address,
-                bitcoinAddress: response.btcAddress || '',
-                walletType: 'stacks',
-                connected: true
-              })
-              
-              setConnectionStatus('connected')
-              onComplete()
-            } else {
-              throw new Error('Wallet signature verification failed')
-            }
-          }
+      const isEmailUser = user?.authMethod === 'email'
+      
+      let walletData
+      if (isEmailUser) {
+        // For email users, use the new explicit connection method that goes through auth/signing
+        const result = await walletService.connectWalletForExistingUser()
+        if (result.success) {
+          walletData = { address: result.address }
+        } else {
+          throw new Error(result.error || 'Failed to connect wallet')
         }
       } else {
-        throw new Error('No Stacks wallet detected')
+        // For wallet users or other cases, use the regular connection method
+        walletData = await walletService.connectWallet()
+      }
+      
+      if (walletData.address) {
+        setConnectedWalletAddress(walletData.address)
+        setConnectionStatus('connected')
+        setSetupMode('confirm')
+        setShowAddressOptions(true)
+      } else {
+        throw new Error('Failed to get wallet address')
       }
     } catch (error) {
       console.error('Wallet connection error:', error)
@@ -146,200 +135,368 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
     }
   }
 
-  const copyAddress = () => {
-    if (walletAddress) {
-      navigator.clipboard.writeText(walletAddress)
+  const saveWalletAddress = async (address: string, isConnected: boolean) => {
+    setIsLoading(true)
+    
+    try {
+      // Update onboarding data
+      updateData('walletInfo', {
+        stacksAddress: address,
+        bitcoinAddress: '', // Will be set if wallet provides it
+        walletType: isConnected ? 'connected' : 'manual',
+        connected: isConnected
+      })
+
+      // Sync with backend and update auth store
+      if (isConnected) {
+        const syncResult = await walletApiClient.syncWalletConnection()
+        if (!syncResult.success) {
+          console.warn('Failed to sync wallet with backend:', syncResult.error)
+        }
+      } else {
+        // Save manual address to backend
+        const updateResult = await walletApiClient.updateWalletAddresses({
+          stacksAddress: address,
+          walletType: 'manual'
+        })
+        if (!updateResult.success) {
+          console.warn('Failed to save manual address:', updateResult.error)
+        }
+      }
+
+      // Update the auth store with wallet connection status
+      // This ensures the wallet address is reflected across the app
+      if (user) {
+        const { setUser } = useAuthStore.getState()
+        const updatedUser = {
+          ...user,
+          stacksAddress: address,
+          walletConnected: isConnected
+        }
+        setUser(updatedUser)
+      }
+
+      onComplete()
+    } catch (error) {
+      console.error('Error saving wallet address:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="text-center space-y-3">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Connect Your Stacks Wallet
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          Your wallet is where you'll receive sBTC payments. Connect a Stacks wallet to continue.
-        </p>
-      </div>
+  const copyAddress = (address: string) => {
+    navigator.clipboard.writeText(address)
+  }
 
-      {/* Connection Status */}
-      {connectionStatus === 'connected' && walletInfo.connected ? (
+  // Different UI modes based on user state
+  const renderWalletSetup = () => {
+    if (setupMode === 'confirm' && (existingWalletAddress || connectedWalletAddress)) {
+      const currentAddress = existingWalletAddress || connectedWalletAddress
+      const isFromLogin = !!existingWalletAddress
+      const isWalletUser = user?.authMethod === 'wallet'
+      const isEmailUser = user?.authMethod === 'email'
+      
+      return (
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
         >
           <Card className="bg-white dark:bg-gray-900 border shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <span>
+                  {isFromLogin && isWalletUser 
+                    ? 'Wallet Connected'
+                    : 'Wallet Address Detected'
+                  }
+                </span>
+              </CardTitle>
+              <CardDescription>
+                {isFromLogin && isWalletUser
+                  ? 'You signed in with your Stacks wallet'
+                  : isEmailUser
+                  ? 'Your connected wallet address'
+                  : 'Wallet address ready for use'
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                      Stacks Address
+                    </p>
+                    <p className="text-sm text-green-700 dark:text-green-300 font-mono break-all">
+                      {currentAddress}
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => copyAddress(currentAddress)}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-green-900 dark:text-green-100">
-                    Wallet Connected Successfully!
-                  </h3>
-                  <p className="text-green-700 dark:text-green-300">
-                    Address: {walletInfo.stacksAddress}
-                  </p>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-gray-600 dark:text-gray-400">
+                  {isWalletUser
+                    ? 'Do you want to continue using this wallet address for receiving sBTC payments?'
+                    : 'Would you like to use this address to receive sBTC payments?'
+                  }
+                </p>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button 
+                    onClick={() => saveWalletAddress(currentAddress, !isFromLogin)}
+                    disabled={isLoading}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Check className="mr-2 h-4 w-4" />
+                    {isWalletUser ? 'Continue with this address' : 'Yes, use this address'}
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    onClick={() => setSetupMode('manual')}
+                    disabled={isLoading}
+                    className="flex-1"
+                  >
+                    <Edit3 className="mr-2 h-4 w-4" />
+                    {isWalletUser ? 'Change address' : 'Use different address'}
+                  </Button>
                 </div>
-                <Button variant="outline" size="sm" onClick={copyAddress}>
-                  <Copy className="h-4 w-4" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )
+    }
+
+    if (setupMode === 'manual') {
+      const isEmailUser = user?.authMethod === 'email'
+      
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Edit3 className="h-5 w-5" />
+                <span>Enter Wallet Address Manually</span>
+              </CardTitle>
+              <CardDescription>
+                {isEmailUser
+                  ? 'Enter your Stacks wallet address to receive sBTC payments'
+                  : 'Enter a different Stacks wallet address for receiving payments'
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="stacks-address">Stacks Address</Label>
+                <Input
+                  id="stacks-address"
+                  value={manualAddress}
+                  onChange={(e) => setManualAddress(e.target.value)}
+                  placeholder="SP1ABC123... or ST1ABC123..."
+                  className="font-mono"
+                />
+                {manualAddress && (
+                  <div className="flex items-center space-x-2 text-sm">
+                    {isValidAddress ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span className="text-green-600">Valid Stacks address</span>
+                      </>
+                    ) : (
+                      <>
+                        <X className="h-4 w-4 text-red-600" />
+                        <span className="text-red-600">Invalid address format</span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-blue-700 dark:text-blue-300">
+                  <strong>Important:</strong> Make sure this is a Stacks address you control. 
+                  All sBTC payments will be sent to this address and cannot be recovered if incorrect.
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  onClick={() => saveWalletAddress(manualAddress, false)}
+                  disabled={isLoading || !isValidAddress}
+                  className="flex-1"
+                >
+                  <Check className="mr-2 h-4 w-4" />
+                  Save Address
+                </Button>
+                
+                <Button 
+                  variant="outline"
+                  onClick={() => setSetupMode('connect')}
+                  disabled={isLoading}
+                  className="flex-1"
+                >
+                  <Wallet className="mr-2 h-4 w-4" />
+                  Connect Wallet Instead
                 </Button>
               </div>
             </CardContent>
           </Card>
         </motion.div>
-      ) : (
-        <div className="space-y-6">
-          {/* Wallet Connection */}
-          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Wallet className="h-5 w-5" />
-                <span>Connect Wallet</span>
-              </CardTitle>
-              <CardDescription>
-                Connect your Stacks wallet to receive sBTC payments
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Connection Button */}
-              <div className="text-center space-y-4">
-                <div className="w-20 h-20 bg-orange-100 dark:bg-orange-900/20 rounded-2xl flex items-center justify-center mx-auto">
-                  <Wallet className="h-10 w-10 text-orange-600 dark:text-orange-400" />
-                </div>
-                
-                <Button 
-                  size="lg"
-                  onClick={connectWallet}
-                  disabled={isLoading || connectionStatus === 'connecting'}
-                  className="min-w-[200px] bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
-                >
-                  {connectionStatus === 'connecting' ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Wallet className="mr-2 h-4 w-4" />
-                      Connect Stacks Wallet
-                    </>
-                  )}
-                </Button>
+      )
+    }
 
-                {connectionStatus === 'error' && (
-                  <Alert className="bg-white dark:bg-gray-900 border shadow-sm">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="text-red-700 dark:text-red-300">
-                      Failed to connect wallet. Please make sure you have a Stacks wallet installed and try again.
-                    </AlertDescription>
-                  </Alert>
+    // Default connect wallet mode
+    const isEmailUser = user?.authMethod === 'email'
+    const isWalletUser = user?.authMethod === 'wallet'
+    
+    return (
+      <div className="space-y-6">
+        <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Wallet className="h-5 w-5" />
+              <span>
+                {isWalletUser ? 'Complete Wallet Setup' : 'Connect Your Stacks Wallet'}
+              </span>
+            </CardTitle>
+            <CardDescription>
+              {isEmailUser
+                ? 'Connect your Stacks wallet to receive sBTC payments securely'
+                : isWalletUser
+                ? 'Finish setting up your wallet to start receiving payments'
+                : 'Connect your Stacks wallet to automatically set up payments'
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {isEmailUser && (
+              <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-blue-700 dark:text-blue-300">
+                  Since you signed in with email, you'll need to connect a Stacks wallet 
+                  or manually enter your wallet address to receive sBTC payments.
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            <div className="text-center space-y-4">
+              <div className="w-20 h-20 bg-orange-100 dark:bg-orange-900/20 rounded-2xl flex items-center justify-center mx-auto">
+                <Wallet className="h-10 w-10 text-orange-600 dark:text-orange-400" />
+              </div>
+              
+              <Button 
+                size="lg"
+                onClick={connectWallet}
+                disabled={isLoading || connectionStatus === 'connecting'}
+                className="min-w-[200px] bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                {connectionStatus === 'connecting' ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    Connect Stacks Wallet
+                  </>
                 )}
+              </Button>
+
+              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                <span>OR</span>
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
               </div>
 
-              <Separator />
+              <Button 
+                variant="outline"
+                onClick={() => setSetupMode('manual')}
+                disabled={isLoading}
+              >
+                <Edit3 className="mr-2 h-4 w-4" />
+                Enter Address Manually
+              </Button>
 
-              {/* Supported Wallets */}
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                  Supported Wallets
-                </h4>
-                <div className="grid grid-cols-1 gap-3">
-                  {supportedWallets.map((wallet, index) => (
-                    <motion.div
-                      key={wallet.name}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <Card className="bg-white dark:bg-gray-900 border shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                        <CardContent className="p-4">
-                          <div className="flex items-center space-x-4">
-                            <div className="text-2xl">{wallet.icon}</div>
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2">
-                                <h5 className="font-medium text-gray-900 dark:text-gray-100">
-                                  {wallet.name}
-                                </h5>
-                                {wallet.recommended && (
-                                  <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
-                                    Recommended
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {wallet.description}
-                              </p>
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {wallet.features.map((feature) => (
-                                  <Badge key={feature} variant="secondary" className="text-xs">
-                                    {feature}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={wallet.downloadUrl} target="_blank" rel="noopener noreferrer">
-                                <Download className="h-4 w-4 mr-2" />
-                                Get Wallet
-                              </a>
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Security Info */}
-          <Alert className="bg-white dark:bg-gray-900 border shadow-sm">
-            <Shield className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Security Note:</strong> Your wallet private keys always remain in your control. 
-              We only use your wallet address to send you payments - we never have access to your funds.
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-
-      {/* Help Section */}
-      <Card className="bg-white dark:bg-gray-900 border shadow-sm">
-        <CardContent className="p-6">
-          <div className="flex items-start space-x-4">
-            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              {connectionStatus === 'error' && (
+                <Alert className="bg-white dark:bg-gray-900 border shadow-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-red-700 dark:text-red-300">
+                    Failed to connect wallet. Please make sure you have a Stacks wallet installed and try again.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
-            <div>
-              <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
-                Need help setting up your wallet?
+
+            {/* Help section for users who don't have a wallet */}
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+              <h4 className="font-medium text-gray-900 dark:text-white mb-2 flex items-center">
+                <Info className="h-4 w-4 mr-2" />
+                Don't have a Stacks wallet?
               </h4>
-              <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
-                We've created step-by-step guides for each supported wallet to help you get started quickly.
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Get a Stacks wallet to securely manage your sBTC and STX tokens:
               </p>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm">
-                  <ExternalLink className="mr-2 h-3 w-3" />
-                  Wallet Setup Guide
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Smartphone className="mr-2 h-3 w-3" />
-                  Mobile Setup
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Monitor className="mr-2 h-3 w-3" />
-                  Desktop Setup
-                </Button>
+              <div className="space-y-2">
+                <a 
+                  href="https://leather.io" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Leather Wallet (Recommended)
+                </a>
+                <br />
+                <a 
+                  href="https://xverse.app" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Xverse Wallet
+                </a>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const isEmailUser = user?.authMethod === 'email'
+  const isWalletUser = user?.authMethod === 'wallet'
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-bold tracking-tight">
+          {isWalletUser ? 'Complete Wallet Setup' : 'Set Up Your Wallet'}
+        </h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">
+          {isEmailUser
+            ? 'Connect or enter your Stacks wallet address to receive sBTC payments'
+            : isWalletUser
+            ? 'Complete your wallet configuration to start accepting payments'
+            : 'Configure your wallet to start receiving sBTC payments'
+          }
+        </p>
+      </div>
+
+      {renderWalletSetup()}
     </div>
   )
 }

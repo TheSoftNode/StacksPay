@@ -122,6 +122,17 @@ router.post('/wallet/verify', authController.verifyWalletSignature.bind(authCont
 
 /**
  * @swagger
+ * /api/auth/connect-wallet:
+ *   post:
+ *     summary: Connect wallet to existing user account
+ *     tags: [Wallet Authentication]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post('/connect-wallet', sessionMiddleware, authController.connectWallet.bind(authController));
+
+/**
+ * @swagger
  * /api/auth/verify-email:
  *   post:
  *     summary: Verify email address with token

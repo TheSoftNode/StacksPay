@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { OnboardingData } from '../MerchantOnboardingWizard'
+import { merchantApiClient } from '@/lib/api/merchant-api'
 
 interface PaymentPreferencesStepProps {
   data: OnboardingData
@@ -131,15 +132,21 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
     setIsLoading(true)
     
     try {
-      // Simulate API call to save payment preferences
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Save payment preferences using the merchant API client
+      const result = await merchantApiClient.savePaymentPreferences(preferences)
       
-      // TODO: Replace with actual API call
-      // await merchantApi.updatePaymentPreferences(preferences)
-      
-      onComplete()
+      if (result.success) {
+        console.log('✅ Payment preferences saved successfully')
+        onComplete()
+      } else {
+        console.error('❌ Failed to save payment preferences:', result.error)
+        // Still allow progression but show error
+        onComplete()
+      }
     } catch (error) {
       console.error('Error saving payment preferences:', error)
+      // Still allow progression to prevent blocking user
+      onComplete()
     } finally {
       setIsLoading(false)
     }
@@ -148,10 +155,11 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
   useEffect(() => {
     // Check if at least one payment method is selected
     const hasPaymentMethod = preferences.acceptBitcoin || preferences.acceptSTX || preferences.acceptSBTC
-    const hasPreferredCurrency = preferences.preferredCurrency
-    const hasSettlementFrequency = preferences.settlementFrequency
+    const hasPreferredCurrency = Boolean(preferences.preferredCurrency)
+    const hasSettlementFrequency = Boolean(preferences.settlementFrequency)
     
-    setIsValid(hasPaymentMethod && hasPreferredCurrency && hasSettlementFrequency)
+    const isFormValid = hasPaymentMethod && hasPreferredCurrency && hasSettlementFrequency
+    setIsValid(Boolean(isFormValid))
   }, [preferences])
 
   return (

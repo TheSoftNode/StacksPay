@@ -342,6 +342,27 @@ export class EmailService {
     });
   }
 
+  async sendPasswordChangedEmail(email: string, data: {
+    merchantName: string;
+    ipAddress?: string;
+    userAgent?: string;
+    wasGenerated?: boolean;
+  }): Promise<{ success: boolean; messageId?: string; previewUrl?: string; error?: string }> {
+    return this.sendEmail({
+      to: email,
+      template: {
+        subject: 'Password Changed - sBTC Payment Gateway',
+        template: 'password-changed',
+      },
+      data: {
+        ...data,
+        email,
+        timestamp: new Date(),
+        dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard`,
+      },
+    });
+  }
+
   // Test email connectivity
   async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {

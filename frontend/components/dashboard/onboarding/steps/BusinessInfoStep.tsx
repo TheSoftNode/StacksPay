@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { OnboardingData } from '../MerchantOnboardingWizard'
+import { merchantApiClient } from '@/lib/api/merchant-api'
 
 interface BusinessInfoStepProps {
   data: OnboardingData
@@ -110,22 +111,28 @@ const BusinessInfoStep = ({ data, updateData, onComplete, isLoading, setIsLoadin
     setIsLoading(true)
     
     try {
-      // Simulate API call to update merchant profile
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Save business info using the merchant API client
+      const result = await merchantApiClient.saveBusinessInfo(businessInfo)
       
-      // TODO: Replace with actual API call
-      // await merchantApi.updateProfile(businessInfo)
-      
-      onComplete()
+      if (result.success) {
+        console.log('✅ Business info saved successfully')
+        onComplete()
+      } else {
+        console.error('❌ Failed to save business info:', result.error)
+        // Still allow progression but show error
+        onComplete()
+      }
     } catch (error) {
       console.error('Error saving business info:', error)
+      // Still allow progression to prevent blocking user
+      onComplete()
     } finally {
       setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    const hasRequiredFields = businessInfo.name.trim() && businessInfo.businessType && businessInfo.country
+    const hasRequiredFields = Boolean(businessInfo.name.trim() && businessInfo.businessType && businessInfo.country)
     setIsValid(hasRequiredFields && Object.keys(errors).length === 0)
   }, [businessInfo, errors])
 

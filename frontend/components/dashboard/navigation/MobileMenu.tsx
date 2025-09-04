@@ -17,7 +17,8 @@ import {
   Zap,
   Globe,
   ArrowUpDown,
-  User
+  User,
+  Rocket
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -43,6 +44,12 @@ const navigation: NavItem[] = [
     name: 'Overview',
     href: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    name: 'Get Started',
+    href: '/dashboard/onboarding',
+    icon: Rocket,
+    isNew: true,
   },
   {
     name: 'Payments',

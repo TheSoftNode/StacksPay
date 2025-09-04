@@ -4,6 +4,7 @@ import { authService } from '@/services/auth-service';
 import { sessionService } from '@/services/session-service';
 import { walletAuthService } from '@/services/wallet-auth-service';
 import { multiWalletAuthService } from '@/services/multi-wallet-auth-service';
+import { emailService } from '@/services/email-service';
 import { createLogger } from '@/utils/logger';
 import { getClientIpAddress} from '@/utils/request';
 import { 
@@ -579,6 +580,171 @@ export class AuthController {
       res.status(500).json({
         success: false,
         error: 'Wallet login failed. Please try again.'
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/auth/connect-wallet:
+   *   post:
+   *     tags: [Wallet Authentication]
+   *     summary: Connect wallet to existing user account
+   *     description: Connect a wallet to an existing user account that was created with email
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - address
+   *               - signature
+   *               - message
+   *               - publicKey
+   *             properties:
+   *               address:
+   *                 type: string
+   *                 description: Wallet address
+   *               signature:
+   *                 type: string
+   *                 description: Signature of the challenge message
+   *               message:
+   *                 type: string
+   *                 description: The challenge message that was signed
+   *               publicKey:
+   *                 type: string
+   *                 description: Public key of the wallet
+   *               walletType:
+   *                 type: string
+   *                 enum: [stacks, bitcoin]
+   *                 description: Type of wallet
+   *     responses:
+   *       200:
+   *         description: Wallet connected successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: "Wallet connected successfully"
+   *                 merchant:
+   *                   $ref: '#/components/schemas/MerchantProfile'
+   *       400:
+   *         description: Invalid wallet data or wallet already connected to another account
+   *       401:
+   *         description: Wallet signature verification failed
+   *       500:
+   *         description: Server error
+   */
+  async connectWallet(req: Request, res: Response): Promise<void> {
+    try {
+      const walletData: WalletAuthRequest = req.body;
+      const merchantId = req.merchant?.id;
+
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      // Validate wallet auth fields
+      if (!walletData.address || !walletData.signature || !walletData.message || !walletData.publicKey) {
+        res.status(400).json({
+          success: false,
+          error: 'Missing required wallet fields: address, signature, message, publicKey'
+        });
+        return;
+      }
+
+      // Verify wallet signature
+      const walletVerification = await walletAuthService.verifyWalletConnection(walletData);
+      
+      if (!walletVerification.success || !walletVerification.verified) {
+        res.status(401).json({
+          success: false,
+          error: walletVerification.error || 'Wallet signature verification failed'
+        });
+        return;
+      }
+
+      const { Merchant } = await import('@/models/Merchant');
+      
+      // Check if this wallet is already connected to another account
+      const existingWalletMerchant = await Merchant.findOne({ 
+        stacksAddress: walletData.address,
+        _id: { $ne: merchantId } // Not the current user
+      });
+
+      if (existingWalletMerchant) {
+        res.status(400).json({
+          success: false,
+          error: 'This wallet address is already connected to another account'
+        });
+        return;
+      }
+
+      // Get current merchant
+      const merchant = await Merchant.findById(merchantId);
+      if (!merchant) {
+        res.status(404).json({
+          success: false,
+          error: 'Merchant not found'
+        });
+        return;
+      }
+
+      // Update merchant with wallet information
+      merchant.stacksAddress = walletData.address;
+      merchant.walletConnected = true;
+      merchant.walletType = walletData.walletType || 'stacks';
+      
+      // Mark wallet as explicitly connected
+      if (!merchant.connectedWallets) {
+        merchant.connectedWallets = {};
+      }
+      merchant.connectedWallets.stacks = {
+        address: walletData.address,
+        connected: true,
+        connectedAt: new Date()
+      };
+
+      await merchant.save();
+
+      logger.info('Wallet connected to existing account', {
+        merchantId: merchant._id.toString(),
+        stacksAddress: walletData.address,
+        walletType: walletData.walletType
+      });
+
+      res.json({
+        success: true,
+        message: 'Wallet connected successfully',
+        merchant: {
+          id: merchant._id.toString(),
+          name: merchant.name,
+          email: merchant.email,
+          stacksAddress: merchant.stacksAddress,
+          walletConnected: merchant.walletConnected,
+          walletType: merchant.walletType,
+          connectedWallets: merchant.connectedWallets
+        }
+      });
+
+    } catch (error) {
+      logger.error('Connect wallet error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to connect wallet. Please try again.'
       });
     }
   }
@@ -1838,8 +2004,9 @@ export class AuthController {
       await merchant.save();
 
       // Send security notification email
-      if (merchant.email) {
-        await this.sendPasswordChangeNotification(merchant.email, merchant.name);
+      if (merchant.email && merchant.notificationPreferences.securityAlerts) {
+        const wasGenerated = !merchant.hasUpdatedPassword;
+        await this.sendPasswordChangeNotification(merchant.email, merchant.name, req, wasGenerated);
       }
 
       res.json({
@@ -1904,11 +2071,21 @@ export class AuthController {
     }
   }
 
-  private async sendPasswordChangeNotification(email: string, name: string): Promise<void> {
+  private async sendPasswordChangeNotification(
+    email: string, 
+    name: string, 
+    req: Request, 
+    wasGenerated: boolean = false
+  ): Promise<void> {
     try {
-      // TODO: Implement email service to send password change notification
-      // For now, just log it
-      logger.info('Password change notification should be sent', {
+      await emailService.sendPasswordChangedEmail(email, {
+        merchantName: name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        wasGenerated,
+      });
+      
+      logger.info('Password change notification sent successfully', {
         email,
         name,
         timestamp: new Date().toISOString()

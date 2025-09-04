@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   CheckCircle, 
@@ -20,6 +20,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { useAuth } from '@/hooks/use-auth'
+import { walletApiClient } from '@/lib/api/wallet-api'
+import { merchantApiClient } from '@/lib/api/merchant-api'
 
 // Step Components
 import WelcomeStep from './steps/WelcomeStep'
@@ -171,10 +174,147 @@ const steps = [
 ]
 
 const MerchantOnboardingWizard = () => {
+  const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState(0)
   const [data, setData] = useState<OnboardingData>(initialData)
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
+  const [dataLoaded, setDataLoaded] = useState(false)
+
+  // Fetch existing merchant data on component mount
+  useEffect(() => {
+    const fetchMerchantData = async () => {
+      if (!user || dataLoaded) return
+      
+      setIsLoading(true)
+      try {
+        console.log('🔄 Fetching existing merchant data for onboarding...')
+        
+        // Fetch all merchant data using the API clients
+        const [profileResult, walletResult, settingsResult] = await Promise.all([
+          merchantApiClient.getProfile(),
+          walletApiClient.getWalletData(),
+          merchantApiClient.getSettings()
+        ])
+
+        const merchantProfile = profileResult.success ? profileResult.data : null
+        const walletData = walletResult.success ? walletResult.data : null
+        const settingsData = settingsResult.success ? settingsResult.data : null
+
+        // Pre-populate onboarding data with existing merchant data
+        const prePopulatedData: OnboardingData = {
+          businessInfo: {
+            name: merchantProfile?.name || merchantProfile?.businessName || user?.name || '',
+            description: merchantProfile?.description || merchantProfile?.businessDescription || '',
+            businessType: merchantProfile?.businessType || '',
+            website: merchantProfile?.website || '',
+            country: merchantProfile?.country || '',
+            address: merchantProfile?.address || '',
+            city: merchantProfile?.city || '',
+            postalCode: merchantProfile?.postalCode || '',
+            phone: merchantProfile?.phone || '',
+            taxId: merchantProfile?.taxId || ''
+          },
+          walletInfo: {
+            stacksAddress: user?.stacksAddress || walletData?.addresses?.stacksAddress || '',
+            bitcoinAddress: walletData?.addresses?.bitcoinAddress || '',
+            walletType: (user as any)?.walletType || 'stacks',
+            connected: (user as any)?.walletConnected || Boolean(walletData?.addresses?.stacksAddress) || false
+          },
+          paymentPreferences: {
+            acceptBitcoin: settingsData?.paymentMethods?.bitcoin?.enabled ?? true,
+            acceptSTX: settingsData?.paymentMethods?.stx?.enabled ?? true,
+            acceptSBTC: settingsData?.paymentMethods?.sbtc?.enabled ?? true,
+            preferredCurrency: (settingsData?.preferredCurrency as 'sbtc' | 'usd' | 'usdt') || 'sbtc',
+            autoConvertToUSD: settingsData?.autoConvertToUSD ?? false,
+            settlementFrequency: (settingsData?.settlementFrequency as 'instant' | 'daily' | 'weekly') || 'instant'
+          },
+          apiKeys: {
+            testKey: settingsData?.apiKeys?.test || '',
+            liveKey: settingsData?.apiKeys?.live || '',
+            webhookSecret: settingsData?.webhooks?.secret || ''
+          },
+          integrationStatus: {
+            codeGenerated: settingsData?.integrationStatus?.codeGenerated ?? false,
+            testPaymentMade: settingsData?.integrationStatus?.testPaymentMade ?? false,
+            webhooksConfigured: settingsData?.integrationStatus?.webhooksConfigured ?? false,
+            readyForLive: settingsData?.integrationStatus?.readyForLive ?? false
+          }
+        }
+
+        console.log('✅ Pre-populated onboarding data:', prePopulatedData)
+        setData(prePopulatedData)
+
+        // Mark steps as complete based on existing data
+        const newCompletedSteps = new Set<number>()
+        
+        // Welcome step is always complete if user exists
+        newCompletedSteps.add(0)
+        
+        // Business info step
+        if (prePopulatedData.businessInfo.name && prePopulatedData.businessInfo.businessType) {
+          newCompletedSteps.add(1)
+        }
+        
+        // Wallet step
+        if (prePopulatedData.walletInfo.stacksAddress && prePopulatedData.walletInfo.connected) {
+          newCompletedSteps.add(2)
+        }
+        
+        // Payment preferences step
+        if (prePopulatedData.paymentPreferences.preferredCurrency) {
+          newCompletedSteps.add(3)
+        }
+        
+        // API keys step
+        if (prePopulatedData.apiKeys.testKey) {
+          newCompletedSteps.add(4)
+        }
+        
+        // Integration step
+        if (prePopulatedData.integrationStatus.codeGenerated) {
+          newCompletedSteps.add(5)
+        }
+        
+        // Test payment step
+        if (prePopulatedData.integrationStatus.testPaymentMade) {
+          newCompletedSteps.add(6)
+        }
+        
+        // Go live step
+        if (prePopulatedData.integrationStatus.readyForLive) {
+          newCompletedSteps.add(7)
+        }
+
+        setCompletedSteps(newCompletedSteps)
+        
+        // If user has completed most steps, start from an appropriate step
+        if (newCompletedSteps.size > 3) {
+          // Find the first incomplete step
+          let nextStep = 0
+          for (let i = 0; i < steps.length; i++) {
+            if (!newCompletedSteps.has(i)) {
+              nextStep = i
+              break
+            }
+          }
+          setCurrentStep(nextStep)
+        }
+
+        setDataLoaded(true)
+        console.log('✅ Merchant data loaded and onboarding pre-populated')
+        
+      } catch (error) {
+        console.error('❌ Error fetching merchant data:', error)
+        // Continue with empty data if fetch fails
+        setDataLoaded(true)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchMerchantData()
+  }, [user, dataLoaded])
 
   const progress = ((currentStep + 1) / steps.length) * 100
 
