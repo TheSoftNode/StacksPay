@@ -201,6 +201,13 @@ const MerchantOnboardingWizard = () => {
         const walletData = walletResult.success ? walletResult.data : null
         const settingsData = settingsResult.success ? settingsResult.data : null
 
+        // Debug logging to see what data we're getting
+        console.log('🔍 Debug merchant data:')
+        console.log('- Profile result:', profileResult)
+        console.log('- Merchant profile:', merchantProfile)
+        console.log('- Wallet result:', walletResult)
+        console.log('- Settings result:', settingsResult)
+
         // Pre-populate onboarding data with existing merchant data
         const prePopulatedData: OnboardingData = {
           businessInfo: {

@@ -87,7 +87,7 @@ class MerchantApiClient {
       const result = await response.json()
       return {
         success: true,
-        data: result.merchant || result
+        data: result.data || result.merchant || result
       }
     } catch (error) {
       console.error('❌ Error fetching merchant profile:', error)
@@ -116,7 +116,7 @@ class MerchantApiClient {
       const result = await response.json()
       return {
         success: true,
-        data: result.merchant || result,
+        data: result.data || result.merchant || result,
         message: 'Profile updated successfully'
       }
     } catch (error) {
@@ -144,7 +144,7 @@ class MerchantApiClient {
       const result = await response.json()
       return {
         success: true,
-        data: result.settings || result
+        data: result.data || result.settings || result
       }
     } catch (error) {
       console.error('❌ Error fetching merchant settings:', error)
@@ -173,7 +173,7 @@ class MerchantApiClient {
       const result = await response.json()
       return {
         success: true,
-        data: result.settings || result,
+        data: result.data || result.settings || result,
         message: 'Settings updated successfully'
       }
     } catch (error) {
@@ -279,6 +279,35 @@ class MerchantApiClient {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to update integration status'
+      }
+    }
+  }
+
+  /**
+   * Save API keys from onboarding
+   */
+  async saveApiKeys(apiKeys: {
+    testKey: string
+    liveKey: string
+    webhookSecret: string
+  }): Promise<ApiResponse> {
+    try {
+      const settingsData = {
+        apiKeys: {
+          test: apiKeys.testKey,
+          live: apiKeys.liveKey
+        },
+        webhooks: {
+          secret: apiKeys.webhookSecret
+        }
+      }
+
+      return await this.updateSettings(settingsData)
+    } catch (error) {
+      console.error('❌ Error saving API keys:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to save API keys'
       }
     }
   }

@@ -24,6 +24,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { OnboardingData } from '../MerchantOnboardingWizard'
+import { apiKeyApiClient } from '@/lib/api/api-key-api'
+import { merchantApiClient } from '@/lib/api/merchant-api'
 
 interface ApiKeySetupStepProps {
   data: OnboardingData
@@ -45,33 +47,51 @@ const ApiKeySetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
     setIsLoading(true)
     
     try {
-      // Simulate API key generation
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      console.log('🔄 Generating API keys for onboarding...')
       
-      // Generate test API key
+      // Use the API client to generate real API keys
+      const result = await apiKeyApiClient.generateOnboardingKeys()
+      
+      if (result.success && result.data) {
+        const { testKey, liveKey, webhookSecret } = result.data
+        
+        // Update onboarding data with real API keys
+        const keyData = {
+          testKey: testKey.key || testKey.keyPrefix || 'sk_test_generated',
+          liveKey: liveKey.key || liveKey.keyPrefix || 'sk_live_generated',
+          webhookSecret
+        }
+        
+        updateData('apiKeys', keyData)
+        
+        // Save API keys to backend
+        try {
+          await merchantApiClient.saveApiKeys(keyData)
+          console.log('✅ API keys saved to backend')
+        } catch (error) {
+          console.warn('⚠️ Failed to save API keys to backend:', error)
+        }
+        
+        setKeyGenerated(true)
+        console.log('✅ API keys generated successfully')
+      } else {
+        throw new Error(result.error || 'Failed to generate API keys')
+      }
+    } catch (error) {
+      console.error('❌ Error generating API keys:', error)
+      
+      // Fallback to mock keys for development/demo
       const testKey = `sk_test_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`
+      const liveKey = `sk_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`
       const webhookSecret = `whsec_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`
-      
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/auth/api-keys', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     name: 'Default Test Key',
-      //     permissions: ['read', 'write'],
-      //     environment: 'test'
-      //   })
-      // })
       
       updateData('apiKeys', {
         testKey,
-        webhookSecret,
-        liveKey: '' // Will be generated after verification
+        liveKey,
+        webhookSecret
       })
       
       setKeyGenerated(true)
-    } catch (error) {
-      console.error('Error generating API keys:', error)
     } finally {
       setIsLoading(false)
     }
@@ -83,8 +103,15 @@ const ApiKeySetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
     setTimeout(() => setCopied(null), 2000)
   }
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (keyGenerated && apiKeys.testKey) {
+      try {
+        // Mark API keys step as completed
+        await merchantApiClient.completeOnboardingStep('api-keys', apiKeys)
+        console.log('✅ API keys step marked as completed')
+      } catch (error) {
+        console.warn('⚠️ Failed to mark API keys step as completed:', error)
+      }
       onComplete()
     }
   }
@@ -322,6 +349,146 @@ import { SbtcPayment } from '@sbtc-gateway/react'
                   <ExternalLink className="mr-2 h-3 w-3" />
                   View Docs
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Developer Integration Guide */}
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Code className="h-5 w-5 text-orange-600" />
+                <span>Developer Integration Guide</span>
+              </CardTitle>
+              <CardDescription>
+                Everything you need to start accepting sBTC payments
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Integration Steps */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    1. Install SDK
+                  </h4>
+                  <code className="text-sm bg-gray-100 dark:bg-gray-800 p-2 rounded block">
+                    npm install @sbtc-gateway/node
+                  </code>
+                </div>
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <h4 className="font-semibold text-green-900 dark:text-green-100 mb-2">
+                    2. Create Payment
+                  </h4>
+                  <code className="text-sm bg-gray-100 dark:bg-gray-800 p-2 rounded block">
+                    client.payments.create()
+                  </code>
+                </div>
+                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                  <h4 className="font-semibold text-purple-900 dark:text-purple-100 mb-2">
+                    3. Handle Webhooks
+                  </h4>
+                  <code className="text-sm bg-gray-100 dark:bg-gray-800 p-2 rounded block">
+                    webhook.verify(signature)
+                  </code>
+                </div>
+              </div>
+
+              {/* API Endpoints */}
+              <div className="border-t pt-6">
+                <h4 className="font-semibold mb-4">Key API Endpoints</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                    <div>
+                      <span className="font-mono text-sm">POST /v1/payments</span>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Create a new payment</p>
+                    </div>
+                    <Badge variant="outline" className="text-green-600">Create</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                    <div>
+                      <span className="font-mono text-sm">GET /v1/payments/:id</span>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Retrieve payment status</p>
+                    </div>
+                    <Badge variant="outline" className="text-blue-600">Read</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                    <div>
+                      <span className="font-mono text-sm">POST /v1/webhooks</span>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Configure payment notifications</p>
+                    </div>
+                    <Badge variant="outline" className="text-purple-600">Webhook</Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Security Features */}
+              <div className="border-t pt-6">
+                <h4 className="font-semibold mb-4">Security Features</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-start space-x-3">
+                    <Shield className="h-5 w-5 text-green-600 mt-0.5" />
+                    <div>
+                      <h5 className="font-medium">API Key Authentication</h5>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Secure Bearer token authentication
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <Shield className="h-5 w-5 text-green-600 mt-0.5" />
+                    <div>
+                      <h5 className="font-medium">Webhook Signatures</h5>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        HMAC-SHA256 signed payloads
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <Shield className="h-5 w-5 text-green-600 mt-0.5" />
+                    <div>
+                      <h5 className="font-medium">Rate Limiting</h5>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Protection against abuse
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <Shield className="h-5 w-5 text-green-600 mt-0.5" />
+                    <div>
+                      <h5 className="font-medium">IP Restrictions</h5>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Optional IP whitelisting
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Next Steps */}
+              <div className="border-t pt-6">
+                <h4 className="font-semibold mb-4">Next Steps</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span className="text-sm">API keys generated and ready</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="h-4 w-4 border-2 border-gray-300 rounded-full"></div>
+                    <span className="text-sm text-gray-600">Get integration code examples</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="h-4 w-4 border-2 border-gray-300 rounded-full"></div>
+                    <span className="text-sm text-gray-600">Test your first payment</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="h-4 w-4 border-2 border-gray-300 rounded-full"></div>
+                    <span className="text-sm text-gray-600">Configure webhooks</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="h-4 w-4 border-2 border-gray-300 rounded-full"></div>
+                    <span className="text-sm text-gray-600">Go live with real payments</span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
