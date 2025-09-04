@@ -361,6 +361,19 @@ class WalletService {
   // =================================================================
 
   /**
+   * Store authentication tokens in localStorage
+   */
+  private setStoredToken(token: string): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('authToken', token);
+  }
+
+  private setStoredRefreshToken(refreshToken: string): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('refreshToken', refreshToken);
+  }
+
+  /**
    * Get challenge from backend for wallet authentication
    * The backend generates a unique challenge that the wallet must sign
    */
@@ -411,12 +424,13 @@ class WalletService {
   }
 
   /**
-   * Register new merchant with wallet authentication
+   * Register new merchant with wallet authentication (simplified - no parameters needed!)
    * This combines wallet connection, challenge signing, and backend registration
+   * The backend will generate defaults for required fields, user can complete profile later
    */
-  async registerWithWallet(businessName: string, businessType: string, email?: string): Promise<WalletAuthData> {
+  async registerWithWallet(): Promise<any> {
     try {
-      console.log('🔄 Starting wallet registration...');
+      console.log('🔄 Starting simplified wallet registration (no forms needed!)...');
 
       // Step 1: Connect wallet
       const walletData = await this.connectWallet();
@@ -428,25 +442,19 @@ class WalletService {
       // Step 3: Sign the challenge
       const signatureData = await this.signMessage(challenge);
 
-      // Step 4: Send registration data to backend
+      // Step 4: Send registration data to backend (minimal required data)
       const registrationData = {
         address: walletData.address,
         signature: signatureData.signature,
         message: challenge,
         publicKey: signatureData.publicKey,
         walletType: 'stacks' as const,
-        businessName,
-        businessType,
-        // Only include email if it's not empty
-        ...(email && email.trim() ? { email: email.trim() } : {}),
+        // No business details required - backend will generate defaults
       };
 
-      console.log('📤 Sending registration to backend...', {
+      console.log('📤 Sending simplified registration to backend...', {
         address: registrationData.address,
-        signature: registrationData.signature,
-        message: registrationData.message,
-        publicKey: registrationData.publicKey,
-        walletType: registrationData.walletType
+        walletType: registrationData.walletType,
       });
       
       const response = await fetch(`${this.baseURL}/api/auth/register/wallet`, {
@@ -469,15 +477,21 @@ class WalletService {
         throw new Error(result.error || 'Registration failed');
       }
 
-      console.log('✅ Wallet registration successful');
-      return {
-        address: walletData.address,
-        signature: signatureData.signature,
-        message: challenge,
-        publicKey: signatureData.publicKey,
-        walletType: 'stacks',
-        verified: true,
-      };
+      console.log('✅ Simplified wallet registration successful', {
+        profileComplete: result.merchant?.profileComplete,
+        message: result.message
+      });
+      
+      // Store authentication tokens if provided
+      if (result.token) {
+        this.setStoredToken(result.token);
+      }
+      if (result.refreshToken) {
+        this.setStoredRefreshToken(result.refreshToken);
+      }
+      
+      // Return the full backend response which includes success, merchant, tokens, etc.
+      return result;
       
     } catch (error) {
       console.error('❌ Wallet registration failed:', error);
@@ -489,7 +503,7 @@ class WalletService {
    * Login with wallet authentication
    * This combines wallet connection, challenge signing, and backend login
    */
-  async loginWithWallet(): Promise<WalletAuthData> {
+  async loginWithWallet(): Promise<any> {
     try {
       console.log('🔄 Starting wallet login...');
 
@@ -533,14 +547,17 @@ class WalletService {
       }
 
       console.log('✅ Wallet login successful');
-      return {
-        address: walletData.address,
-        signature: signatureData.signature,
-        message: challenge,
-        publicKey: signatureData.publicKey,
-        walletType: 'stacks',
-        verified: true,
-      };
+      
+      // Store authentication tokens if provided
+      if (result.token) {
+        this.setStoredToken(result.token);
+      }
+      if (result.refreshToken) {
+        this.setStoredRefreshToken(result.refreshToken);
+      }
+      
+      // Return the full backend response which includes success, merchant, tokens, etc.
+      return result;
       
     } catch (error) {
       console.error('❌ Wallet login failed:', error);
@@ -581,6 +598,65 @@ class WalletService {
     } catch (error) {
       console.error('❌ Backend verification failed:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to verify with backend');
+    }
+  }
+
+  /**
+   * Verify wallet signature for payments
+   * This creates a payment-specific challenge and verifies the signature
+   */
+  async verifyWalletSignature(
+    type: 'connection' | 'payment', 
+    paymentId?: string, 
+    amount?: number
+  ): Promise<{ success: boolean; verified: boolean; error?: string }> {
+    try {
+      console.log('🔄 Starting wallet signature verification for:', type);
+
+      // Step 1: Connect wallet (or use existing connection)
+      const walletData = await this.getCurrentWalletData();
+      if (!walletData) {
+        throw new Error('No wallet connected');
+      }
+
+      // Step 2: Get challenge from backend
+      const { challenge } = await this.getChallengeFromBackend(
+        walletData.address, 
+        type, 
+        paymentId, 
+        amount
+      );
+
+      // Step 3: Sign the challenge
+      const signatureData = await this.signMessage(challenge);
+
+      // Step 4: Verify with backend
+      const verificationData = {
+        address: walletData.address,
+        signature: signatureData.signature,
+        message: challenge,
+        publicKey: signatureData.publicKey,
+        walletType: 'stacks' as const,
+        verified: false, // Will be set by backend
+        ...(paymentId && { paymentId }),
+        ...(amount && { amount }),
+      };
+
+      const verified = await this.verifyWithBackend(verificationData);
+
+      console.log('✅ Wallet signature verification successful');
+      return {
+        success: true,
+        verified,
+      };
+      
+    } catch (error) {
+      console.error('❌ Wallet signature verification failed:', error);
+      return {
+        success: false,
+        verified: false,
+        error: error instanceof Error ? error.message : 'Verification failed',
+      };
     }
   }
 }

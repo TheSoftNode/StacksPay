@@ -33,6 +33,7 @@ export const useAuth = () => {
         emailVerified: serverUser.emailVerified,
         verificationLevel: serverUser.verificationLevel,
         businessType: serverUser.businessType,
+        authMethod: serverUser.authMethod,
         walletConnected: !!serverUser.stacksAddress,
       });
     }
@@ -55,6 +56,7 @@ export const useAuth = () => {
           emailVerified: response.merchant.emailVerified,
           verificationLevel: response.merchant.verificationLevel,
           businessType: response.merchant.businessType,
+          authMethod: response.merchant.authMethod,
           walletConnected: !!response.merchant.stacksAddress,
         });
         queryClient.invalidateQueries({ queryKey: ['auth'] });
@@ -86,6 +88,7 @@ export const useAuth = () => {
           emailVerified: response.merchant.emailVerified,
           verificationLevel: response.merchant.verificationLevel,
           businessType: response.merchant.businessType,
+          authMethod: response.merchant.authMethod,
           walletConnected: !!response.merchant.stacksAddress,
         });
         queryClient.invalidateQueries({ queryKey: ['auth'] });
@@ -117,6 +120,7 @@ export const useAuth = () => {
           emailVerified: response.merchant.emailVerified,
           verificationLevel: response.merchant.verificationLevel,
           businessType: response.merchant.businessType,
+          authMethod: response.merchant.authMethod,
           walletConnected: true,
         });
         queryClient.invalidateQueries({ queryKey: ['auth'] });
@@ -148,6 +152,7 @@ export const useAuth = () => {
           emailVerified: response.merchant.emailVerified,
           verificationLevel: response.merchant.verificationLevel,
           businessType: response.merchant.businessType,
+          authMethod: response.merchant.authMethod,
           walletConnected: true,
         });
         queryClient.invalidateQueries({ queryKey: ['auth'] });

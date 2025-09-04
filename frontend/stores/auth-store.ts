@@ -10,6 +10,8 @@ export interface User {
   verificationLevel: 'none' | 'basic' | 'advanced';
   businessType?: string;
   walletConnected: boolean;
+  profileComplete?: boolean; // Indicates if user still needs to complete profile
+  authMethod?: 'email' | 'wallet'; // How the user authenticated
 }
 
 export interface AuthState {

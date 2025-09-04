@@ -31,11 +31,30 @@ export class AuthService {
    * Register new merchant with enhanced validation and security
    */
   async register(data: RegisterRequest, ipAddress: string, userAgent: string): Promise<AuthResponse> {
+    return this.registerMerchant(data, ipAddress, userAgent, false);
+  }
+
+  /**
+   * Register new merchant via wallet with relaxed email requirements
+   */
+  async registerWithWallet(data: RegisterRequest, ipAddress: string, userAgent: string): Promise<AuthResponse> {
+    return this.registerMerchant(data, ipAddress, userAgent, true);
+  }
+
+  /**
+   * Core registration logic that handles both email and wallet registrations
+   */
+  private async registerMerchant(
+    data: RegisterRequest, 
+    ipAddress: string, 
+    userAgent: string, 
+    isWalletRegistration: boolean
+  ): Promise<AuthResponse> {
     await connectToDatabase();
 
     try {
-      // Validate input
-      const validation = this.validateRegistrationData(data);
+      // Validate input (different validation for wallet vs email registration)
+      const validation = this.validateRegistrationData(data, isWalletRegistration);
       if (!validation.success) {
         return { success: false, error: validation.error };
       }
@@ -57,13 +76,15 @@ export class AuthService {
         };
       }
 
-      // Check if merchant already exists
-      const existingMerchant = await Merchant.findOne({ email: data.email.toLowerCase() });
-      if (existingMerchant) {
-        await this.logAuthEvent(null, 'register_duplicate_email', ipAddress, false, { 
-          email: this.maskEmail(data.email) 
-        });
-        return { success: false, error: 'Email already registered' };
+      // Check if merchant already exists (skip email check for wallet registration with empty email)
+      if (data.email && data.email.trim()) {
+        const existingMerchant = await Merchant.findOne({ email: data.email.toLowerCase() });
+        if (existingMerchant) {
+          await this.logAuthEvent(null, 'register_duplicate_email', ipAddress, false, { 
+            email: this.maskEmail(data.email) 
+          });
+          return { success: false, error: 'Email already registered' };
+        }
       }
 
       // Validate Stacks address format if provided
@@ -74,23 +95,26 @@ export class AuthService {
       // Hash password with high cost factor
       const passwordHash = await bcrypt.hash(data.password, 14);
       
-      // Generate email verification token
-      const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+      // Generate email verification token only if email is provided
+      const emailVerificationToken = data.email && data.email.trim() ? 
+        crypto.randomBytes(32).toString('hex') : 
+        undefined;
 
       // Create merchant with enhanced security fields
       const merchant = new Merchant({
         name: data.name.trim(),
-        email: data.email.toLowerCase().trim(),
+        email: data.email ? data.email.toLowerCase().trim() : '',
         passwordHash,
         businessType: data.businessType,
         stacksAddress: data.stacksAddress,
         website: data.website,
         emailVerificationToken,
-        emailVerified: false,
+        emailVerified: isWalletRegistration ? true : false, // Wallet users are considered verified
+        authMethod: isWalletRegistration ? 'wallet' : 'email', // Track registration method
         twoFactorEnabled: false,
         loginAttempts: 0,
         isActive: true,
-        verificationLevel: 'none',
+        verificationLevel: isWalletRegistration ? 'basic' : 'none', // Wallet signature = basic verification
         stats: {
           totalPayments: 0,
           totalVolume: 0,
@@ -110,13 +134,15 @@ export class AuthService {
         }
       );
 
-      // Send welcome email with verification
-      await emailService.sendWelcomeEmail(merchant.email, {
-        merchantName: merchant.name,
-        businessType: data.businessType,
-        stacksAddress: data.stacksAddress,
-        verificationToken: emailVerificationToken,
-      });
+      // Send welcome email with verification only for email registrations
+      if (!isWalletRegistration && merchant.email && emailVerificationToken) {
+        await emailService.sendWelcomeEmail(merchant.email, {
+          merchantName: merchant.name,
+          businessType: data.businessType,
+          stacksAddress: data.stacksAddress,
+          verificationToken: emailVerificationToken,
+        });
+      }
 
       // Log successful registration
       await this.logAuthEvent(merchant._id.toString(), 'register', ipAddress, true, {
@@ -124,6 +150,7 @@ export class AuthService {
         hasWebsite: !!data.website,
         hasStacksAddress: !!data.stacksAddress,
         userAgent: this.truncateUserAgent(userAgent),
+        registrationType: isWalletRegistration ? 'wallet' : 'email',
       });
 
       // Trigger webhook for new merchant registration
@@ -624,10 +651,12 @@ export class AuthService {
   /**
    * Validation methods
    */
-  private validateRegistrationData(data: RegisterRequest): { success: boolean; error?: string } {
+  private validateRegistrationData(data: RegisterRequest, isWalletRegistration = false): { success: boolean; error?: string } {
     const schema = Joi.object({
       name: Joi.string().min(2).max(100).required(),
-      email: Joi.string().email().required(),
+      email: isWalletRegistration ? 
+        Joi.string().email().allow('').optional() : // Allow empty email for wallet registrations
+        Joi.string().email().required(), // Require email for normal registrations
       password: Joi.string().min(this.PASSWORD_MIN_LENGTH).required(),
       businessType: Joi.string().required(),
       stacksAddress: Joi.string().optional(),

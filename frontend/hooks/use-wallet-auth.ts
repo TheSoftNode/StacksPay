@@ -1,39 +1,33 @@
 // Enhanced wallet authentication hook that maintains all backend functionality
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { walletService } from '@/lib/services/wallet-service';
 import { useAuthStore } from '@/stores/auth-store';
 
 export const useWalletAuth = () => {
+  const router = useRouter();
   const { setUser, setLoading, setError } = useAuthStore();
 
-  // Register new merchant with wallet authentication
+  // Simplified wallet registration - no forms needed!
   const registerMutation = useMutation({
-    mutationFn: async ({ 
-      businessName, 
-      businessType, 
-      email 
-    }: {
-      businessName: string;
-      businessType: string;
-      email?: string;
-    }) => {
+    mutationFn: async () => {
       setLoading(true);
       setError(null);
 
-      console.log('� Starting wallet registration...');
+      console.log('🔥 Starting simplified wallet registration...');
       
       // This calls the enhanced walletService which handles:
       // 1. Wallet connection
       // 2. Challenge retrieval from backend
       // 3. Message signing
-      // 4. Backend registration API call
-      const result = await walletService.registerWithWallet(businessName, businessType, email);
+      // 4. Backend registration API call with minimal data
+      const result = await walletService.registerWithWallet();
       
       if (!result.success) {
         throw new Error(result.error || 'Registration failed');
       }
 
-      console.log('✅ Wallet registration successful');
+      console.log('✅ Simplified wallet registration successful');
       return result;
     },
     onSuccess: (response) => {
@@ -45,9 +39,18 @@ export const useWalletAuth = () => {
           stacksAddress: response.merchant.stacksAddress,
           emailVerified: response.merchant.emailVerified || false,
           verificationLevel: 'basic' as 'none' | 'basic' | 'advanced',
-          businessType: '', // Will be set later from merchant profile
+          businessType: response.merchant.businessType || '',
           walletConnected: true,
+          profileComplete: response.merchant.profileComplete || false,
+          authMethod: 'wallet',
         });
+
+        // Redirect based on profile completion
+        if (response.merchant.profileComplete) {
+          router.push('/dashboard');
+        } else {
+          router.push('/dashboard/onboarding');
+        }
       }
       setLoading(false);
     },
@@ -88,9 +91,14 @@ export const useWalletAuth = () => {
           stacksAddress: response.merchant.stacksAddress,
           emailVerified: response.merchant.emailVerified || false,
           verificationLevel: 'basic' as 'none' | 'basic' | 'advanced',
-          businessType: '', // Will be set later from merchant profile
+          businessType: response.merchant.businessType || '',
           walletConnected: true,
+          profileComplete: response.merchant.profileComplete || false,
+          authMethod: 'wallet',
         });
+
+        // Redirect to dashboard (existing users should have complete profiles)
+        router.push('/dashboard');
       }
       setLoading(false);
     },
@@ -142,7 +150,7 @@ export const useWalletAuth = () => {
   });
 
   return {
-    // Registration
+    // Simplified Registration - no forms needed!
     register: registerMutation.mutate,
     isRegistering: registerMutation.isPending,
     registerError: registerMutation.error,

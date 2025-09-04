@@ -27,7 +27,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const { login: loginWithWallet, isLoggingIn } = useWalletAuth();
+  const { login: loginWithWallet, isLoggingIn, loginError: walletLoginError } = useWalletAuth();
   const { 
     loginWithEmail, 
     isLoginLoading, 
@@ -66,17 +66,18 @@ export default function LoginPage() {
 
   const handleWalletLogin = async () => {
     setWalletLoading(true);
+    setError('');
     try {
       await loginWithWallet();
-      router.push('/dashboard');
+      // Success is handled by the mutation's onSuccess callback
+      // which will redirect to the appropriate page
     } catch (error) {
-      setError('Wallet login failed');
+      console.error('Wallet login error:', error);
+      setError(error instanceof Error ? error.message : 'Wallet login failed');
     } finally {
       setWalletLoading(false);
     }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  };  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -194,14 +195,14 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {(loginError || error) && (
+              {(loginError || error || walletLoginError) && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm">
                   <div className="flex items-start space-x-2">
                     <div className="flex-shrink-0 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center mt-0.5">
                       <div className="w-2 h-2 bg-white rounded-full"></div>
                     </div>
                     <div className="flex-1">
-                      {loginError?.message || error}
+                      {walletLoginError?.message || loginError?.message || error}
                     </div>
                   </div>
                 </div>

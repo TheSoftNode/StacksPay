@@ -62,7 +62,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const router = useRouter();
   
-  const { register: registerWithWallet, isRegistering } = useWalletAuth();
+  const { register: registerWithWallet, isRegistering, registerError: walletRegisterError } = useWalletAuth();
   const { 
     registerWithEmail, 
     isRegisterLoading, 
@@ -105,17 +105,16 @@ export default function RegisterPage() {
     });
   };
 
-  const handleWalletRegister = async () => {
+      const handleWalletRegister = async () => {
     setWalletLoading(true);
+    setError('');
     try {
-      await registerWithWallet({
-        businessName: 'Wallet Business', // Default name - can be updated later
-        businessType: 'ecommerce',
-        email: undefined,
-      });
-      router.push('/dashboard/onboarding');
+      await registerWithWallet();
+      // Success is handled by the mutation's onSuccess callback
+      // which will redirect to the appropriate page
     } catch (error) {
-      setError('Wallet registration failed');
+      console.error('Wallet registration error:', error);
+      setError(error instanceof Error ? error.message : 'Wallet registration failed');
     } finally {
       setWalletLoading(false);
     }
@@ -388,14 +387,14 @@ export default function RegisterPage() {
                     </div>
                   </div>
 
-                  {(validationError || registerError || error) && (
+                  {(validationError || registerError || error || walletRegisterError) && (
                     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm">
                       <div className="flex items-start space-x-2">
                         <div className="flex-shrink-0 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center mt-0.5">
                           <div className="w-2 h-2 bg-white rounded-full"></div>
                         </div>
                         <div className="flex-1">
-                          {validationError || (
+                          {validationError || walletRegisterError?.message || (
                             (registerError?.message || error) === 'Email already registered' ? (
                               <>
                                 This email is already registered.{' '}

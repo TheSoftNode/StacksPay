@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as crypto from 'crypto';
 import { authService } from '@/services/auth-service';
+import { sessionService } from '@/services/session-service';
 import { walletAuthService } from '@/services/wallet-auth-service';
 import { multiWalletAuthService } from '@/services/multi-wallet-auth-service';
 import { createLogger } from '@/utils/logger';
@@ -262,17 +263,28 @@ export class AuthController {
     try {
       const ipAddress = getClientIpAddress(req);
       const walletData: WalletAuthRequest & { 
-        businessName: string; 
-        businessType: string; 
+        businessName?: string; 
+        businessType?: string; 
         email?: string; 
       } = req.body;
 
-      // Validate required wallet fields
-      if (!walletData.address || !walletData.signature || !walletData.message || 
-          !walletData.publicKey || !walletData.businessName || !walletData.businessType) {
+      // Validate only required wallet fields for signature verification
+      if (!walletData.address || !walletData.signature || !walletData.message || !walletData.publicKey) {
         res.status(400).json({
           success: false,
-          error: 'Missing required fields: address, signature, message, publicKey, businessName, businessType'
+          error: 'Missing required wallet fields: address, signature, message, publicKey'
+        });
+        return;
+      }
+
+      // Check if wallet is already registered
+      const { Merchant } = await import('@/models/Merchant');
+      const existingMerchant = await Merchant.findOne({ stacksAddress: walletData.address });
+      
+      if (existingMerchant) {
+        res.status(400).json({
+          success: false,
+          error: 'This wallet address is already registered. Please login instead.'
         });
         return;
       }
@@ -288,32 +300,100 @@ export class AuthController {
         return;
       }
 
-      // Create merchant account with wallet as primary authentication
+      // Create merchant account with minimal data - user can complete profile later
+      // Generate a valid password that meets all requirements for wallet users
+      const generateValidPassword = () => {
+        const chars = 'abcdefghijklmnopqrstuvwxyz';
+        const nums = '0123456789';
+        const caps = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const special = '!@#$%^&*';
+        
+        // Ensure we have at least one of each required character type
+        let password = '';
+        password += caps[Math.floor(Math.random() * caps.length)]; // uppercase
+        password += chars[Math.floor(Math.random() * chars.length)]; // lowercase  
+        password += nums[Math.floor(Math.random() * nums.length)]; // number
+        password += special[Math.floor(Math.random() * special.length)]; // special char
+        
+        // Fill the rest with random characters to make it 16 chars total
+        const allChars = chars + nums + caps + special;
+        for (let i = 4; i < 16; i++) {
+          password += allChars[Math.floor(Math.random() * allChars.length)];
+        }
+        
+        // Shuffle the password to avoid predictable patterns
+        return password.split('').sort(() => Math.random() - 0.5).join('');
+      };
+
       const merchantData: RegisterRequest = {
-        name: walletData.businessName,
-        email: walletData.email || `wallet-${walletData.address.toLowerCase()}@stackspay.app`, // Generate valid email if not provided
-        password: crypto.randomBytes(32).toString('hex'), // Random password since they'll use wallet auth
-        businessType: walletData.businessType,
+        name: walletData.businessName || `Wallet User ${walletData.address.slice(-6)}`, // Default name from wallet
+        email: walletData.email || '', // Allow empty email - user can add later
+        password: generateValidPassword(), // Generate a password that meets requirements
+        businessType: walletData.businessType || 'other', // Default business type
         stacksAddress: walletData.address,
         acceptTerms: true, // Auto-accept for wallet registrations
       };
 
       const userAgent = req.headers['user-agent'] || 'unknown';
-      const result = await authService.register(merchantData, ipAddress, userAgent);
+      const result = await authService.registerWithWallet(merchantData, ipAddress, userAgent);
 
       if (result.success) {
+        // Get the created merchant from the database to get full object
+        const { Merchant } = await import('@/models/Merchant');
+        const createdMerchant = await Merchant.findById(result.merchant?.id);
+        
+        if (!createdMerchant) {
+          res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve created merchant'
+          });
+          return;
+        }
+
+        // Create session with proper tracking
+        const sessionInfo = await sessionService.createSession(
+          createdMerchant._id.toString(),
+          ipAddress,
+          userAgent,
+          true, // rememberMe for wallet registrations
+          undefined // deviceFingerprint
+        );
+
+        // Generate JWT tokens using the authService method
+        const tokenResult = await (authService as any).createJWTTokens(
+          createdMerchant, 
+          sessionInfo.sessionId,
+          true // rememberMe
+        );
+
         logger.info('Merchant registered via wallet', {
-          merchantId: result.merchant?.id,
+          merchantId: createdMerchant._id.toString(),
           stacksAddress: walletData.address,
-          businessType: walletData.businessType,
-          walletType: walletData.walletType
+          businessType: merchantData.businessType,
+          walletType: walletData.walletType || 'stacks',
+          profileComplete: !!(walletData.businessName && walletData.businessType)
         });
 
-        // Return success with wallet authentication context
+        // Return success with wallet authentication context and session tokens
         res.status(201).json({
-          ...result,
+          success: true,
+          token: tokenResult.token,
+          refreshToken: tokenResult.refreshToken,
+          merchant: {
+            id: createdMerchant._id.toString(),
+            name: createdMerchant.name,
+            email: createdMerchant.email,
+            stacksAddress: walletData.address,
+            emailVerified: createdMerchant.emailVerified || false,
+            verificationLevel: createdMerchant.verificationLevel || 'none',
+            businessType: merchantData.businessType,
+            profileComplete: !!(walletData.businessName && walletData.businessType), // Indicate if profile needs completion
+          },
           walletConnected: true,
-          authMethod: 'wallet'
+          authMethod: 'wallet',
+          message: walletData.businessName ? 
+            'Registration successful!' : 
+            'Registration successful! Please complete your profile in settings.'
         });
       } else {
         res.status(400).json(result);
@@ -454,14 +534,20 @@ export class AuthController {
       }
 
       // Create session for wallet-authenticated merchant
-      const loginRequest: LoginRequest = {
-        email: merchant.email,
-        password: '', // Not used for wallet auth
-        rememberMe: true // Wallet sessions are typically longer
-      };
+      const sessionInfo = await sessionService.createSession(
+        merchant._id.toString(),
+        ipAddress,
+        userAgent,
+        true, // rememberMe for wallet logins
+        undefined // deviceFingerprint
+      );
 
-      // Generate session tokens directly
-      const sessionResult = await (authService as any).createSession(merchant, ipAddress, userAgent, true);
+      // Generate JWT tokens using the authService method
+      const tokenResult = await (authService as any).createJWTTokens(
+        merchant, 
+        sessionInfo.sessionId,
+        true // rememberMe
+      );
 
       logger.info('Merchant logged in via wallet', {
         merchantId: merchant._id.toString(),
@@ -471,14 +557,17 @@ export class AuthController {
 
       res.json({
         success: true,
-        token: sessionResult.token,
-        refreshToken: sessionResult.refreshToken,
+        token: tokenResult.token,
+        refreshToken: tokenResult.refreshToken,
         merchant: {
           id: merchant._id.toString(),
           name: merchant.name,
           email: merchant.email,
           stacksAddress: merchant.stacksAddress,
           emailVerified: merchant.emailVerified,
+          verificationLevel: merchant.verificationLevel || 'none',
+          businessType: merchant.businessType,
+          profileComplete: true, // Existing users should have complete profiles
         },
         authMethod: 'wallet',
         walletConnected: true

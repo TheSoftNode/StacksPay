@@ -10,6 +10,7 @@ export interface IMerchant extends Document {
   emailVerificationToken?: string;
   passwordResetToken?: string;
   passwordResetExpires?: Date;
+  authMethod: 'email' | 'wallet';
   stacksAddress?: string;
   bitcoinAddress?: string;
   paymentPreferences: {
@@ -97,7 +98,8 @@ const merchantSchema = new Schema<IMerchant>({
   },
   email: {
     type: String,
-    required: true,
+    required: false, // Allow empty email for wallet registrations
+    default: '',
   },
   businessType: {
     type: String,
@@ -113,6 +115,13 @@ const merchantSchema = new Schema<IMerchant>({
   emailVerificationToken: String,
   passwordResetToken: String,
   passwordResetExpires: Date,
+
+  // Track how user registered/authenticated
+  authMethod: {
+    type: String,
+    enum: ['email', 'wallet'],
+    default: 'email',
+  },
 
   stacksAddress: {
     type: String,
