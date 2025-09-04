@@ -196,14 +196,14 @@ const Navbar = () => {
               {isAuthenticated && user ? (
                 /* User Dropdown */
                 <div className="relative">
-                  <Button
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowUserDropdown(!showUserDropdown);
-                    }}
-                    className="flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
-                  >
+                    <Button
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowUserDropdown(!showUserDropdown);
+                      }}
+                      className="flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
+                    >
                     <div className="flex items-center space-x-3">
                       {/* Avatar with wallet indicator */}
                       <div className="relative">

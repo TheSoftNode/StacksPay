@@ -1,5 +1,6 @@
 import { connectToDatabase } from '@/config/database';
 import { webhookService } from './webhook-service';
+import { InAppNotification, IInAppNotification } from '@/models/Notification';
 import { MerchantNotificationOptions, NotificationData, NotificationPreferences } from '@/interfaces/notification.interface';
 
 
@@ -187,12 +188,34 @@ export class NotificationService {
    */
   private async storeInAppNotification(notification: NotificationData): Promise<boolean> {
     try {
-      // Store in database for in-app display
+      await connectToDatabase();
+
+      // Extract title from message or generate one
+      const title = this.generateInAppTitle(notification);
+      
+      // Create and save the in-app notification to database
+      const inAppNotification = new InAppNotification({
+        id: notification.id,
+        merchantId: notification.merchantId!,
+        title,
+        message: notification.message,
+        type: this.mapToInAppType(notification.metadata?.notificationType || 'system'),
+        priority: this.mapToPriority(notification.metadata?.urgency || 'medium'),
+        data: notification.data || {},
+        status: 'unread',
+      });
+
+      await inAppNotification.save();
+
+      // Update the original notification status
       notification.status = 'delivered';
       notification.sentAt = new Date();
       notification.deliveredAt = new Date();
       notification.attempts++;
       notification.lastAttemptAt = new Date();
+
+      // TODO: Send real-time notification via WebSocket when implemented
+      console.log(`In-app notification stored for merchant ${notification.merchantId}: ${title}`);
       
       return true;
     } catch (error) {
@@ -395,6 +418,184 @@ export class NotificationService {
         },
       },
     };
+  }
+
+  // New helper methods for in-app notifications
+  private generateInAppTitle(notification: NotificationData): string {
+    const type = notification.metadata?.notificationType || 'notification';
+    
+    const titleMap: Record<string, string> = {
+      'payment_received': 'Payment Received',
+      'payment_failed': 'Payment Failed',
+      'subscription_created': 'New Subscription',
+      'subscription_canceled': 'Subscription Canceled',
+      'subscription_payment_failed': 'Subscription Payment Failed',
+      'low_balance': 'Low Balance Alert',
+      'security_alert': 'Security Alert',
+      'api_key_expires': 'API Key Expiring',
+      'withdrawal_completed': 'Withdrawal Completed',
+    };
+
+    return titleMap[type] || type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+  }
+
+  private mapToInAppType(notificationType: string): IInAppNotification['type'] {
+    const typeMap: Record<string, IInAppNotification['type']> = {
+      'payment_received': 'payment',
+      'payment_failed': 'payment',
+      'subscription_created': 'subscription',
+      'subscription_canceled': 'subscription',
+      'subscription_payment_failed': 'subscription',
+      'low_balance': 'account',
+      'security_alert': 'security',
+      'api_key_expires': 'api',
+      'withdrawal_completed': 'withdrawal',
+      'webhook_failed': 'webhook',
+    };
+
+    return typeMap[notificationType] || 'system';
+  }
+
+  private mapToPriority(urgency: string): IInAppNotification['priority'] {
+    const priorityMap: Record<string, IInAppNotification['priority']> = {
+      'low': 'low',
+      'medium': 'medium',
+      'high': 'high',
+      'critical': 'urgent',
+    };
+
+    return priorityMap[urgency] || 'medium';
+  }
+
+  // In-app notification management methods
+  /**
+   * Get in-app notifications for a merchant
+   */
+  async getInAppNotifications(
+    merchantId: string,
+    options: {
+      status?: 'unread' | 'read' | 'archived';
+      type?: IInAppNotification['type'];
+      limit?: number;
+      skip?: number;
+    } = {}
+  ): Promise<{
+    notifications: IInAppNotification[];
+    total: number;
+    unreadCount: number;
+  }> {
+    await connectToDatabase();
+
+    const query: any = { merchantId };
+    
+    if (options.status) {
+      query.status = options.status;
+    }
+    
+    if (options.type) {
+      query.type = options.type;
+    }
+
+    const limit = Math.min(options.limit || 50, 100);
+    const skip = options.skip || 0;
+
+    const [notifications, total, unreadCount] = await Promise.all([
+      InAppNotification.find(query)
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .lean(),
+      InAppNotification.countDocuments(query),
+      InAppNotification.countDocuments({ merchantId, status: 'unread' }),
+    ]);
+
+    return {
+      notifications: notifications as unknown as IInAppNotification[],
+      total,
+      unreadCount,
+    };
+  }
+
+  /**
+   * Mark notification as read
+   */
+  async markNotificationAsRead(
+    merchantId: string,
+    notificationId: string
+  ): Promise<IInAppNotification | null> {
+    await connectToDatabase();
+
+    const notification = await InAppNotification.findOneAndUpdate(
+      { id: notificationId, merchantId },
+      { 
+        status: 'read', 
+        readAt: new Date() 
+      },
+      { new: true }
+    );
+
+    if (notification) {
+      // TODO: Send real-time update via WebSocket when implemented
+      console.log(`Notification ${notificationId} marked as read for merchant ${merchantId}`);
+    }
+
+    return notification;
+  }
+
+  /**
+   * Mark all notifications as read for a merchant
+   */
+  async markAllNotificationsAsRead(merchantId: string): Promise<number> {
+    await connectToDatabase();
+
+    const result = await InAppNotification.updateMany(
+      { merchantId, status: 'unread' },
+      { 
+        status: 'read', 
+        readAt: new Date() 
+      }
+    );
+
+    if (result.modifiedCount > 0) {
+      // TODO: Send real-time update via WebSocket when implemented
+      console.log(`${result.modifiedCount} notifications marked as read for merchant ${merchantId}`);
+    }
+
+    return result.modifiedCount;
+  }
+
+  /**
+   * Delete notification
+   */
+  async deleteNotification(
+    merchantId: string,
+    notificationId: string
+  ): Promise<boolean> {
+    await connectToDatabase();
+
+    const result = await InAppNotification.deleteOne({
+      id: notificationId,
+      merchantId,
+    });
+
+    if (result.deletedCount > 0) {
+      // TODO: Send real-time update via WebSocket when implemented
+      console.log(`Notification ${notificationId} deleted for merchant ${merchantId}`);
+    }
+
+    return result.deletedCount > 0;
+  }
+
+  /**
+   * Get unread count for merchant
+   */
+  async getUnreadNotificationCount(merchantId: string): Promise<number> {
+    await connectToDatabase();
+    
+    return InAppNotification.countDocuments({ 
+      merchantId, 
+      status: 'unread' 
+    });
   }
 }
 

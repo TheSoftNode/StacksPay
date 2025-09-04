@@ -10,6 +10,7 @@ export interface User {
   verificationLevel: 'none' | 'basic' | 'full';
   businessType: string;
   walletConnected: boolean;
+  profileComplete?: boolean;
   authMethod: 'email' | 'wallet';
 }
 

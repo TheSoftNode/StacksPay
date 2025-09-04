@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { connectToDatabase } from '@/config/database';
 import { setupSwagger } from '@/config/swagger';
 import authRoutes from '@/routes/auth.routes';
+import notificationRoutes from '@/routes/notification.routes';
 import errorRoutes from '@/routes/error.routes';
 import testRoutes from '@/routes/test.routes';
 import config from '@/config';
@@ -118,6 +119,7 @@ class sBTCPaymentGatewayServer {
   private setupApiRoutes(): void {
     // API routes
     this.app.use('/api/auth', authRoutes);
+    this.app.use('/api/notifications', notificationRoutes);
     this.app.use('/api/monitoring', errorRoutes);
     this.app.use('/api/test', testRoutes);
 
