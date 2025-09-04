@@ -21,7 +21,6 @@ import {
   AnchorMode,
   PostConditionMode,
   uintCV,
-  stringAsciiCV,
 } from '@stacks/transactions';
 import { SbtcBalanceResponse, SbtcDepositRequest, SbtcDepositResponse, SbtcDepositTransaction, SbtcNetworkInfo, SbtcTransactionStatus, SbtcWithdrawalRequest } from '../interfaces/sbtc.interface';
 import { BitcoinTransactionResponse } from '../interfaces/wallet.interface';

@@ -18,7 +18,10 @@ import {
   Webhook,
   Monitor,
   AlertTriangle,
-  Settings
+  Settings,
+  Wallet,
+  Landmark,
+  Info
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -66,6 +69,22 @@ interface PaymentSettings {
   minimumAmount: number
   maximumAmount: number
   confirmationsRequired: number
+  // Conversion settings
+  autoConvertCurrency: string
+  autoConvertThreshold: number
+  preferredReceiveCurrency: string
+  enableMultiCurrency: boolean
+  slippageTolerance: number
+  preferredProvider: string
+  enableTestMode: boolean
+  // Wallet addresses
+  sbtcAddress: string
+  btcAddress: string
+  stxAddress: string
+  // Bank account
+  bankName: string
+  accountNumber: string
+  routingNumber: string
 }
 
 interface SBTCSettings {
@@ -100,7 +119,23 @@ const SettingsPage = () => {
     autoConvert: true,
     minimumAmount: 1,
     maximumAmount: 10000,
-    confirmationsRequired: 3
+    confirmationsRequired: 3,
+    // Conversion settings
+    autoConvertCurrency: 'USD',
+    autoConvertThreshold: 100,
+    preferredReceiveCurrency: 'sBTC',
+    enableMultiCurrency: true,
+    slippageTolerance: 0.5,
+    preferredProvider: 'circle',
+    enableTestMode: false,
+    // Wallet addresses
+    sbtcAddress: '',
+    btcAddress: '',
+    stxAddress: '',
+    // Bank account
+    bankName: '',
+    accountNumber: '',
+    routingNumber: ''
   })
 
   const [sbtcSettings, setSBTCSettings] = useState<SBTCSettings>({
@@ -130,13 +165,14 @@ const SettingsPage = () => {
           
           // Update payment settings
           if (data.paymentPreferences) {
-            setPaymentSettings({
+            setPaymentSettings(prev => ({
+              ...prev,
               defaultCurrency: data.paymentPreferences.preferredCurrency?.toUpperCase() || 'USD',
               autoConvert: data.paymentPreferences.autoConvertToUSD || false,
               minimumAmount: data.sbtcSettings?.minAmount ? data.sbtcSettings.minAmount / 100000000 : 1,
               maximumAmount: data.sbtcSettings?.maxAmount ? data.sbtcSettings.maxAmount / 100000000 : 10000,
               confirmationsRequired: data.sbtcSettings?.confirmationThreshold || 3
-            });
+            }));
           }
           
           // Update sBTC settings
@@ -261,6 +297,8 @@ const SettingsPage = () => {
             
             <div className="p-6">
               <TabsContent value="payments" className="mt-0">
+              <div className="space-y-6">
+                {/* Payment Configuration */}
                 <Card className="bg-white dark:bg-gray-900 border shadow-sm">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
@@ -341,24 +379,245 @@ const SettingsPage = () => {
                         onCheckedChange={(checked) => updatePaymentSetting('autoConvert', checked)}
                       />
                     </div>
+                  </CardContent>
+                </Card>
 
-                    <div className="flex justify-end">
-                      <Button 
-                        onClick={() => handleSave('payments')} 
-                        disabled={loading}
-                        className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+                {/* Auto-Conversion Settings */}
+                <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Zap className="h-5 w-5" />
+                      Auto-Conversion
+                    </CardTitle>
+                    <CardDescription>
+                      Automatically convert received payments to your preferred currency
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Auto-Convert To</Label>
+                        <Select
+                          value={paymentSettings.autoConvertCurrency}
+                          onValueChange={(value) => updatePaymentSetting('autoConvertCurrency', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USD">USD - US Dollar</SelectItem>
+                            <SelectItem value="USDC">USDC - USD Coin</SelectItem>
+                            <SelectItem value="sBTC">sBTC - Synthetic Bitcoin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Minimum Amount for Auto-Conversion ($)</Label>
+                        <Input
+                          type="number"
+                          value={paymentSettings.autoConvertThreshold}
+                          onChange={(e) => updatePaymentSetting('autoConvertThreshold', parseFloat(e.target.value))}
+                          placeholder="100"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Preferred Receive Currency</Label>
+                        <Select
+                          value={paymentSettings.preferredReceiveCurrency}
+                          onValueChange={(value) => updatePaymentSetting('preferredReceiveCurrency', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sBTC">sBTC - Synthetic Bitcoin</SelectItem>
+                            <SelectItem value="USD">USD - US Dollar</SelectItem>
+                            <SelectItem value="USDC">USDC - USD Coin</SelectItem>
+                            <SelectItem value="STX">STX - Stacks</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Slippage Tolerance (%)</Label>
+                        <Input
+                          type="number"
+                          value={paymentSettings.slippageTolerance}
+                          onChange={(e) => updatePaymentSetting('slippageTolerance', parseFloat(e.target.value))}
+                          placeholder="0.5"
+                          min="0.1"
+                          max="5"
+                          step="0.1"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div>
+                        <h4 className="text-sm font-medium">Enable Multi-Currency Payments</h4>
+                        <p className="text-sm text-gray-500">Allow customers to pay in multiple currencies</p>
+                      </div>
+                      <Switch
+                        checked={paymentSettings.enableMultiCurrency}
+                        onCheckedChange={(checked) => updatePaymentSetting('enableMultiCurrency', checked)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Preferred Provider</Label>
+                      <Select
+                        value={paymentSettings.preferredProvider}
+                        onValueChange={(value) => updatePaymentSetting('preferredProvider', value)}
                       >
-                        {loading ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        ) : (
-                          <Save className="mr-2 h-4 w-4" />
-                        )}
-                        Save Changes
-                      </Button>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="circle">Circle (Best for USD/USDC)</SelectItem>
+                          <SelectItem value="coinbase">Coinbase Commerce</SelectItem>
+                          <SelectItem value="internal">Internal (Best for sBTC/STX)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div>
+                        <h4 className="text-sm font-medium">Test Mode</h4>
+                        <p className="text-sm text-gray-500">Use testnet for all conversions</p>
+                      </div>
+                      <Switch
+                        checked={paymentSettings.enableTestMode}
+                        onCheckedChange={(checked) => updatePaymentSetting('enableTestMode', checked)}
+                      />
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
+
+                {/* Wallet Addresses */}
+                <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Wallet className="h-5 w-5" />
+                      Wallet Addresses
+                    </CardTitle>
+                    <CardDescription>
+                      Configure your crypto wallet addresses for withdrawals
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>sBTC Address</Label>
+                      <Input
+                        value={paymentSettings.sbtcAddress}
+                        onChange={(e) => updatePaymentSetting('sbtcAddress', e.target.value)}
+                        placeholder="SP1ABC..."
+                        className="font-mono text-sm"
+                      />
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        Your sBTC wallet address for receiving synthetic Bitcoin
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Bitcoin Address</Label>
+                      <Input
+                        value={paymentSettings.btcAddress}
+                        onChange={(e) => updatePaymentSetting('btcAddress', e.target.value)}
+                        placeholder="bc1q..."
+                        className="font-mono text-sm"
+                      />
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        Your Bitcoin wallet address for receiving BTC
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Stacks Address</Label>
+                      <Input
+                        value={paymentSettings.stxAddress}
+                        onChange={(e) => updatePaymentSetting('stxAddress', e.target.value)}
+                        placeholder="SP..."
+                        className="font-mono text-sm"
+                      />
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        Your Stacks wallet address for receiving STX tokens
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Bank Account */}
+                <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Landmark className="h-5 w-5" />
+                      Bank Account
+                    </CardTitle>
+                    <CardDescription>
+                      Configure your bank account for USD withdrawals
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Bank Name</Label>
+                      <Input
+                        value={paymentSettings.bankName}
+                        onChange={(e) => updatePaymentSetting('bankName', e.target.value)}
+                        placeholder="Bank Name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Account Number</Label>
+                      <Input
+                        value={paymentSettings.accountNumber}
+                        onChange={(e) => updatePaymentSetting('accountNumber', e.target.value)}
+                        placeholder="****1234"
+                        type="password"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Routing Number</Label>
+                      <Input
+                        value={paymentSettings.routingNumber}
+                        onChange={(e) => updatePaymentSetting('routingNumber', e.target.value)}
+                        placeholder="121000248"
+                      />
+                    </div>
+
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-start space-x-3">
+                        <Shield className="h-4 w-4 text-blue-600 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-blue-700 dark:text-blue-300">
+                            Your banking information is encrypted and securely stored. We never store your full account details.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Save Button */}
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={() => handleSave('payments')} 
+                    disabled={loading}
+                    className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+                  >
+                    {loading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
 
               <TabsContent value="sbtc" className="mt-0">
                 <Card className="bg-white dark:bg-gray-900 border shadow-sm">

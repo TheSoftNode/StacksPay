@@ -10,7 +10,6 @@ import {
   ArrowUpRight,
   Clock,
   RefreshCw,
-  Settings,
   Eye,
   EyeOff,
 } from 'lucide-react';
@@ -20,7 +19,6 @@ import { BalanceCard } from '@/components/dashboard/conversion/BalanceCard';
 import { TransactionHistory } from '@/components/dashboard/conversion/TransactionHistory';
 import { ConversionWidget } from '@/components/dashboard/conversion/ConversionWidget';
 import { WithdrawalForm } from '@/components/dashboard/conversion/WithdrawalForm';
-import { ConversionSettings } from '@/components/dashboard/conversion/ConversionSettings';
 
 
 interface Balance {
@@ -130,7 +128,7 @@ export default function ConversionPage() {
     },
   ]);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'convert' | 'withdraw' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'convert' | 'withdraw'>('overview');
   const [hideBalances, setHideBalances] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -231,7 +229,6 @@ export default function ConversionPage() {
           { id: 'overview', label: 'Overview', icon: Wallet },
           { id: 'convert', label: 'Convert', icon: ArrowUpDown },
           { id: 'withdraw', label: 'Withdraw', icon: ArrowUpRight },
-          { id: 'settings', label: 'Settings', icon: Settings },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -305,17 +302,6 @@ export default function ConversionPage() {
               balances={balances}
               onWithdrawalSubmit={(withdrawal) => {
                 setTransactions(prev => [withdrawal, ...prev]);
-                refreshBalances();
-              }}
-            />
-          </div>
-        )}
-
-        {activeTab === 'settings' && (
-          <div className="max-w-4xl mx-auto">
-            <ConversionSettings
-              onSettingsUpdate={() => {
-                // Handle settings update
                 refreshBalances();
               }}
             />

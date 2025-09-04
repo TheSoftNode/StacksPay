@@ -1,4 +1,3 @@
-// Enhanced wallet authentication hook that maintains all backend functionality
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { walletService } from '@/lib/services/wallet-service';
@@ -14,20 +13,13 @@ export const useWalletAuth = () => {
       setLoading(true);
       setError(null);
 
-      console.log('🔥 Starting simplified wallet registration...');
       
-      // This calls the enhanced walletService which handles:
-      // 1. Wallet connection
-      // 2. Challenge retrieval from backend
-      // 3. Message signing
-      // 4. Backend registration API call with minimal data
       const result = await walletService.registerWithWallet();
       
       if (!result.success) {
         throw new Error(result.error || 'Registration failed');
       }
 
-      console.log('✅ Simplified wallet registration successful');
       return result;
     },
     onSuccess: (response) => {

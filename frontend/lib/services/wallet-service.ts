@@ -1,7 +1,8 @@
 import { 
   connect, 
   disconnect,
-  request
+  request,
+  getLocalStorage
 } from '@stacks/connect';
 import { 
   verifyMessageSignature
@@ -91,6 +92,8 @@ class WalletService {
 
       // Check if wallet is already connected
       const existingData = this.extractWalletData();
+
+      console.log('existing data:', existingData)
       if (existingData) {
         console.log('✅ Using existing wallet connection');
         return {
@@ -121,6 +124,8 @@ class WalletService {
       if (!result.addresses || result.addresses.length === 0) {
         throw new Error('No addresses returned from wallet');
       }
+
+      console.log("result: ", result)
 
       // Find the Stacks address
       let stacksAddress = result.addresses[0];
@@ -354,6 +359,7 @@ class WalletService {
       return false;
     }
   }
+
 
   // =================================================================
   // BACKEND INTEGRATION METHODS
