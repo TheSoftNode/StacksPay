@@ -1,4 +1,4 @@
-"""Base API client for the sBTC Gateway SDK."""
+"""Base API client for the StacksPay SDK."""
 
 import json
 import time
@@ -23,7 +23,7 @@ class BaseAPI:
     def __init__(
         self, 
         api_key: str,
-        base_url: str = "https://api.sbtc-gateway.com",
+        base_url: str = "https://api.stackspay.com",
         timeout: int = 30,
         retries: int = 3
     ):
@@ -36,7 +36,7 @@ class BaseAPI:
         self.session.headers.update({
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
-            'User-Agent': 'sbtc-gateway-python/1.0.0'
+            'User-Agent': 'stacks-pay-python/1.0.0'
         })
 
     def _make_request(

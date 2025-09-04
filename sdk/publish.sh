@@ -43,12 +43,14 @@ if ! command_exists python3; then
     exit 1
 fi
 
-if ! command_exists pip; then
-    echo -e "${RED}❌ pip is not installed${NC}"
-    exit 1
-fi
-
 echo -e "${GREEN}✅ All dependencies found${NC}"
+
+# Check if dry run is requested
+DRY_RUN=false
+if [[ "$1" == "--dry-run" ]]; then
+    DRY_RUN=true
+    echo -e "${YELLOW}🧪 Running in dry-run mode${NC}"
+fi
 
 # Publish Node.js SDK
 echo -e "\n${BLUE}📦 Publishing Node.js SDK...${NC}"
@@ -66,18 +68,34 @@ npm test
 echo -e "${YELLOW}Building Node.js package...${NC}"
 npm run build
 
-# Check if already logged in to npm
-if ! npm whoami > /dev/null 2>&1; then
-    echo -e "${YELLOW}⚠️  Please login to npm first:${NC}"
-    echo "npm login"
+# Verify build
+if [ ! -d "dist" ]; then
+    echo -e "${RED}❌ Build failed - dist directory not found${NC}"
     exit 1
 fi
 
-# Publish to npm
-echo -e "${YELLOW}Publishing to npm...${NC}"
-npm publish --access public
+echo -e "${GREEN}✅ Node.js package built successfully${NC}"
 
-echo -e "${GREEN}✅ Node.js SDK published successfully${NC}"
+# Check package contents
+echo -e "${YELLOW}Checking package contents...${NC}"
+npm pack --dry-run
+
+if [[ "$DRY_RUN" == "false" ]]; then
+    # Check if already logged in to npm
+    if ! npm whoami > /dev/null 2>&1; then
+        echo -e "${YELLOW}⚠️  Please login to npm first:${NC}"
+        echo "npm login"
+        exit 1
+    fi
+
+    # Publish to npm
+    echo -e "${YELLOW}Publishing to npm...${NC}"
+    npm publish --access public
+
+    echo -e "${GREEN}✅ Node.js SDK published successfully${NC}"
+else
+    echo -e "${YELLOW}🧪 Dry run: Would publish to npm${NC}"
+fi
 
 cd ../..
 
@@ -87,25 +105,46 @@ cd sdk/python
 
 # Install build dependencies
 echo -e "${YELLOW}Installing Python build dependencies...${NC}"
-pip install build twine
+python3 -m pip install --upgrade pip build twine
+
+# Clean previous builds
+echo -e "${YELLOW}Cleaning previous builds...${NC}"
+rm -rf dist/ build/ *.egg-info/
 
 # Build the package
 echo -e "${YELLOW}Building Python package...${NC}"
-python -m build
+python3 -m build
 
-# Check if already configured for PyPI
-if [ ! -f ~/.pypirc ]; then
-    echo -e "${YELLOW}⚠️  Please configure PyPI credentials first:${NC}"
-    echo "Create ~/.pypirc with your PyPI credentials"
-    echo "Or run: python -m twine configure"
+# Verify build
+if [ ! -d "dist" ]; then
+    echo -e "${RED}❌ Build failed - dist directory not found${NC}"
     exit 1
 fi
 
-# Upload to PyPI
-echo -e "${YELLOW}Publishing to PyPI...${NC}"
-python -m twine upload dist/*
+echo -e "${GREEN}✅ Python package built successfully${NC}"
 
-echo -e "${GREEN}✅ Python SDK published successfully${NC}"
+# Check package contents
+echo -e "${YELLOW}Checking package contents...${NC}"
+python3 -m twine check dist/*
+
+if [[ "$DRY_RUN" == "false" ]]; then
+    # Check if already configured for PyPI
+    if [ ! -f ~/.pypirc ]; then
+        echo -e "${YELLOW}⚠️  PyPI credentials not configured. Please run one of:${NC}"
+        echo "  1. python3 -m twine configure"
+        echo "  2. Create ~/.pypirc with your PyPI credentials"
+        echo "  3. Set TWINE_USERNAME and TWINE_PASSWORD environment variables"
+        exit 1
+    fi
+
+    # Upload to PyPI
+    echo -e "${YELLOW}Publishing to PyPI...${NC}"
+    python3 -m twine upload dist/*
+
+    echo -e "${GREEN}✅ Python SDK published successfully${NC}"
+else
+    echo -e "${YELLOW}🧪 Dry run: Would publish to PyPI${NC}"
+fi
 
 cd ../..
 
@@ -119,3 +158,9 @@ echo "1. Update documentation with new version numbers"
 echo "2. Create GitHub release with changelog"
 echo "3. Update examples and integration guides"
 echo "4. Notify users about the new release"
+echo "5. Update main README with SDK installation instructions"
+
+echo -e "\n${BLUE}🔗 Useful links:${NC}"
+echo "📦 npm: https://www.npmjs.com/package/@sbtc-gateway/node"
+echo "📦 PyPI: https://pypi.org/project/sbtc-gateway/"
+echo "📖 Docs: https://docs.sbtc-gateway.com"

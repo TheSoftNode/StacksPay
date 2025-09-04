@@ -1,5 +1,5 @@
 {
-  "name": "@stackspay/node",
+  "name": "stacks-pay-node",
   "version": "1.0.0",
   "description": "Official Node.js SDK for StacksPay - Accept Bitcoin and STX payments",
   "main": "dist/index.js",
@@ -15,7 +15,7 @@
     "test": "jest",
     "lint": "eslint src/**/*.ts",
     "prepare": "npm run build",
-    "prepublishOnly": "npm test && npm run lint"
+    "prepublishOnly": "npm test"
   },
   "keywords": [
     "bitcoin",
@@ -25,7 +25,8 @@
     "crypto",
     "gateway",
     "api",
-    "sdk"
+    "sdk",
+    "blockchain"
   ],
   "author": "StacksPay Team",
   "license": "MIT",

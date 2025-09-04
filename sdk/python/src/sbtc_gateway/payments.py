@@ -11,33 +11,7 @@ class PaymentsAPI(BaseAPI):
 
     def create(self, payment_data: PaymentRequest) -> Payment:
         """Create a new payment."""
-        # Convert dataclass to dict
-        data = {
-            'amount': payment_data.amount,
-            'currency': payment_data.currency,
-            'description': payment_data.description,
-        }
-        
-        if payment_data.customer:
-            data['customer'] = {
-                'email': payment_data.customer.email,
-                'name': payment_data.customer.name,
-                'id': payment_data.customer.id,
-            }
-        
-        if payment_data.metadata:
-            data['metadata'] = payment_data.metadata
-        
-        if payment_data.webhook_url:
-            data['webhook_url'] = payment_data.webhook_url
-            
-        if payment_data.redirect_url:
-            data['redirect_url'] = payment_data.redirect_url
-            
-        if payment_data.expires_in:
-            data['expires_in'] = payment_data.expires_in
-        
-        response = self._make_request('POST', '/api/v1/payments', data=data)
+        response = self._make_request('POST', '/api/v1/payments', data=payment_data.to_dict())
         return self._convert_to_payment(response['payment'])
 
     def retrieve(self, payment_id: str) -> Payment:

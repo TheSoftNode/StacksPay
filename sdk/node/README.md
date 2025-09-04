@@ -1,5 +1,52 @@
 # sBTC Gateway Node.js SDK
 
+[![npm version](https://badge.fury.io/js/%40sbtc-gateway%2Fnode.svg)](https://badge.fury.io/js/%40sbtc-gateway%2Fnode)
+[![Node.js CI](https://github.com/TheSoftNode/sbtc-payment-gateway/workflows/Node.js%20CI/badge.svg)](https://github.com/TheSoftNode/sbtc-payment-gateway/actions)
+
+Official Node.js SDK for the sBTC Payment Gateway. Accept Bitcoin and STX payments with ease.
+
+## Features
+
+✅ **Payment Management**: Create, retrieve, list, cancel, and refund payments  
+✅ **Merchant API**: Get and update merchant information  
+✅ **Webhook Management**: Create and manage webhooks for real-time notifications  
+✅ **API Key Management**: Generate and manage API keys  
+✅ **Webhook Utils**: Verify webhook signatures securely  
+✅ **Error Handling**: Comprehensive error types and handling  
+✅ **Type Safety**: Full TypeScript support with detailed type definitions  
+✅ **Async Support**: Promise-based API with async/await support  
+✅ **Automatic Retries**: Built-in retry logic with exponential backoff  
+✅ **Rate Limiting**: Automatic handling of rate limits
+
+## Installation
+
+```bash
+npm install @sbtc-gateway/node
+```
+
+## Quick Start
+
+```javascript
+import SBTCGateway from "@sbtc-gateway/node";
+
+// Initialize the client
+const client = new SBTCGateway("sk_test_your_api_key_here");
+
+// Create a payment
+const payment = await client.payments.create({
+  amount: 50000, // 0.0005 BTC in satoshis
+  currency: "sbtc",
+  description: "Premium subscription",
+  customer: {
+    email: "customer@example.com",
+    name: "John Doe",
+  },
+});
+
+console.log(payment.payment_url); // Send this URL to your customer
+console.log(payment.qr_code); // Or show this QR code
+```
+
 Official Node.js SDK for the sBTC Payment Gateway. Accept Bitcoin and STX payments with ease.
 
 ## Installation

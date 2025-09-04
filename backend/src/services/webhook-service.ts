@@ -807,17 +807,17 @@ export class WebhookService {
 
       return {
         id: (event as any)._id.toString(),
-        webhookId: event.webhookId,
-        type: event.eventType,
-        status: event.status,
-        timestamp: event.createdAt.toISOString(),
-        endpoint: event.endpoint,
-        attempts: event.attempts,
-        maxAttempts: event.maxAttempts,
-        nextRetryAt: event.nextRetryAt?.toISOString(),
-        response: event.response || { status: 0 },
-        payload: event.payload,
-        error: event.response?.error
+        webhookId: (event as any).webhookId,
+        type: (event as any).eventType,
+        status: (event as any).status,
+        timestamp: (event as any).createdAt.toISOString(),
+        endpoint: (event as any).endpoint,
+        attempts: (event as any).attempts,
+        maxAttempts: (event as any).maxAttempts,
+        nextRetryAt: (event as any).nextRetryAt?.toISOString(),
+        response: (event as any).response || { status: 0 },
+        payload: (event as any).payload,
+        error: (event as any).response?.error
       };
     } catch (error) {
       logger.error('Error getting webhook event:', error);
@@ -983,7 +983,7 @@ export class WebhookService {
       });
 
       // Update webhook stats
-      await this.updateWebhookStats(webhook._id.toString(), result.success ? 'success' : 'failure', result.error);
+      await this.updateWebhookStats((webhook as any)._id.toString(), result.success ? 'success' : 'failure', result.error);
 
     } catch (error) {
       logger.error('Error processing webhook event:', error);

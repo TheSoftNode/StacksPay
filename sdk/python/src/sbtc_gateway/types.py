@@ -1,7 +1,7 @@
 """Type definitions for the sBTC Gateway SDK."""
 
 from typing import Dict, List, Optional, Any, Literal
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime
 
 
@@ -24,6 +24,10 @@ class PaymentRequest:
     webhook_url: Optional[str] = None
     redirect_url: Optional[str] = None
     expires_in: Optional[int] = None  # Seconds until payment expires
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for API requests."""
+        return asdict(self)
 
 
 @dataclass
@@ -122,6 +126,65 @@ class WebhookEvent:
     created: int
     data: WebhookEventData
     livemode: bool
+
+
+@dataclass
+class Webhook:
+    """Webhook configuration."""
+    id: str
+    url: str
+    events: List[str]
+    status: Literal["active", "inactive"]
+    secret: str
+    created_at: str
+    updated_at: str
+    description: Optional[str] = None
+
+
+@dataclass
+class WebhookRequest:
+    """Request data for creating/updating a webhook."""
+    url: str
+    events: List[str]
+    description: Optional[str] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for API requests."""
+        return asdict(self)
+
+
+@dataclass
+class APIKeyUsage:
+    """API key usage statistics."""
+    requests_today: int
+    requests_this_month: int
+
+
+@dataclass
+class APIKey:
+    """API key object."""
+    id: str
+    name: str
+    key_prefix: str
+    permissions: List[str]
+    status: Literal["active", "inactive"]
+    usage: APIKeyUsage
+    created_at: str
+    updated_at: str
+    last_used: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
+@dataclass
+class APIKeyRequest:
+    """Request data for creating an API key."""
+    name: str
+    permissions: List[str]
+    expires_at: Optional[str] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for API requests."""
+        return asdict(self)
 
 
 # API Response types
