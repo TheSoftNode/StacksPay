@@ -12,6 +12,11 @@
 - **[🛠️ SDK Guide](./docs/sdk-guide.md)** - Official Node.js and Python SDKs
 - **[📘 API Reference](./docs/api-reference.md)** - Complete API documentation
 
+#### For Deployment & Security
+
+- **[☁️ Deployment Guide](./DEPLOYMENT.md)** - Deploy to Google Cloud Run
+- **[🔐 Security Guide](./SECURITY.md)** - Production security best practices
+
 #### For System Understanding
 
 - **[🏗️ System Architecture](./docs/architecture.md)** - How everything works and connects

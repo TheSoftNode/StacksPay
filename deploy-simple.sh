@@ -3,10 +3,20 @@
 # Simple StacksPay Deployment to Cloud Run
 # Set these variables before running:
 
-# 🔧 CONFIGURATION - UPDATE THESE VALUES
-PROJECT_ID="your-gcp-project-id"
-REGION="us-central1"
-MONGODB_URI="mongodb+srv://username:password@cluster.mongodb.net/sbtc_payment_gateway"
+# 🔧 CONFIGURATION - SET THESE ENVIRONMENT VARIABLES BEFORE RUNNING
+if [ -z "$PROJECT_ID" ]; then
+    echo "❌ PROJECT_ID environment variable is required"
+    echo "Set it to your GCP project ID: export PROJECT_ID='your-gcp-project-id'"
+    exit 1
+fi
+
+if [ -z "$MONGODB_URI" ]; then
+    echo "❌ MONGODB_URI environment variable is required"
+    echo "Set it to your MongoDB connection string: export MONGODB_URI='mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/<db>'"
+    exit 1
+fi
+
+REGION=${REGION:-"us-central1"}
 
 # 🚀 DEPLOYMENT COMMANDS
 

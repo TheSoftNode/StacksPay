@@ -98,10 +98,10 @@ gcloud run deploy stackspay-backend \
 ### Required Environment Variables
 
 ```env
-# Database
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/sbtc_payment_gateway
+# Database (REQUIRED - Get from MongoDB Atlas)
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>
 
-# Security
+# Security (REQUIRED - Generate secure random values)
 JWT_SECRET=your-secure-jwt-secret-key
 
 # Networks

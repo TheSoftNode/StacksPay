@@ -5,13 +5,8 @@ import ConditionalNavbar from "@/components/layout/ConditionalNavbar";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/lib/providers/query-provider"; // Restored
 import { Toaster } from "@/components/ui/toaster";
-import dynamic from 'next/dynamic'; // Restored
+import ChatBotClient from '@/components/shared/ChatBotClient'; // Updated to use client component
 import ClientOnly from "@/components/providers/client-only";
-
-// Dynamically import ChatBot with no SSR to prevent hydration issues
-const ChatBot = dynamic(() => import('@/components/shared/ChatBot'), {
-  ssr: false,
-}); // Restored
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -50,7 +45,7 @@ export default function RootLayout({
             <ClientOnly fallback={<div className="min-h-screen bg-background" />}>
               <ConditionalNavbar />
               {children}
-              <ChatBot />
+              <ChatBotClient />
               <Toaster />
             </ClientOnly>
           </QueryProvider>

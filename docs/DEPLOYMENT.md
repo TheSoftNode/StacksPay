@@ -42,12 +42,9 @@ gcloud services enable run.googleapis.com cloudbuild.googleapis.com
 ### Step 3: Deploy Using Simple Script
 
 ```bash
-# Edit the configuration in deploy-simple.sh
-nano deploy-simple.sh
-
-# Update these values:
-PROJECT_ID="your-gcp-project-id"
-MONGODB_URI="mongodb+srv://username:password@cluster.mongodb.net/sbtc_payment_gateway"
+# Set environment variables (REQUIRED)
+export PROJECT_ID="your-gcp-project-id"
+export MONGODB_URI="mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>"
 
 # Run deployment
 ./deploy-simple.sh

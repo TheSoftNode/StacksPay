@@ -24,7 +24,7 @@ index-servers = pypi
 
 [pypi]
 username = __token__
-password = pypi-AgEIcHlwaS5vcmcCJDxxx-your-token-here-xxx
+password = <your-pypi-api-token>
 ```
 
 ## Publishing Process

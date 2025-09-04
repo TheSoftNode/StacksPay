@@ -16,8 +16,13 @@ REGION=${REGION:-"us-central1"}
 BACKEND_SERVICE_NAME="stackspay-backend"
 FRONTEND_SERVICE_NAME="stackspay-frontend"
 
-# MongoDB Atlas connection string (you'll need to set this)
-MONGODB_URI=${MONGODB_URI:-"mongodb+srv://username:password@cluster.mongodb.net/sbtc_payment_gateway"}
+# MongoDB Atlas connection string (REQUIRED: Set this environment variable)
+if [ -z "$MONGODB_URI" ]; then
+    echo -e "${RED}❌ MONGODB_URI environment variable is required${NC}"
+    echo "Please set it to your MongoDB Atlas connection string:"
+    echo "export MONGODB_URI='mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>'"
+    exit 1
+fi
 
 echo -e "${BLUE}🚀 Starting StacksPay deployment to Google Cloud Run${NC}"
 
