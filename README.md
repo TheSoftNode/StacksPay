@@ -1,6 +1,26 @@
 # StacksPay
 
-**The Stripe for sBTC** - A comprehensive payment gateway solution built for the Stacks ecosystem, enabling seamless Bitcoin, STX, and sBTC transactions for merchants and developers.
+**The Stripe for sBTC** - A comprehensive payment gateway solution built for the Stacks ecosystem, enabling seamless Bitcoin, STX, and sBTC t## 📚 Complete Documentation
+
+**👉 [Start Here: Documentation Index](./docs/README.md)**
+
+### 🎯 Quick Navigation
+
+#### For Developers
+
+- **[🚀 Integration Guide](./docs/integration-guide.md)** - Get started in 5 minutes
+- **[🛠️ SDK Guide](./docs/sdk-guide.md)** - Official Node.js and Python SDKs
+- **[📘 API Reference](./docs/api-reference.md)** - Complete API documentation
+
+#### For System Understanding
+
+- **[🏗️ System Architecture](./docs/architecture.md)** - How everything works and connects
+- **[📁 Documentation Index](./docs/INDEX.md)** - Complete documentation structure
+
+#### For SDK Development
+
+- **[📦 SDK Development](./sdk/README.md)** - SDK development setup and overview
+- **[🔧 Publishing Guide](./sdk/PUBLISHING.md)** - How to publish and maintain SDKss for merchants and developers.
 
 ## 🏆 Hackathon Submission
 
@@ -8,6 +28,8 @@
 **Category**: DeFi/Payments  
 **Built for**: Stacks Hackathon  
 **Tagline**: "Stripe for sBTC - Make Bitcoin payments as easy as traditional payments"
+
+> **📚 Complete Documentation**: Architecture, SDKs, and integration guides in [`/docs`](./docs/) folder - start with the [Documentation Index](./docs/README.md)
 
 ## 🌟 What It Does
 
@@ -166,19 +188,19 @@ NEXT_PUBLIC_STACKS_NETWORK=testnet
 **Node.js SDK**
 
 ```bash
-npm install @stackspay/node
+npm install stacks-pay-node
 ```
 
 **Python SDK**
 
 ```bash
-pip install stackspay
+pip install stacks-pay-python
 ```
 
 ### Quick API Example
 
 ```javascript
-const StacksPay = require("@stackspay/node");
+const StacksPay = require("stacks-pay-node");
 const client = new StacksPay("your-api-key");
 
 const payment = await client.payments.create({
@@ -191,6 +213,26 @@ console.log(payment.checkoutUrl);
 ```
 
 **📖 [View Full SDK Documentation](./docs/sdk-guide.md)**
+
+## 📂 Documentation Structure
+
+```
+docs/
+├── README.md              # Documentation index and overview
+├── INDEX.md              # Complete documentation structure
+├── architecture.md       # System architecture and design
+├── integration-guide.md  # Step-by-step integration guide
+├── sdk-guide.md         # SDK usage and publishing guide
+└── api-reference.md     # Complete API documentation
+
+sdk/
+├── README.md            # SDK development setup
+├── PUBLISHING.md        # SDK publishing guide
+├── node/               # Node.js SDK
+└── python/             # Python SDK
+```
+
+**🎯 Start with: [Documentation Index](./docs/README.md)**
 
 ## 🏅 Hackathon Highlights
 

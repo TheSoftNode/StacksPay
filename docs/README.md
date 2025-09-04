@@ -67,7 +67,7 @@ StacksPay is a comprehensive payment gateway solution built for the Stacks ecosy
 #### Node.js SDK
 
 ```bash
-npm install @stackspay/node
+npm install stacks-pay-node
 ```
 
 **Documentation**: [SDK Guide - Node.js Section](./sdk-guide.md#nodejs-sdk)
@@ -75,7 +75,7 @@ npm install @stackspay/node
 #### Python SDK
 
 ```bash
-pip install stackspay
+pip install stacks-pay-python
 ```
 
 **Documentation**: [SDK Guide - Python Section](./sdk-guide.md#python-sdk)
@@ -84,8 +84,8 @@ pip install stackspay
 
 Our SDKs are published to their respective package managers:
 
-- **NPM**: [@stackspay/node](https://www.npmjs.com/package/@stackspay/node)
-- **PyPI**: [stackspay](https://pypi.org/project/stackspay/)
+- **NPM**: [stacks-pay-node](https://www.npmjs.com/package/stacks-pay-node)
+- **PyPI**: [stacks-pay-python](https://pypi.org/project/stacks-pay-python/)
 
 Full publishing process and version management details are covered in the [SDK Guide](./sdk-guide.md#sdk-publishing-process).
 
@@ -126,7 +126,7 @@ Detailed architecture explanation: [System Architecture](./architecture.md)
 **Node.js:**
 
 ```javascript
-const StacksPay = require("@stackspay/node");
+const StacksPay = require("stacks-pay-node");
 const client = new StacksPay({ apiKey: "sk_test_..." });
 
 const payment = await client.payments.create({
@@ -139,9 +139,9 @@ const payment = await client.payments.create({
 **Python:**
 
 ```python
-import stackspay
+import stacks_pay_python
 
-client = stackspay.Client(api_key='sk_test_...')
+client = stacks_pay_python.Client(api_key='sk_test_...')
 payment = client.payments.create(
     amount=1000000,
     currency='BTC',

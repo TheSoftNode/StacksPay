@@ -4,17 +4,17 @@ This directory contains the official SDKs for StacksPay - The Stripe for sBTC.
 
 ## Available SDKs
 
-### Node.js SDK (`@stackspay/node`)
+### Node.js SDK (`stacks-pay-node`)
 
-- **Package**: `@stackspay/node`
-- **Installation**: `npm install @stackspay/node`
+- **Package**: `stacks-pay-node`
+- **Installation**: `npm install stacks-pay-node`
 - **Language**: TypeScript/JavaScript
 - **Node.js**: >= 14.0.0
 
-### Python SDK (`stackspay`)
+### Python SDK (`stacks-pay-python`)
 
-- **Package**: `stackspay`
-- **Installation**: `pip install stackspay`
+- **Package**: `stacks-pay-python`
+- **Installation**: `pip install stacks-pay-python`
 - **Language**: Python
 - **Python**: >= 3.8
 
@@ -23,7 +23,7 @@ This directory contains the official SDKs for StacksPay - The Stripe for sBTC.
 ### Node.js
 
 ```javascript
-const StacksPay = require("@stackspay/node");
+const StacksPay = require("stacks-pay-node");
 
 const client = new StacksPay("sk_live_your_api_key");
 const payment = await client.payments.create({
@@ -35,11 +35,11 @@ const payment = await client.payments.create({
 
 ### Python
 
-```python
-import stackspay
+```javascript
+import stacks_pay_python
 
-client = stackspay.Client('sk_live_your_api_key')
-payment = client.payments.create(stackspay.PaymentRequest(
+client = stacks_pay_python.Client('sk_live_your_api_key')
+payment = client.payments.create(stacks_pay_python.PaymentRequest(
     amount=50000,
     currency='sbtc',
     description='Premium subscription'
@@ -91,9 +91,9 @@ Both SDKs provide:
 
 ## API Compatibility
 
-Both SDKs are compatible with the sBTC Gateway API v1:
+Both SDKs are compatible with the StacksPay API v1:
 
-- **Base URL**: `https://api.sbtc-gateway.com`
+- **Base URL**: `https://api.stackspay.com`
 - **Authentication**: Bearer token (API key)
 - **Format**: JSON REST API
 - **Webhooks**: HMAC-SHA256 signature verification
