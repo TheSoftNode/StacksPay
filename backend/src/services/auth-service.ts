@@ -853,6 +853,89 @@ export class AuthService {
   }
 
   /**
+   * Rotate API key - Generate new key and set grace period for old key
+   */
+  async rotateApiKey(merchantId: string, keyId: string, gracePeriodHours: number = 24): Promise<{
+    success: boolean;
+    error?: string;
+    newKey?: {
+      keyId: string;
+      key: string;
+      keyPreview: string;
+    };
+    oldKeyExpiresAt?: Date;
+  }> {
+    await connectToDatabase();
+    
+    try {
+      const merchant = await Merchant.findById(merchantId);
+      if (!merchant) {
+        return { success: false, error: 'Merchant not found' };
+      }
+
+      const oldApiKey = merchant.apiKeys?.find((key: any) => key.keyId === keyId);
+      if (!oldApiKey) {
+        return { success: false, error: 'API key not found' };
+      }
+
+      // Generate new API key with same settings as old key
+      const environment = oldApiKey.environment;
+      const keyPrefix = environment === 'test' ? 'sk_test_' : 'sk_live_';
+      const randomBytes = crypto.randomBytes(32).toString('hex');
+      const newApiKey = `${keyPrefix}${randomBytes}`;
+      const newKeyId = crypto.randomBytes(16).toString('hex');
+
+      // Hash the new API key for secure storage
+      const keyHash = await bcrypt.hash(newApiKey, 10);
+      const keyPreview = `${keyPrefix}****${randomBytes.slice(-4)}`;
+
+      // Set expiration for old key
+      const expiresAt = new Date(Date.now() + gracePeriodHours * 60 * 60 * 1000);
+      oldApiKey.expiresAt = expiresAt;
+
+      // Add new API key
+      const newApiKeyData = {
+        keyId: newKeyId,
+        keyHash,
+        keyPreview,
+        name: `${oldApiKey.name} (Rotated)`,
+        permissions: oldApiKey.permissions,
+        environment: oldApiKey.environment,
+        isActive: true,
+        createdAt: new Date(),
+        ipRestrictions: oldApiKey.ipRestrictions || [],
+        rateLimit: oldApiKey.rateLimit || 1000,
+      };
+
+      if (!merchant.apiKeys) {
+        merchant.apiKeys = [];
+      }
+      merchant.apiKeys.push(newApiKeyData);
+      
+      await merchant.save();
+
+      await this.logAuthEvent(merchantId, 'api_key_rotated', '', true, { 
+        oldKeyId: keyId, 
+        newKeyId: newKeyId,
+        gracePeriodHours 
+      });
+
+      return { 
+        success: true, 
+        newKey: {
+          keyId: newKeyId,
+          key: newApiKey,
+          keyPreview
+        },
+        oldKeyExpiresAt: expiresAt
+      };
+    } catch (error: any) {
+      console.error('Error rotating API key:', error);
+      return { success: false, error: 'Failed to rotate API key' };
+    }
+  }
+
+  /**
    * Get wallet setup status
    */
   async getWalletSetupStatus(merchantId: string): Promise<any> {

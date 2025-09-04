@@ -1,6 +1,7 @@
 import express from 'express';
 import { WebhookController } from '@/controllers/WebhookController';
 import { apiKeyMiddleware } from '@/middleware/auth.middleware';
+import { rateLimitMiddleware } from '@/middleware/rate-limit.middleware';
 import { asyncHandler } from '@/middleware/error.middleware';
 
 const router = express.Router();
@@ -11,8 +12,9 @@ const webhookController = new WebhookController();
  * All routes require API key authentication
  */
 
-// Apply API key middleware to all webhook routes
+// Apply API key middleware and rate limiting to all webhook routes
 router.use(apiKeyMiddleware);
+router.use(rateLimitMiddleware);
 
 /**
  * @swagger

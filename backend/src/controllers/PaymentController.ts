@@ -403,4 +403,168 @@ export class PaymentController {
       });
     }
   }
+
+  /**
+   * Process customer payment (public endpoint)
+   */
+  async processCustomerPayment(req: Request, res: Response): Promise<void> {
+    try {
+      const { paymentId } = req.params;
+      const { walletAddress, transactionId, signature, paymentMethod } = req.body;
+
+      if (!walletAddress || !transactionId || !paymentMethod) {
+        res.status(400).json({
+          success: false,
+          error: 'Wallet address, transaction ID, and payment method are required'
+        });
+        return;
+      }
+
+      const verificationData = {
+        paymentId,
+        signature,
+        blockchainData: {
+          txId: transactionId,
+          timestamp: new Date()
+        },
+        customerWalletAddress: walletAddress
+      };
+
+      const result = await this.paymentService.verifyPaymentSignature(verificationData);
+
+      if (result.success) {
+        logger.info('Customer payment processed', {
+          paymentId,
+          txId: transactionId,
+          walletAddress,
+          paymentMethod
+        });
+
+        res.json({
+          success: true,
+          message: 'Payment processed and confirmed',
+          data: {
+            txId: transactionId,
+            status: 'confirmed'
+          }
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+
+    } catch (error) {
+      logger.error('Process customer payment API error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
+
+  /**
+   * Generate QR code for payment (public endpoint)
+   */
+  async generatePublicQRCode(req: Request, res: Response): Promise<void> {
+    try {
+      const { paymentId } = req.params;
+      const size = req.query.size ? parseInt(req.query.size as string) : 256;
+
+      const payment = await this.paymentService.getPayment(paymentId);
+
+      if (!payment) {
+        res.status(404).json({
+          success: false,
+          error: 'Payment not found'
+        });
+        return;
+      }
+
+      // For public QR codes, include basic payment info
+      const qrData = {
+        paymentId: payment._id || payment.id,
+        amount: payment.amount || payment.paymentAmount,
+        currency: payment.currency || payment.paymentCurrency,
+        address: payment.depositAddress || payment.paymentAddress,
+        url: `${process.env.FRONTEND_URL}/pay/${paymentId}`
+      };
+
+      // Generate QR code (you'll need to implement QR generation)
+      // For now, return the data that would be in the QR code
+      res.json({
+        success: true,
+        data: {
+          qrData: JSON.stringify(qrData),
+          qrUrl: `data:image/svg+xml;base64,${Buffer.from(JSON.stringify(qrData)).toString('base64')}`,
+          size
+        }
+      });
+
+    } catch (error) {
+      logger.error('Generate public QR code API error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
+
+  /**
+   * Generate QR code for merchant dashboard
+   */
+  async generateQRCode(req: Request, res: Response): Promise<void> {
+    try {
+      const { paymentId } = req.params;
+      const merchantId = req.merchant?.id;
+      const size = req.query.size ? parseInt(req.query.size as string) : 256;
+
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Merchant authentication required'
+        });
+        return;
+      }
+
+      const payment = await this.paymentService.getPayment(paymentId, merchantId);
+
+      if (!payment) {
+        res.status(404).json({
+          success: false,
+          error: 'Payment not found'
+        });
+        return;
+      }
+
+      // For merchant QR codes, include more detailed info
+      const qrData = {
+        paymentId: payment._id || payment.id,
+        amount: payment.amount || payment.paymentAmount,
+        currency: payment.currency || payment.paymentCurrency,
+        address: payment.depositAddress || payment.paymentAddress,
+        merchantId,
+        url: `${process.env.FRONTEND_URL}/pay/${paymentId}`,
+        expiresAt: payment.expiresAt
+      };
+
+      res.json({
+        success: true,
+        data: {
+          qrData: JSON.stringify(qrData),
+          qrUrl: `data:image/svg+xml;base64,${Buffer.from(JSON.stringify(qrData)).toString('base64')}`,
+          size,
+          expiresAt: payment.expiresAt
+        }
+      });
+
+    } catch (error) {
+      logger.error('Generate QR code API error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
 }

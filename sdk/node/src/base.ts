@@ -19,9 +19,11 @@ export class SBTCGatewayError extends Error {
 export class BaseAPI {
   protected client: AxiosInstance;
   protected apiKey: string;
+  protected retries: number;
 
   constructor(options: SDKOptions) {
     this.apiKey = options.apiKey;
+    this.retries = options.retries || 3;
     
     this.client = axios.create({
       baseURL: options.baseURL || 'https://api.sbtc-gateway.com',
@@ -59,7 +61,48 @@ export class BaseAPI {
   }
 
   protected async makeRequest<T>(config: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.request<T>(config);
-    return response.data;
+    return this.makeRequestWithRetry<T>(config, 0);
+  }
+
+  private async makeRequestWithRetry<T>(config: AxiosRequestConfig, attempt: number): Promise<T> {
+    try {
+      const response = await this.client.request<T>(config);
+      return response.data;
+    } catch (error: any) {
+      // Handle rate limiting with exponential backoff
+      if (error.response?.status === 429 && attempt < this.retries) {
+        const retryAfter = error.response.headers['retry-after'] 
+          ? parseInt(error.response.headers['retry-after']) * 1000 
+          : Math.pow(2, attempt) * 1000;
+        
+        await this.sleep(retryAfter);
+        return this.makeRequestWithRetry<T>(config, attempt + 1);
+      }
+
+      // Retry on server errors (5xx) but not on client errors (4xx)
+      if (error.response?.status >= 500 && attempt < this.retries) {
+        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+        await this.sleep(delay);
+        return this.makeRequestWithRetry<T>(config, attempt + 1);
+      }
+
+      // Don't retry on auth errors or client errors
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        throw error;
+      }
+
+      // For network errors, retry with exponential backoff
+      if (!error.response && attempt < this.retries) {
+        const delay = Math.pow(2, attempt) * 1000;
+        await this.sleep(delay);
+        return this.makeRequestWithRetry<T>(config, attempt + 1);
+      }
+
+      throw error;
+    }
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }

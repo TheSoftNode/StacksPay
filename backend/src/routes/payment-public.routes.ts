@@ -12,14 +12,14 @@ const paymentController = new PaymentController();
 
 /**
  * @swagger
- * /api/public/payments/{id}/status:
+ * /api/public/payments/{paymentId}/status:
  *   get:
  *     tags: [Public Payments]
  *     summary: Get payment status (public)
  *     description: Get payment status without authentication for customer checkout
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: paymentId
  *         required: true
  *         schema:
  *           type: string
@@ -27,18 +27,18 @@ const paymentController = new PaymentController();
  *       200:
  *         description: Payment status retrieved successfully
  */
-router.get('/:id/status', asyncHandler(paymentController.getPaymentStatus.bind(paymentController)));
+router.get('/:paymentId/status', asyncHandler(paymentController.getPaymentStatus.bind(paymentController)));
 
 /**
  * @swagger
- * /api/public/payments/{id}/process:
+ * /api/public/payments/{paymentId}/process:
  *   post:
  *     tags: [Public Payments]
  *     summary: Process customer payment
  *     description: Submit payment transaction from customer wallet
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: paymentId
  *         required: true
  *         schema:
  *           type: string
@@ -66,17 +66,17 @@ router.get('/:id/status', asyncHandler(paymentController.getPaymentStatus.bind(p
  *       200:
  *         description: Payment processed successfully
  */
-router.post('/:id/process', asyncHandler(paymentController.processCustomerPayment.bind(paymentController)));
+router.post('/:paymentId/process', asyncHandler(paymentController.processCustomerPayment.bind(paymentController)));
 
 /**
  * @swagger
- * /api/public/payments/{id}/qr:
+ * /api/public/payments/{paymentId}/qr:
  *   get:
  *     tags: [Public Payments]
  *     summary: Get payment QR code (public)
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: paymentId
  *         required: true
  *         schema:
  *           type: string
@@ -89,6 +89,6 @@ router.post('/:id/process', asyncHandler(paymentController.processCustomerPaymen
  *       200:
  *         description: QR code generated successfully
  */
-router.get('/:id/qr', asyncHandler(paymentController.generatePublicQRCode.bind(paymentController)));
+router.get('/:paymentId/qr', asyncHandler(paymentController.generatePublicQRCode.bind(paymentController)));
 
 export default router;

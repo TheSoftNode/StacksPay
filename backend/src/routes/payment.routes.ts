@@ -1,6 +1,7 @@
 import express from 'express';
 import { PaymentController } from '@/controllers/PaymentController';
 import { apiKeyMiddleware } from '@/middleware/auth.middleware';
+import { rateLimitMiddleware } from '@/middleware/rate-limit.middleware';
 import { asyncHandler } from '@/middleware/error.middleware';
 
 const router = express.Router();
@@ -11,8 +12,9 @@ const paymentController = new PaymentController();
  * All routes require API key authentication
  */
 
-// Apply API key middleware to all payment routes
+// Apply API key middleware and rate limiting to all payment routes
 router.use(apiKeyMiddleware);
+router.use(rateLimitMiddleware);
 
 /**
  * @swagger
@@ -75,7 +77,7 @@ router.post('/', asyncHandler(paymentController.createPayment.bind(paymentContro
  *       200:
  *         description: Payment details retrieved successfully
  */
-router.get('/:id', asyncHandler(paymentController.getPayment.bind(paymentController)));
+router.get('/:paymentId', asyncHandler(paymentController.getPayment.bind(paymentController)));
 
 /**
  * @swagger
@@ -109,10 +111,10 @@ router.get('/', asyncHandler(paymentController.listPayments.bind(paymentControll
 
 /**
  * @swagger
- * /api/v1/payments/{id}/confirm:
+ * /api/v1/payments/{id}/verify:
  *   post:
  *     tags: [Payments]
- *     summary: Confirm payment with blockchain transaction
+ *     summary: Verify payment with blockchain transaction
  *     security:
  *       - ApiKeyAuth: []
  *     parameters:
@@ -128,23 +130,32 @@ router.get('/', asyncHandler(paymentController.listPayments.bind(paymentControll
  *           schema:
  *             type: object
  *             required:
- *               - txHash
+ *               - signature
  *             properties:
- *               txHash:
- *                 type: string
  *               signature:
  *                 type: string
- *               publicKey:
+ *               blockchainData:
+ *                 type: object
+ *                 properties:
+ *                   txId:
+ *                     type: string
+ *                   txHash:
+ *                     type: string
+ *                   blockHeight:
+ *                     type: number
+ *                   confirmations:
+ *                     type: number
+ *               customerWalletAddress:
  *                 type: string
  *     responses:
  *       200:
- *         description: Payment confirmed successfully
+ *         description: Payment verified successfully
  */
-router.post('/:id/confirm', asyncHandler(paymentController.confirmPayment.bind(paymentController)));
+router.post('/:paymentId/verify', asyncHandler(paymentController.verifyPayment.bind(paymentController)));
 
 /**
  * @swagger
- * /api/v1/payments/{id}/cancel:
+ * /api/v1/payments/{paymentId}/cancel:
  *   post:
  *     tags: [Payments]
  *     summary: Cancel a payment
@@ -152,7 +163,7 @@ router.post('/:id/confirm', asyncHandler(paymentController.confirmPayment.bind(p
  *       - ApiKeyAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: paymentId
  *         required: true
  *         schema:
  *           type: string
@@ -160,11 +171,11 @@ router.post('/:id/confirm', asyncHandler(paymentController.confirmPayment.bind(p
  *       200:
  *         description: Payment cancelled successfully
  */
-router.post('/:id/cancel', asyncHandler(paymentController.cancelPayment.bind(paymentController)));
+router.post('/:paymentId/cancel', asyncHandler(paymentController.cancelPayment.bind(paymentController)));
 
 /**
  * @swagger
- * /api/v1/payments/{id}/refund:
+ * /api/v1/payments/{paymentId}/refund:
  *   post:
  *     tags: [Payments]
  *     summary: Process a payment refund
@@ -172,7 +183,7 @@ router.post('/:id/cancel', asyncHandler(paymentController.cancelPayment.bind(pay
  *       - ApiKeyAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: paymentId
  *         required: true
  *         schema:
  *           type: string
@@ -188,10 +199,24 @@ router.post('/:id/cancel', asyncHandler(paymentController.cancelPayment.bind(pay
  *                 description: Partial refund amount (optional)
  *               reason:
  *                 type: string
+ *               blockchainRefundData:
+ *                 type: object
+ *                 required:
+ *                   - transactionId
+ *                 properties:
+ *                   transactionId:
+ *                     type: string
+ *                   blockHeight:
+ *                     type: number
+ *                   status:
+ *                     type: string
+ *                     enum: [pending, confirmed]
+ *                   feesPaid:
+ *                     type: number
  *     responses:
  *       200:
  *         description: Payment refunded successfully
  */
-router.post('/:id/refund', asyncHandler(paymentController.refundPayment.bind(paymentController)));
+router.post('/:paymentId/refund', asyncHandler(paymentController.refundPayment.bind(paymentController)));
 
 export default router;

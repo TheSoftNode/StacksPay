@@ -1,6 +1,6 @@
 import express from 'express';
 import { PaymentController } from '@/controllers/PaymentController';
-import { authMiddleware } from '@/middleware/auth.middleware';
+import { sessionMiddleware } from '@/middleware/auth.middleware';
 import { asyncHandler } from '@/middleware/error.middleware';
 
 const router = express.Router();
@@ -12,18 +12,18 @@ const paymentController = new PaymentController();
  */
 
 // Apply JWT middleware to all merchant payment routes
-router.use(authMiddleware);
+router.use(sessionMiddleware);
 
 // Payment management for merchant dashboard
 router.post('/', asyncHandler(paymentController.createPayment.bind(paymentController)));
 router.get('/', asyncHandler(paymentController.listPayments.bind(paymentController)));
-router.get('/:id', asyncHandler(paymentController.getPayment.bind(paymentController)));
-router.put('/:id', asyncHandler(paymentController.updatePayment.bind(paymentController)));
-router.post('/:id/cancel', asyncHandler(paymentController.cancelPayment.bind(paymentController)));
-router.post('/:id/refund', asyncHandler(paymentController.refundPayment.bind(paymentController)));
-router.post('/:id/verify', asyncHandler(paymentController.verifyPayment.bind(paymentController)));
+router.get('/:paymentId', asyncHandler(paymentController.getPayment.bind(paymentController)));
+router.put('/:paymentId', asyncHandler(paymentController.updatePayment.bind(paymentController)));
+router.post('/:paymentId/cancel', asyncHandler(paymentController.cancelPayment.bind(paymentController)));
+router.post('/:paymentId/refund', asyncHandler(paymentController.refundPayment.bind(paymentController)));
+router.post('/:paymentId/verify', asyncHandler(paymentController.verifyPayment.bind(paymentController)));
 
 // QR Code generation
-router.get('/:id/qr', asyncHandler(paymentController.generateQRCode.bind(paymentController)));
+router.get('/:paymentId/qr', asyncHandler(paymentController.generateQRCode.bind(paymentController)));
 
 export default router;

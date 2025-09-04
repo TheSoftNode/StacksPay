@@ -1188,6 +1188,87 @@ export class AuthController {
 
   /**
    * @swagger
+   * /api/auth/api-keys/{keyId}/rotate:
+   *   post:
+   *     tags: [API Keys]
+   *     summary: Rotate API key
+   *     description: Generate a new API key and set grace period for old key
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: keyId
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: API key ID to rotate
+   *     requestBody:
+   *       required: false
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               gracePeriodHours:
+   *                 type: number
+   *                 default: 24
+   *                 description: Hours to keep old key active
+   *     responses:
+   *       200:
+   *         description: API key rotated successfully
+   */
+  async rotateApiKey(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      const { keyId } = req.params;
+      const { gracePeriodHours = 24 } = req.body;
+
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Merchant authentication required'
+        });
+        return;
+      }
+
+      const result = await authService.rotateApiKey(merchantId, keyId, gracePeriodHours);
+
+      if (result.success) {
+        logger.info('API key rotated', { 
+          merchantId, 
+          oldKeyId: keyId, 
+          newKeyId: result.newKey?.keyId,
+          gracePeriodHours 
+        });
+        
+        res.json({
+          success: true,
+          data: {
+            newKey: result.newKey?.keyPreview,
+            fullKey: result.newKey?.key, // Only shown once
+            gracePeriod: gracePeriodHours,
+            expiresAt: result.oldKeyExpiresAt,
+            message: `Old key will remain active for ${gracePeriodHours} hours`
+          }
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error || 'Failed to rotate API key'
+        });
+      }
+
+    } catch (error) {
+      logger.error('Rotate API key error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to rotate API key'
+      });
+    }
+  }
+
+  /**
+   * @swagger
    * /api/auth/me:
    *   get:
    *     tags: [Authentication]

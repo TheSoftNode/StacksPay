@@ -27,6 +27,12 @@ declare global {
         permissions: string[];
         environment: 'test' | 'live';
       };
+      rateLimitInfo?: {
+        limit: number;
+        current: number;
+        resetTime: Date;
+        remaining: number;
+      };
     }
   }
 }
