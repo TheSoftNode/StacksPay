@@ -325,10 +325,11 @@ export class AuthController {
         return password.split('').sort(() => Math.random() - 0.5).join('');
       };
 
+      const generatedPassword = generateValidPassword();
       const merchantData: RegisterRequest = {
         name: walletData.businessName || `Wallet User ${walletData.address.slice(-6)}`, // Default name from wallet
         email: walletData.email || '', // Allow empty email - user can add later
-        password: generateValidPassword(), // Generate a password that meets requirements
+        password: generatedPassword, // Generate a password that meets requirements
         businessType: walletData.businessType || 'other', // Default business type
         stacksAddress: walletData.address,
         acceptTerms: true, // Auto-accept for wallet registrations
@@ -1216,6 +1217,692 @@ export class AuthController {
         success: false,
         error: 'Failed to resend verification email'
       });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/auth/profile:
+   *   get:
+   *     tags: [Profile]
+   *     summary: Get merchant profile
+   *     description: Get complete merchant profile information
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Profile retrieved successfully
+   *   put:
+   *     tags: [Profile]
+   *     summary: Update merchant profile
+   *     description: Update merchant profile information
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               name:
+   *                 type: string
+   *               email:
+   *                 type: string
+   *               businessDescription:
+   *                 type: string
+   *               website:
+   *                 type: string
+   *               phone:
+   *                 type: string
+   *               address:
+   *                 type: string
+   *               city:
+   *                 type: string
+   *               postalCode:
+   *                 type: string
+   *               country:
+   *                 type: string
+   *               taxId:
+   *                 type: string
+   *               timezone:
+   *                 type: string
+   *               language:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Profile updated successfully
+   */
+  async getProfile(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      const { Merchant } = await import('@/models/Merchant');
+      const merchant = await Merchant.findById(merchantId);
+
+      if (!merchant) {
+        res.status(404).json({
+          success: false,
+          error: 'Merchant not found'
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          id: merchant._id.toString(),
+          name: merchant.name,
+          email: merchant.email,
+          businessType: merchant.businessType,
+          website: merchant.website,
+          businessDescription: merchant.businessDescription,
+          phone: merchant.phone,
+          address: merchant.address,
+          city: merchant.city,
+          postalCode: merchant.postalCode,
+          country: merchant.country,
+          taxId: merchant.taxId,
+          timezone: merchant.timezone,
+          language: merchant.language,
+          emailVerified: merchant.emailVerified,
+          verificationLevel: merchant.verificationLevel,
+          stacksAddress: merchant.stacksAddress,
+          authMethod: merchant.authMethod,
+          createdAt: merchant.createdAt,
+          updatedAt: merchant.updatedAt
+        }
+      });
+
+    } catch (error) {
+      logger.error('Get profile error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve profile'
+      });
+    }
+  }
+
+  async updateProfile(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      const updateData = req.body;
+      const { Merchant } = await import('@/models/Merchant');
+
+      // Validate email if being updated
+      if (updateData.email && updateData.email !== req.merchant?.email) {
+        const existingMerchant = await Merchant.findOne({ 
+          email: updateData.email.toLowerCase(),
+          _id: { $ne: merchantId }
+        });
+        
+        if (existingMerchant) {
+          res.status(400).json({
+            success: false,
+            error: 'Email already in use by another account'
+          });
+          return;
+        }
+      }
+
+      const merchant = await Merchant.findByIdAndUpdate(
+        merchantId,
+        {
+          $set: {
+            ...(updateData.name && { name: updateData.name.trim() }),
+            ...(updateData.email && { email: updateData.email.toLowerCase().trim() }),
+            ...(updateData.businessDescription && { businessDescription: updateData.businessDescription }),
+            ...(updateData.website && { website: updateData.website }),
+            ...(updateData.phone && { phone: updateData.phone }),
+            ...(updateData.address && { address: updateData.address }),
+            ...(updateData.city && { city: updateData.city }),
+            ...(updateData.postalCode && { postalCode: updateData.postalCode }),
+            ...(updateData.country && { country: updateData.country }),
+            ...(updateData.taxId && { taxId: updateData.taxId }),
+            ...(updateData.timezone && { timezone: updateData.timezone }),
+            ...(updateData.language && { language: updateData.language })
+          }
+        },
+        { new: true }
+      );
+
+      if (!merchant) {
+        res.status(404).json({
+          success: false,
+          error: 'Merchant not found'
+        });
+        return;
+      }
+
+      logger.info('Merchant profile updated', {
+        merchantId,
+        fieldsUpdated: Object.keys(updateData)
+      });
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: {
+          id: merchant._id.toString(),
+          name: merchant.name,
+          email: merchant.email,
+          businessType: merchant.businessType,
+          website: merchant.website,
+          businessDescription: merchant.businessDescription,
+          phone: merchant.phone,
+          address: merchant.address,
+          city: merchant.city,
+          postalCode: merchant.postalCode,
+          country: merchant.country,
+          taxId: merchant.taxId,
+          timezone: merchant.timezone,
+          language: merchant.language,
+          emailVerified: merchant.emailVerified,
+          verificationLevel: merchant.verificationLevel,
+          stacksAddress: merchant.stacksAddress,
+          authMethod: merchant.authMethod,
+          updatedAt: merchant.updatedAt
+        }
+      });
+
+    } catch (error) {
+      logger.error('Update profile error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update profile'
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/auth/settings:
+   *   get:
+   *     tags: [Settings]
+   *     summary: Get merchant settings
+   *     description: Get merchant payment and notification preferences
+   *     security:
+   *       - bearerAuth: []
+   *   put:
+   *     tags: [Settings]
+   *     summary: Update merchant settings
+   *     description: Update merchant preferences and configuration
+   *     security:
+   *       - bearerAuth: []
+   */
+  async getSettings(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      const { Merchant } = await import('@/models/Merchant');
+      const merchant = await Merchant.findById(merchantId);
+
+      if (!merchant) {
+        res.status(404).json({
+          success: false,
+          error: 'Merchant not found'
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          paymentPreferences: merchant.paymentPreferences,
+          sbtcSettings: merchant.sbtcSettings,
+          notificationPreferences: merchant.notificationPreferences,
+          twoFactorEnabled: merchant.twoFactorEnabled,
+          walletSetup: merchant.walletSetup,
+          webhookUrl: merchant.webhookUrl,
+          webhookEvents: merchant.webhookEvents || []
+        }
+      });
+
+    } catch (error) {
+      logger.error('Get settings error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve settings'
+      });
+    }
+  }
+
+  async updateSettings(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      const { 
+        paymentPreferences,
+        sbtcSettings,
+        notificationPreferences,
+        webhookUrl,
+        webhookEvents
+      } = req.body;
+
+      const { Merchant } = await import('@/models/Merchant');
+      
+      const updateFields: any = {};
+      
+      if (paymentPreferences) {
+        updateFields.paymentPreferences = paymentPreferences;
+      }
+      
+      if (sbtcSettings) {
+        updateFields.sbtcSettings = sbtcSettings;
+      }
+      
+      if (notificationPreferences) {
+        updateFields.notificationPreferences = notificationPreferences;
+      }
+
+      if (webhookUrl !== undefined) {
+        updateFields.webhookUrl = webhookUrl;
+      }
+
+      if (webhookEvents !== undefined) {
+        updateFields.webhookEvents = webhookEvents;
+      }
+
+      const merchant = await Merchant.findByIdAndUpdate(
+        merchantId,
+        { $set: updateFields },
+        { new: true }
+      );
+
+      if (!merchant) {
+        res.status(404).json({
+          success: false,
+          error: 'Merchant not found'
+        });
+        return;
+      }
+
+      logger.info('Merchant settings updated', {
+        merchantId,
+        fieldsUpdated: Object.keys(updateFields)
+      });
+
+      res.json({
+        success: true,
+        message: 'Settings updated successfully',
+        data: {
+          paymentPreferences: merchant.paymentPreferences,
+          sbtcSettings: merchant.sbtcSettings,
+          notificationPreferences: merchant.notificationPreferences,
+          twoFactorEnabled: merchant.twoFactorEnabled,
+          walletSetup: merchant.walletSetup
+        }
+      });
+
+    } catch (error) {
+      logger.error('Update settings error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update settings'
+      });
+    }
+  }
+
+  // Two-Factor Authentication endpoints
+  async enable2FA(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      const { Merchant } = await import('@/models/Merchant');
+      const merchant = await Merchant.findById(merchantId);
+      if (!merchant) {
+        res.status(404).json({
+          success: false,
+          error: 'Merchant not found'
+        });
+        return;
+      }
+
+      if (merchant.twoFactorEnabled) {
+        res.status(400).json({
+          success: false,
+          error: '2FA is already enabled'
+        });
+        return;
+      }
+
+      const speakeasy = require('speakeasy');
+      const secret = speakeasy.generateSecret({
+        name: `sBTC Payment Gateway - ${merchant.name}`,
+        issuer: 'sBTC Payment Gateway'
+      });
+
+      merchant.twoFactorTempSecret = secret.base32;
+      await merchant.save();
+
+      res.json({
+        success: true,
+        data: {
+          secret: secret.base32,
+          qrCode: secret.otpauth_url
+        }
+      });
+    } catch (error) {
+      logger.error('Enable 2FA error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to enable 2FA'
+      });
+    }
+  }
+
+  async confirm2FA(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      const { token } = req.body;
+
+      if (!merchantId || !token) {
+        res.status(400).json({
+          success: false,
+          error: 'Merchant ID and token required'
+        });
+        return;
+      }
+
+      const { Merchant } = await import('@/models/Merchant');
+      const merchant = await Merchant.findById(merchantId);
+      if (!merchant || !merchant.twoFactorTempSecret) {
+        res.status(404).json({
+          success: false,
+          error: 'Setup not found'
+        });
+        return;
+      }
+
+      const speakeasy = require('speakeasy');
+      const verified = speakeasy.totp.verify({
+        secret: merchant.twoFactorTempSecret,
+        encoding: 'base32',
+        token,
+        window: 2
+      });
+
+      if (!verified) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid verification code'
+        });
+        return;
+      }
+
+      // Generate backup codes
+      const crypto = require('crypto');
+      const backupCodes = Array.from({ length: 10 }, () => ({
+        code: crypto.randomBytes(4).toString('hex').toUpperCase(),
+        used: false,
+        createdAt: new Date()
+      }));
+
+      merchant.twoFactorEnabled = true;
+      merchant.twoFactorSecret = merchant.twoFactorTempSecret;
+      merchant.twoFactorTempSecret = undefined;
+      merchant.twoFactorBackupCodes = backupCodes;
+      await merchant.save();
+
+      res.json({
+        success: true,
+        data: {
+          backupCodes: backupCodes.map(bc => bc.code)
+        }
+      });
+    } catch (error) {
+      logger.error('Confirm 2FA error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to confirm 2FA'
+      });
+    }
+  }
+
+  async disable2FA(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      const { password, twoFactorCode } = req.body;
+
+      if (!merchantId || (!password && !twoFactorCode)) {
+        res.status(400).json({
+          success: false,
+          error: 'Password or 2FA code required'
+        });
+        return;
+      }
+
+      const { Merchant } = await import('@/models/Merchant');
+      const merchant = await Merchant.findById(merchantId);
+      if (!merchant) {
+        res.status(404).json({
+          success: false,
+          error: 'Merchant not found'
+        });
+        return;
+      }
+
+      if (!merchant.twoFactorEnabled) {
+        res.status(400).json({
+          success: false,
+          error: '2FA is not enabled'
+        });
+        return;
+      }
+
+      // Verify password or 2FA code
+      let verified = false;
+      
+      if (password && merchant.passwordHash) {
+        const bcrypt = require('bcrypt');
+        verified = await bcrypt.compare(password, merchant.passwordHash);
+      } else if (twoFactorCode && merchant.twoFactorSecret) {
+        const speakeasy = require('speakeasy');
+        verified = speakeasy.totp.verify({
+          secret: merchant.twoFactorSecret,
+          encoding: 'base32',
+          token: twoFactorCode,
+          window: 2
+        });
+      }
+
+      if (!verified) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid credentials'
+        });
+        return;
+      }
+
+      merchant.twoFactorEnabled = false;
+      merchant.twoFactorSecret = undefined;
+      merchant.twoFactorBackupCodes = [];
+      await merchant.save();
+
+      res.json({
+        success: true,
+        message: '2FA has been disabled'
+      });
+    } catch (error) {
+      logger.error('Disable 2FA error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to disable 2FA'
+      });
+    }
+  }
+
+  // Password Management endpoints
+  async updatePassword(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      const { currentPassword, newPassword } = req.body;
+
+      if (!merchantId || !newPassword) {
+        res.status(400).json({
+          success: false,
+          error: 'Merchant ID and new password required'
+        });
+        return;
+      }
+
+      const { Merchant } = await import('@/models/Merchant');
+      const merchant = await Merchant.findById(merchantId);
+      if (!merchant) {
+        res.status(404).json({
+          success: false,
+          error: 'Merchant not found'
+        });
+        return;
+      }
+
+      // Different validation for wallet vs email users
+      if (merchant.authMethod === 'email' || merchant.hasUpdatedPassword) {
+        // Email users or wallet users who have already updated password need to provide current password
+        if (!currentPassword) {
+          res.status(400).json({
+            success: false,
+            error: 'Current password required'
+          });
+          return;
+        }
+
+        // Verify current password
+        const bcrypt = require('bcrypt');
+        const isValidPassword = await bcrypt.compare(currentPassword, merchant.passwordHash);
+        if (!isValidPassword) {
+          res.status(400).json({
+            success: false,
+            error: 'Current password is incorrect'
+          });
+          return;
+        }
+      }
+
+      // Hash new password
+      const bcrypt = require('bcrypt');
+      const newPasswordHash = await bcrypt.hash(newPassword, 14);
+
+      // Update password and clear generated password
+      merchant.passwordHash = newPasswordHash;
+      merchant.hasUpdatedPassword = true;
+      merchant.generatedPassword = undefined; // Clear generated password once updated
+      await merchant.save();
+
+      // Send security notification email
+      if (merchant.email) {
+        await this.sendPasswordChangeNotification(merchant.email, merchant.name);
+      }
+
+      res.json({
+        success: true,
+        message: 'Password updated successfully'
+      });
+    } catch (error) {
+      logger.error('Update password error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update password'
+      });
+    }
+  }
+
+  async getGeneratedPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      const { Merchant } = await import('@/models/Merchant');
+      const merchant = await Merchant.findById(merchantId);
+      if (!merchant) {
+        res.status(404).json({
+          success: false,
+          error: 'Merchant not found'
+        });
+        return;
+      }
+
+      // Only show generated password for wallet users who haven't updated it yet
+      if (merchant.authMethod === 'wallet' && !merchant.hasUpdatedPassword && merchant.generatedPassword) {
+        res.json({
+          success: true,
+          data: {
+            generatedPassword: merchant.generatedPassword,
+            hasUpdatedPassword: merchant.hasUpdatedPassword
+          }
+        });
+      } else {
+        res.json({
+          success: true,
+          data: {
+            generatedPassword: null,
+            hasUpdatedPassword: merchant.hasUpdatedPassword
+          }
+        });
+      }
+    } catch (error) {
+      logger.error('Get generated password error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve generated password'
+      });
+    }
+  }
+
+  private async sendPasswordChangeNotification(email: string, name: string): Promise<void> {
+    try {
+      // TODO: Implement email service to send password change notification
+      // For now, just log it
+      logger.info('Password change notification should be sent', {
+        email,
+        name,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      logger.error('Failed to send password change notification:', error);
     }
   }
 }

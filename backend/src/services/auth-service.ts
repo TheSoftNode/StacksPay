@@ -114,11 +114,17 @@ export class AuthService {
         loginAttempts: 0,
         isActive: true,
         verificationLevel: isWalletRegistration ? 'basic' : 'none', // Wallet signature = basic verification
+        hasUpdatedPassword: false, // Track if user has updated from generated password
         stats: {
           totalPayments: 0,
           totalVolume: 0,
         },
       };
+
+      // For wallet registrations, store the generated password so user can see it until they update it
+      if (isWalletRegistration) {
+        merchantData.generatedPassword = data.password;
+      }
 
       // Only set email if provided and not empty
       if (data.email && data.email.trim()) {

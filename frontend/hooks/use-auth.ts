@@ -59,7 +59,11 @@ export const useAuth = () => {
           authMethod: response.merchant.authMethod,
           walletConnected: !!response.merchant.stacksAddress,
         });
+        useAuthStore.getState().setRequires2FA(false);
         queryClient.invalidateQueries({ queryKey: ['auth'] });
+      } else if (response.requires2FA) {
+        useAuthStore.getState().setRequires2FA(true);
+        setError('Please enter your two-factor authentication code');
       } else {
         setError(response.error || 'Login failed');
       }
@@ -238,6 +242,7 @@ export const useAuth = () => {
     isAuthenticated,
     isLoading: isLoadingUser || useAuthStore.getState().isLoading,
     error: useAuthStore.getState().error,
+    requires2FA: useAuthStore.getState().requires2FA,
 
     // Email/Password Authentication
     loginWithEmail: loginWithEmailMutation.mutate,

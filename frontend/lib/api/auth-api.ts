@@ -242,14 +242,6 @@ class ApiClient {
     });
   }
 
-  // Email verification
-  async verifyEmail(token: string): Promise<ApiResponse> {
-    return this.makeRequest('/api/auth/verify-email', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    });
-  }
-
   async resendVerificationEmail(email: string): Promise<ApiResponse> {
     return this.makeRequest('/api/auth/resend-verification', {
       method: 'POST',
@@ -270,6 +262,103 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ token, password: newPassword }),
     });
+  }
+
+  // Profile management
+  async getProfile(): Promise<ApiResponse> {
+    return this.makeRequest('/api/auth/profile');
+  }
+
+  async updateProfile(profileData: {
+    name?: string;
+    email?: string;
+    businessType?: string;
+    website?: string;
+    businessDescription?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+    country?: string;
+    taxId?: string;
+    timezone?: string;
+    language?: string;
+  }): Promise<ApiResponse> {
+    return this.makeRequest('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  }
+
+  // Settings management
+  async getSettings(): Promise<ApiResponse> {
+    return this.makeRequest('/api/auth/settings');
+  }
+
+  async updateSettings(settingsData: {
+    paymentPreferences?: {
+      acceptBitcoin?: boolean;
+      acceptSTX?: boolean;
+      acceptsBTC?: boolean;
+      preferredCurrency?: 'sbtc' | 'usd' | 'usdt';
+      autoConvertToUSD?: boolean;
+      usdConversionMethod?: 'coinbase' | 'kraken' | 'binance' | 'manual';
+    };
+    sbtcSettings?: {
+      autoConvert?: boolean;
+      minAmount?: number;
+      maxAmount?: number;
+      confirmationThreshold?: number;
+    };
+    notificationPreferences?: {
+      emailNotifications?: boolean;
+      smsNotifications?: boolean;
+      webhookNotifications?: boolean;
+      paymentAlerts?: boolean;
+      securityAlerts?: boolean;
+      marketingEmails?: boolean;
+    };
+    webhookUrl?: string;
+    webhookSecret?: string;
+    webhookEvents?: string[];
+  }): Promise<ApiResponse> {
+    return this.makeRequest('/api/auth/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settingsData),
+    });
+  }
+
+  // Two-Factor Authentication
+  async enable2FA(): Promise<ApiResponse> {
+    return this.makeRequest('/api/auth/2fa/enable', {
+      method: 'POST',
+    });
+  }
+
+  async confirm2FA(token: string): Promise<ApiResponse> {
+    return this.makeRequest('/api/auth/2fa/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  async disable2FA(credentials: { password?: string; twoFactorCode?: string }): Promise<ApiResponse> {
+    return this.makeRequest('/api/auth/2fa/disable', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
+  }
+
+  // Password Management
+  async updatePassword(passwordData: { currentPassword?: string; newPassword: string }): Promise<ApiResponse> {
+    return this.makeRequest('/api/auth/password', {
+      method: 'PUT',
+      body: JSON.stringify(passwordData),
+    });
+  }
+
+  async getGeneratedPassword(): Promise<ApiResponse> {
+    return this.makeRequest('/api/auth/generated-password');
   }
 }
 

@@ -14,6 +14,10 @@ const authController = new AuthController();
  *     description: Stacks wallet connection and verification
  *   - name: API Keys
  *     description: API key management for developers
+ *   - name: Profile
+ *     description: Merchant profile management
+ *   - name: Settings
+ *     description: Merchant preferences and configuration
  */
 
 // Public authentication routes (no auth required)
@@ -157,6 +161,42 @@ router.post('/logout', sessionMiddleware, authController.logout.bind(authControl
  */
 router.get('/me', sessionMiddleware, authController.getCurrentMerchant.bind(authController));
 
+// Profile management routes (require session authentication)
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   get:
+ *     summary: Get merchant profile information
+ *     tags: [Profile]
+ *     security:
+ *       - bearerAuth: []
+ *   put:
+ *     summary: Update merchant profile information
+ *     tags: [Profile]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/profile', sessionMiddleware, authController.getProfile.bind(authController));
+router.put('/profile', sessionMiddleware, authController.updateProfile.bind(authController));
+
+// Settings management routes (require session authentication)
+/**
+ * @swagger
+ * /api/auth/settings:
+ *   get:
+ *     summary: Get merchant settings and preferences
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ *   put:
+ *     summary: Update merchant settings and preferences
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/settings', sessionMiddleware, authController.getSettings.bind(authController));
+router.put('/settings', sessionMiddleware, authController.updateSettings.bind(authController));
+
 // API key management routes (require session authentication)
 /**
  * @swagger
@@ -185,5 +225,62 @@ router.post('/api-keys', sessionMiddleware, authController.createApiKey.bind(aut
  *       - bearerAuth: []
  */
 router.delete('/api-keys/:keyId', sessionMiddleware, authController.revokeApiKey.bind(authController));
+
+// Two-Factor Authentication routes (require session authentication)
+/**
+ * @swagger
+ * /api/auth/2fa/enable:
+ *   post:
+ *     summary: Enable two-factor authentication
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post('/2fa/enable', sessionMiddleware, authController.enable2FA.bind(authController));
+
+/**
+ * @swagger
+ * /api/auth/2fa/confirm:
+ *   post:
+ *     summary: Confirm two-factor authentication setup
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post('/2fa/confirm', sessionMiddleware, authController.confirm2FA.bind(authController));
+
+/**
+ * @swagger
+ * /api/auth/2fa/disable:
+ *   post:
+ *     summary: Disable two-factor authentication
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post('/2fa/disable', sessionMiddleware, authController.disable2FA.bind(authController));
+
+// Password Management routes (require session authentication)
+/**
+ * @swagger
+ * /api/auth/password:
+ *   put:
+ *     summary: Update password
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.put('/password', sessionMiddleware, authController.updatePassword.bind(authController));
+
+/**
+ * @swagger
+ * /api/auth/generated-password:
+ *   get:
+ *     summary: Get generated password for wallet users
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/generated-password', sessionMiddleware, authController.getGeneratedPassword.bind(authController));
 
 export default router;

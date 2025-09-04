@@ -20,6 +20,7 @@ export default function LoginPage() {
     password: '',
     rememberMe: false,
   });
+  const [twoFactorCode, setTwoFactorCode] = useState('');
   const [walletLoading, setWalletLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -33,7 +34,8 @@ export default function LoginPage() {
     isLoginLoading, 
     loginError,
     clearError,
-    isAuthenticated 
+    isAuthenticated,
+    requires2FA 
   } = useAuth();
 
   // Check for verification success
@@ -61,6 +63,8 @@ export default function LoginPage() {
     loginWithEmail({
       email: formData.email,
       password: formData.password,
+      twoFactorCode: requires2FA && twoFactorCode ? twoFactorCode : undefined,
+      rememberMe: formData.rememberMe,
     });
   };
 
@@ -168,6 +172,29 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              {requires2FA && (
+                <div className="space-y-2">
+                  <Label htmlFor="twoFactorCode" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Two-Factor Authentication Code
+                  </Label>
+                  <Input
+                    id="twoFactorCode"
+                    name="twoFactorCode"
+                    type="text"
+                    required={requires2FA}
+                    value={twoFactorCode}
+                    onChange={(e) => setTwoFactorCode(e.target.value)}
+                    className="h-10 border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-orange-500 rounded-lg text-center font-mono text-lg tracking-wider"
+                    placeholder="000000"
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Enter the 6-digit code from your authenticator app
+                  </p>
+                </div>
+              )}
 
               <div className="flex items-center space-x-3">
                 <Checkbox

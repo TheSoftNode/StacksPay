@@ -19,11 +19,13 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  requires2FA: boolean;
   
   // Actions
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setRequires2FA: (requires: boolean) => void;
   logout: () => void;
   clearError: () => void;
 }
@@ -36,17 +38,23 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: false,
         isLoading: false,
         error: null,
+        requires2FA: false,
 
         setUser: (user) => {
           set({ 
             user, 
             isAuthenticated: !!user,
-            error: null 
+            error: null,
+            requires2FA: false
           });
         },
 
         setLoading: (isLoading) => {
           set({ isLoading });
+        },
+
+        setRequires2FA: (requires2FA) => {
+          set({ requires2FA });
         },
 
         setError: (error) => {

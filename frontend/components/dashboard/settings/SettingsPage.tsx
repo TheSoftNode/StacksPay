@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { 
@@ -45,6 +45,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
+import { apiClient } from '@/lib/api/auth-api'
+import { useAuth } from '@/hooks/use-auth'
+import { TwoFactorSetup } from './TwoFactorSetup'
+import { TwoFactorDisable } from './TwoFactorDisable'
+import { PasswordUpdate } from './PasswordUpdate'
 
 interface NotificationSettings {
   emailNotifications: boolean
@@ -72,8 +77,14 @@ interface SBTCSettings {
 
 const SettingsPage = () => {
   const router = useRouter()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('payments')
   const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [show2FASetup, setShow2FASetup] = useState(false)
+  const [show2FADisable, setShow2FADisable] = useState(false)
+  const [showPasswordUpdate, setShowPasswordUpdate] = useState(false)
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     emailNotifications: true,
@@ -99,11 +110,108 @@ const SettingsPage = () => {
     minimumBalance: 0.001
   })
 
+  // Load settings from API
+  useEffect(() => {
+    const loadSettings = async () => {
+      if (!user) return;
+      
+      try {
+        const response = await apiClient.getSettings();
+        if (response.success && response.data) {
+          const data = response.data;
+          
+          // Update notification preferences
+          if (data.notificationPreferences) {
+            setNotifications(data.notificationPreferences);
+          }
+          
+          // Update 2FA status
+          setTwoFactorEnabled(data.twoFactorEnabled || false);
+          
+          // Update payment settings
+          if (data.paymentPreferences) {
+            setPaymentSettings({
+              defaultCurrency: data.paymentPreferences.preferredCurrency?.toUpperCase() || 'USD',
+              autoConvert: data.paymentPreferences.autoConvertToUSD || false,
+              minimumAmount: data.sbtcSettings?.minAmount ? data.sbtcSettings.minAmount / 100000000 : 1,
+              maximumAmount: data.sbtcSettings?.maxAmount ? data.sbtcSettings.maxAmount / 100000000 : 10000,
+              confirmationsRequired: data.sbtcSettings?.confirmationThreshold || 3
+            });
+          }
+          
+          // Update sBTC settings
+          if (data.walletSetup?.sBTCWallet) {
+            setSBTCSettings(prev => ({
+              ...prev,
+              walletAddress: data.walletSetup.sBTCWallet.address || '',
+              enableAutoDeposit: data.sbtcSettings?.autoConvert || false,
+              minimumBalance: data.sbtcSettings?.minAmount ? data.sbtcSettings.minAmount / 100000000 : 0.001
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [user]);
+
   const handleSave = async (section: string) => {
     setLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setLoading(false)
+    try {
+      let updateData: any = {};
+      
+      if (section === 'notifications') {
+        updateData.notificationPreferences = notifications;
+      } else if (section === 'payments') {
+        updateData.paymentPreferences = {
+          preferredCurrency: paymentSettings.defaultCurrency.toLowerCase(),
+          autoConvertToUSD: paymentSettings.autoConvert
+        };
+        updateData.sbtcSettings = {
+          minAmount: Math.round(paymentSettings.minimumAmount * 100000000),
+          maxAmount: Math.round(paymentSettings.maximumAmount * 100000000),
+          confirmationThreshold: paymentSettings.confirmationsRequired
+        };
+      } else if (section === 'sbtc') {
+        updateData.walletSetup = {
+          sBTCWallet: {
+            address: sbtcSettings.walletAddress,
+            isConfigured: !!sbtcSettings.walletAddress
+          }
+        };
+        updateData.sbtcSettings = {
+          autoConvert: sbtcSettings.enableAutoDeposit,
+          minAmount: Math.round(sbtcSettings.minimumBalance * 100000000)
+        };
+      }
+      
+      const response = await apiClient.updateSettings(updateData);
+      
+      if (!response.success) {
+        console.error(`${section} settings update failed:`, response.error);
+      }
+    } catch (error) {
+      console.error(`${section} settings update error:`, error);
+    } finally {
+      setLoading(false)
+    }
   }
+
+  const handle2FASuccess = () => {
+    setTwoFactorEnabled(true);
+  };
+
+  const handle2FADisableSuccess = () => {
+    setTwoFactorEnabled(false);
+  };
+
+  const handlePasswordUpdateSuccess = () => {
+    // Password update successful - no need to update local state
+  };
 
   const updateNotificationSetting = (field: keyof NotificationSettings, value: boolean) => {
     setNotifications(prev => ({ ...prev, [field]: value }))
@@ -115,6 +223,14 @@ const SettingsPage = () => {
 
   const updateSBTCSetting = (field: keyof SBTCSettings, value: any) => {
     setSBTCSettings(prev => ({ ...prev, [field]: value }))
+  }
+
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+      </div>
+    );
   }
 
   return (
@@ -523,16 +639,27 @@ const SettingsPage = () => {
                               <div className="flex items-center space-x-2">
                                 <Smartphone className="h-4 w-4 text-orange-600" />
                                 <span className="text-sm font-medium text-orange-900 dark:text-orange-100">Two-Factor Auth</span>
-                                <Badge className="bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300 text-xs">
-                                  Disabled
+                                <Badge className={twoFactorEnabled 
+                                  ? "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300 text-xs"
+                                  : "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300 text-xs"
+                                }>
+                                  {twoFactorEnabled ? 'Enabled' : 'Disabled'}
                                 </Badge>
                               </div>
                               <p className="text-xs text-orange-700 dark:text-orange-300">
-                                Add an extra layer of security to your account
+                                {twoFactorEnabled 
+                                  ? 'Your account is protected with 2FA'
+                                  : 'Add an extra layer of security to your account'
+                                }
                               </p>
                             </div>
-                            <Button variant="outline" size="sm" className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
-                              Enable
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => twoFactorEnabled ? setShow2FADisable(true) : setShow2FASetup(true)}
+                              className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+                            >
+                              {twoFactorEnabled ? 'Disable' : 'Enable'}
                             </Button>
                           </div>
                         </div>
@@ -548,11 +675,16 @@ const SettingsPage = () => {
                                 </Badge>
                               </div>
                               <p className="text-xs text-blue-700 dark:text-blue-300">
-                                Last changed 30 days ago
+                                {user?.authMethod === 'wallet' ? 'Generated password - update recommended' : 'Secure your account with a strong password'}
                               </p>
                             </div>
-                            <Button variant="outline" size="sm" className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
-                              Change
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setShowPasswordUpdate(true)}
+                              className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+                            >
+                              {user?.authMethod === 'wallet' ? 'Update' : 'Change'}
                             </Button>
                           </div>
                         </div>
@@ -610,6 +742,25 @@ const SettingsPage = () => {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* 2FA Modals */}
+      <TwoFactorSetup
+        isOpen={show2FASetup}
+        onOpenChange={setShow2FASetup}
+        onSuccess={handle2FASuccess}
+      />
+      
+      <TwoFactorDisable
+        isOpen={show2FADisable}
+        onOpenChange={setShow2FADisable}
+        onSuccess={handle2FADisableSuccess}
+      />
+      
+      <PasswordUpdate
+        isOpen={showPasswordUpdate}
+        onOpenChange={setShowPasswordUpdate}
+        onSuccess={handlePasswordUpdateSuccess}
+      />
     </div>
   )
 }

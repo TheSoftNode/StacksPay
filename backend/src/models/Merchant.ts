@@ -5,7 +5,18 @@ export interface IMerchant extends Document {
   email?: string;
   businessType: string;
   website?: string;
+  businessDescription?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  taxId?: string;
+  timezone?: string;
+  language?: string;
   passwordHash?: string;
+  generatedPassword?: string; // Stores the generated password for wallet users who haven't updated it yet
+  hasUpdatedPassword: boolean; // Track if user has updated their password from generated one
   emailVerified: boolean;
   emailVerificationToken?: string;
   passwordResetToken?: string;
@@ -84,6 +95,14 @@ export interface IMerchant extends Document {
   isActive: boolean;
   isVerified: boolean;
   verificationLevel: 'none' | 'basic' | 'full';
+  notificationPreferences: {
+    emailNotifications: boolean;
+    smsNotifications: boolean;
+    webhookNotifications: boolean;
+    paymentAlerts: boolean;
+    securityAlerts: boolean;
+    marketingEmails: boolean;
+  };
   stats: {
     totalPayments: number;
     totalVolume: number;
@@ -106,8 +125,28 @@ const merchantSchema = new Schema<IMerchant>({
     required: true,
   },
   website: String,
+  businessDescription: String,
+  phone: String,
+  address: String,
+  city: String,
+  postalCode: String,
+  country: String,
+  taxId: String,
+  timezone: {
+    type: String,
+    default: 'America/New_York',
+  },
+  language: {
+    type: String,
+    default: 'en',
+  },
 
   passwordHash: String,
+  generatedPassword: String, // Stores the generated password for wallet users who haven't updated it yet
+  hasUpdatedPassword: {
+    type: Boolean,
+    default: false, // Default false for new accounts
+  },
   emailVerified: {
     type: Boolean,
     default: false,
@@ -286,6 +325,33 @@ const merchantSchema = new Schema<IMerchant>({
     type: String,
     enum: ['none', 'basic', 'full'],
     default: 'none',
+  },
+
+  notificationPreferences: {
+    emailNotifications: {
+      type: Boolean,
+      default: true,
+    },
+    smsNotifications: {
+      type: Boolean,
+      default: false,
+    },
+    webhookNotifications: {
+      type: Boolean,
+      default: true,
+    },
+    paymentAlerts: {
+      type: Boolean,
+      default: true,
+    },
+    securityAlerts: {
+      type: Boolean,
+      default: true,
+    },
+    marketingEmails: {
+      type: Boolean,
+      default: false,
+    },
   },
 
   stats: {

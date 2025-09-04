@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
+import { apiClient } from '@/lib/api/auth-api';
 
 interface ProfileData {
   name: string;
@@ -70,31 +71,72 @@ export default function ProfilePage() {
     taxId: '',
   });
 
-  // Populate form with user data
+  // Load profile data from API
   useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const response = await apiClient.getProfile();
+        if (response.success && response.data) {
+          setProfileData({
+            name: response.data.name || '',
+            email: response.data.email || '',
+            businessType: response.data.businessType || '',
+            website: response.data.website || '',
+            description: response.data.businessDescription || '',
+            phone: response.data.phone || '',
+            address: response.data.address || '',
+            city: response.data.city || '',
+            postalCode: response.data.postalCode || '',
+            country: response.data.country || '',
+            taxId: response.data.taxId || '',
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load profile:', error);
+        // Fallback to user data from auth hook
+        if (user) {
+          setProfileData(prev => ({
+            ...prev,
+            name: user.name || '',
+            email: user.email || '',
+            businessType: user.businessType || '',
+          }));
+        }
+      }
+    };
+
     if (user) {
-      setProfileData({
-        name: user.name || '',
-        email: user.email || '',
-        businessType: user.businessType || '',
-        website: '', // Not in current user object
-        description: '',
-        phone: '',
-        address: '',
-        city: '',
-        postalCode: '',
-        country: '',
-        taxId: '',
-      });
+      loadProfile();
     }
   }, [user]);
 
   const handleSave = async () => {
     setLoading(true);
-    // TODO: Implement profile update API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setLoading(false);
-    setIsEditing(false);
+    try {
+      const response = await apiClient.updateProfile({
+        name: profileData.name,
+        email: profileData.email,
+        businessType: profileData.businessType,
+        website: profileData.website,
+        businessDescription: profileData.description,
+        phone: profileData.phone,
+        address: profileData.address,
+        city: profileData.city,
+        postalCode: profileData.postalCode,
+        country: profileData.country,
+        taxId: profileData.taxId,
+      });
+      
+      if (response.success) {
+        setIsEditing(false);
+      } else {
+        console.error('Profile update failed:', response.error);
+      }
+    } catch (error) {
+      console.error('Profile update error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateProfileData = (field: keyof ProfileData, value: string) => {
