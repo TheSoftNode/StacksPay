@@ -3,7 +3,7 @@ import * as crypto from 'crypto';
 import { authService } from '@/services/auth-service';
 import { sessionService } from '@/services/session-service';
 import { walletAuthService } from '@/services/wallet-auth-service';
-import { multiWalletAuthService } from '@/services/multi-wallet-auth-service';
+// Note: Multi-wallet auth service moved to frontend
 import { emailService } from '@/services/email-service';
 import { createLogger } from '@/utils/logger';
 import { getClientIpAddress} from '@/utils/request';
@@ -960,8 +960,8 @@ export class AuthController {
         return;
       }
 
-      // Use multi-wallet auth service for comprehensive verification
-      const result = await multiWalletAuthService.verifyWalletSignature(walletData);
+      // Use wallet auth service for verification
+      const result = await walletAuthService.verifyWalletSignature(walletData);
 
       logger.info('Wallet signature verification completed', {
         address: walletData.address,

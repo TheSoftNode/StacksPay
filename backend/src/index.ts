@@ -6,6 +6,10 @@ import rateLimit from 'express-rate-limit';
 import { connectToDatabase } from '@/config/database';
 import { setupSwagger } from '@/config/swagger';
 import authRoutes from '@/routes/auth.routes';
+import paymentRoutes from '@/routes/payment.routes';
+import paymentMerchantRoutes from '@/routes/payment-merchant.routes';
+import paymentPublicRoutes from '@/routes/payment-public.routes';
+import webhookRoutes from '@/routes/webhook.routes';
 import notificationRoutes from '@/routes/notification.routes';
 import errorRoutes from '@/routes/error.routes';
 import testRoutes from '@/routes/test.routes';
@@ -120,6 +124,10 @@ class sBTCPaymentGatewayServer {
   private setupApiRoutes(): void {
     // API routes
     this.app.use('/api/auth', authRoutes);
+    this.app.use('/api/v1/payments', paymentRoutes); // API key auth for external developers
+    this.app.use('/api/payments', paymentMerchantRoutes); // JWT auth for merchant dashboard
+    this.app.use('/api/public/payments', paymentPublicRoutes); // No auth for customer checkout
+    this.app.use('/api/v1/webhooks', webhookRoutes);
     this.app.use('/api/notifications', notificationRoutes);
     this.app.use('/api/monitoring', errorRoutes);
     this.app.use('/api/test', testRoutes);

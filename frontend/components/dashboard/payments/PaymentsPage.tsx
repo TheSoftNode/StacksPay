@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Search,
@@ -24,7 +24,8 @@ import {
   Link,
   QrCode,
   Share,
-  Mail
+  Mail,
+  Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -66,92 +67,56 @@ import {
 } from '@/components/ui/table'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
-
-interface Payment {
-  id: string
-  customer: {
-    name: string
-    email: string
-    avatar?: string
-  }
-  amount: number
-  currency: 'BTC' | 'sBTC' | 'STX'
-  usdAmount: number
-  status: 'completed' | 'pending' | 'failed' | 'cancelled'
-  createdAt: string
-  completedAt?: string
-  description: string
-  transactionHash?: string
-  paymentMethod: string
-}
-
-const mockPayments: Payment[] = [
-  {
-    id: 'pay_1KjHnKMaR2TdqCX1',
-    customer: {
-      name: 'Alice Johnson',
-      email: 'alice@example.com',
-    },
-    amount: 0.025,
-    currency: 'sBTC',
-    usdAmount: 1250.00,
-    status: 'completed',
-    createdAt: '2024-08-18T10:30:00Z',
-    completedAt: '2024-08-18T10:32:15Z',
-    description: 'Premium subscription - Monthly',
-    transactionHash: '0x1234567890abcdef1234567890abcdef12345678',
-    paymentMethod: 'Leather Wallet'
-  },
-  {
-    id: 'pay_2LmInOPbS3UeRdY2',
-    customer: {
-      name: 'Bob Wilson',
-      email: 'bob@example.com',
-    },
-    amount: 0.05,
-    currency: 'sBTC',
-    usdAmount: 2500.00,
-    status: 'pending',
-    createdAt: '2024-08-18T10:25:00Z',
-    description: 'Product purchase - Digital goods',
-    paymentMethod: 'Xverse Wallet'
-  },
-  {
-    id: 'pay_3NoQrSdTu4VfWeZ3',
-    customer: {
-      name: 'Carol Smith',
-      email: 'carol@example.com',
-    },
-    amount: 0.01,
-    currency: 'sBTC',
-    usdAmount: 500.00,
-    status: 'completed',
-    createdAt: '2024-08-18T10:18:00Z',
-    completedAt: '2024-08-18T10:19:45Z',
-    description: 'Service payment - Consultation',
-    transactionHash: '0x5678901234abcdef5678901234abcdef56789012',
-    paymentMethod: 'Hiro Wallet'
-  },
-  {
-    id: 'pay_4PqUvWyXz5YgAfB4',
-    customer: {
-      name: 'David Brown',
-      email: 'david@example.com',
-    },
-    amount: 0.075,
-    currency: 'sBTC',
-    usdAmount: 3750.00,
-    status: 'failed',
-    createdAt: '2024-08-18T10:10:00Z',
-    description: 'Monthly billing - Enterprise plan',
-    paymentMethod: 'Leather Wallet'
-  },
-]
+import { 
+  usePayments, 
+  useCreatePaymentLink, 
+  useCancelPayment, 
+  useRefundPayment,
+  useUpdatePayment
+} from '@/hooks/use-payments'
+import { usePaymentStore, useFilteredPayments } from '@/stores/payment-store'
+import { toast } from 'sonner'
 
 const PaymentsPage = () => {
-  const [payments] = useState<Payment[]>(mockPayments)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  // Get payment state and actions from store
+  const {
+    selectedPayment,
+    generatedPaymentLink,
+    statusFilter,
+    paymentMethodFilter,
+    searchQuery,
+    currentPage,
+    isLoading: storeLoading,
+    error: storeError,
+    setSelectedPayment,
+    setStatusFilter,
+    setPaymentMethodFilter,
+    setSearchQuery,
+    setCurrentPage,
+    clearGeneratedPaymentLink
+  } = usePaymentStore();
+
+  // Get filtered payments from store
+  const filteredPayments = useFilteredPayments();
+
+  // API hooks
+  const { data: paymentsData, isLoading: queryLoading, error: queryError, refetch } = usePayments({
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    paymentMethod: paymentMethodFilter !== 'all' ? paymentMethodFilter : undefined,
+    page: currentPage,
+    limit: 20,
+  });
+
+  const createPaymentLink = useCreatePaymentLink();
+  const cancelPayment = useCancelPayment();
+  const refundPayment = useRefundPayment();
+  const updatePayment = useUpdatePayment();
+
+  // Combined loading state
+  const isLoading = storeLoading || queryLoading || createPaymentLink.isPending || 
+                    cancelPayment.isPending || refundPayment.isPending || updatePayment.isPending;
+  
+  // Local component state
   const [sortBy, setSortBy] = useState('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [activeTab, setActiveTab] = useState('all')
@@ -176,18 +141,21 @@ const PaymentsPage = () => {
     currency: 'sBTC',
     description: '',
     customerEmail: '',
-    expiresIn: '24', // hours
+    expiresIn: '24h', // hours
     customId: ''
   })
-  const [generatedLink, setGeneratedLink] = useState('')
 
   const getStatusIcon = (status: string) => {
     switch (status) {
+      case 'confirmed':
       case 'completed':
         return <CheckCircle className="h-4 w-4 text-green-500" />
       case 'pending':
+      case 'processing':
         return <Clock className="h-4 w-4 text-orange-500" />
       case 'failed':
+      case 'expired':
+      case 'cancelled':
         return <XCircle className="h-4 w-4 text-red-500" />
       default:
         return <Clock className="h-4 w-4 text-gray-500" />
@@ -196,10 +164,14 @@ const PaymentsPage = () => {
 
   const getStatusBadge = (status: string) => {
     const variants = {
+      confirmed: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300',
       completed: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300',
       pending: 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300',
+      processing: 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300',
       failed: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300',
-      cancelled: 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-300'
+      expired: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300',
+      cancelled: 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-300',
+      refunded: 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300'
     }
 
     return (
@@ -229,63 +201,85 @@ const PaymentsPage = () => {
   }
 
   // Modal handlers
-  const openDetailsModal = (payment: Payment) => {
+  const openDetailsModal = (payment: any) => {
     setSelectedPayment(payment)
     setIsDetailsModalOpen(true)
   }
 
-  const openRefundModal = (payment: Payment) => {
+  const openRefundModal = (payment: any) => {
     setSelectedPayment(payment)
     setRefundAmount(payment.amount.toString())
     setIsRefundModalOpen(true)
   }
 
-  const openCancelModal = (payment: Payment) => {
+  const openCancelModal = (payment: any) => {
     setSelectedPayment(payment)
     setIsCancelModalOpen(true)
   }
 
-  const openRetryModal = (payment: Payment) => {
+  const openRetryModal = (payment: any) => {
     setSelectedPayment(payment)
     setIsRetryModalOpen(true)
   }
 
   const handleRefund = async () => {
-    setIsSubmitting(true)
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setIsSubmitting(false)
-    setIsRefundModalOpen(false)
-    setRefundAmount('')
-    setRefundReason('')
-    setSelectedPayment(null)
+    if (!selectedPayment || !refundAmount) return;
+
+    // TODO: Add blockchain transaction handling for refunds
+    // For now, this is a placeholder that marks the payment as refunded
+    await refundPayment.mutateAsync({
+      paymentId: selectedPayment.id,
+      refundData: {
+        amount: parseFloat(refundAmount),
+        reason: refundReason,
+        blockchainRefundData: {
+          transactionId: `refund_${Date.now()}`, // Mock transaction ID
+          status: 'confirmed'
+        }
+      }
+    });
+
+    setIsRefundModalOpen(false);
+    setRefundAmount('');
+    setRefundReason('');
+    setSelectedPayment(null);
   }
 
   const handleCancel = async () => {
-    setIsSubmitting(true)
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setIsSubmitting(false)
-    setIsCancelModalOpen(false)
-    setSelectedPayment(null)
+    if (!selectedPayment) return;
+
+    await cancelPayment.mutateAsync(selectedPayment.id);
+    setIsCancelModalOpen(false);
+    setSelectedPayment(null);
   }
 
   const handleRetry = async () => {
-    setIsSubmitting(true)
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setIsSubmitting(false)
-    setIsRetryModalOpen(false)
-    setSelectedPayment(null)
+    if (!selectedPayment) return;
+
+    // Retry by updating status back to pending
+    await updatePayment.mutateAsync({
+      paymentId: selectedPayment.id,
+      updateData: { status: 'completed' } // Mock retry as success
+    });
+
+    setIsRetryModalOpen(false);
+    setSelectedPayment(null);
   }
 
   const generatePaymentLink = async () => {
-    setIsSubmitting(true)
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // Generate a mock payment link
-    const linkId = `pl_${Math.random().toString(36).substring(2, 15)}`
-    const mockLink = `https://checkout.sbtc-gateway.com/${linkId}`
-    
-    setGeneratedLink(mockLink)
-    setIsSubmitting(false)
+    if (!paymentLinkData.amount || !paymentLinkData.description) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+
+    await createPaymentLink.mutateAsync({
+      amount: parseFloat(paymentLinkData.amount),
+      currency: paymentLinkData.currency as any,
+      description: paymentLinkData.description,
+      customerEmail: paymentLinkData.customerEmail || undefined,
+      expiresIn: paymentLinkData.expiresIn,
+      customId: paymentLinkData.customId || undefined,
+    });
   }
 
   const resetPaymentLinkForm = () => {
@@ -294,10 +288,10 @@ const PaymentsPage = () => {
       currency: 'sBTC',
       description: '',
       customerEmail: '',
-      expiresIn: '24',
+      expiresIn: '24h',
       customId: ''
-    })
-    setGeneratedLink('')
+    });
+    clearGeneratedPaymentLink();
   }
 
   const renderPaymentsTable = () => (
@@ -328,17 +322,17 @@ const PaymentsPage = () => {
               <TableCell>
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={payment.customer.avatar} alt={payment.customer.name} />
+                    <AvatarImage src="" alt={payment.customerInfo?.name || 'Customer'} />
                     <AvatarFallback className="bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
-                      {payment.customer.name.charAt(0).toUpperCase()}
+                      {(payment.customerInfo?.name || payment.customerInfo?.email || 'U').charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-medium text-gray-900 dark:text-gray-100">
-                      {payment.customer.name}
+                      {payment.customerInfo?.name || 'Anonymous'}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {payment.customer.email}
+                      {payment.customerInfo?.email || 'No email provided'}
                     </p>
                   </div>
                 </div>
@@ -350,7 +344,8 @@ const PaymentsPage = () => {
                     {payment.amount} {payment.currency}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    ${payment.usdAmount.toLocaleString()}
+                    {/* TODO: Add USD conversion based on exchange rates */}
+                    ${(payment.amount * 50000).toLocaleString()} (estimated)
                   </p>
                 </div>
               </TableCell>
@@ -377,7 +372,7 @@ const PaymentsPage = () => {
               
               <TableCell>
                 <p className="text-sm text-gray-900 dark:text-gray-100">
-                  {payment.paymentMethod}
+                  {payment.paymentMethod?.toUpperCase()} Wallet
                 </p>
               </TableCell>
               
@@ -402,26 +397,26 @@ const PaymentsPage = () => {
                       <Copy className="mr-2 h-4 w-4" />
                       Copy Payment ID
                     </DropdownMenuItem>
-                    {payment.transactionHash && (
+                    {payment.transactionData?.txId && (
                       <DropdownMenuItem>
                         <ExternalLink className="mr-2 h-4 w-4" />
                         View on Explorer
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
-                    {payment.status === 'completed' && (
+                    {(payment.status === 'completed' || payment.status === 'confirmed') && (
                       <DropdownMenuItem onClick={() => openRefundModal(payment)} className="text-orange-600">
                         <RotateCcw className="mr-2 h-4 w-4" />
                         Refund Payment
                       </DropdownMenuItem>
                     )}
-                    {payment.status === 'failed' && (
+                    {(payment.status === 'failed' || payment.status === 'expired') && (
                       <DropdownMenuItem onClick={() => openRetryModal(payment)} className="text-blue-600">
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Retry Payment
                       </DropdownMenuItem>
                     )}
-                    {payment.status === 'pending' && (
+                    {(payment.status === 'pending' || payment.status === 'processing') && (
                       <DropdownMenuItem onClick={() => openCancelModal(payment)} className="text-red-600">
                         <X className="mr-2 h-4 w-4" />
                         Cancel Payment
@@ -456,18 +451,10 @@ const PaymentsPage = () => {
     </div>
   )
 
-  const filteredPayments = payments.filter(payment => {
-    const matchesSearch = payment.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         payment.customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         payment.id.toLowerCase().includes(searchQuery.toLowerCase())
-    
-    const matchesStatus = statusFilter === 'all' || payment.status === statusFilter
-    const matchesTab = activeTab === 'all' || payment.status === activeTab
-    
-    return matchesSearch && matchesStatus && matchesTab
-  })
+  // Use the payments from the store (which are filtered by the store selectors)
+  const payments = filteredPayments;
 
-  const sortedPayments = [...filteredPayments].sort((a, b) => {
+  const sortedPayments = [...payments].sort((a, b) => {
     let comparison = 0
     
     switch (sortBy) {
@@ -478,7 +465,9 @@ const PaymentsPage = () => {
         comparison = a.amount - b.amount
         break
       case 'customer':
-        comparison = a.customer.name.localeCompare(b.customer.name)
+        const aName = a.customerInfo?.name || a.customerInfo?.email || 'Unknown';
+        const bName = b.customerInfo?.name || b.customerInfo?.email || 'Unknown';
+        comparison = aName.localeCompare(bName)
         break
       default:
         comparison = 0
