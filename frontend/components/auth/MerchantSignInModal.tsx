@@ -72,7 +72,7 @@ const MerchantSignInModal = ({ isOpen, onClose }: MerchantSignInModalProps) => {
     {
       id: 'hiro',
       name: 'Hiro Wallet',
-      description: 'Most trusted for StacksPay sBTC payments',
+      description: 'Most trusted for StacksPay Bitcoin payments',
       icon: '🟧',
       isRecommended: true
     },

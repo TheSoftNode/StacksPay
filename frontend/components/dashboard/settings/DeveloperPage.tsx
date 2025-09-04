@@ -35,7 +35,7 @@ const codeSnippets: CodeSnippet[] = [
     id: '1',
     title: 'Initialize Payment',
     language: 'javascript',
-    description: 'Create a new sBTC payment using our SDK',
+    description: 'Create a new Bitcoin payment using our SDK',
     code: `import { StacksPay } from '@stackspay/sdk';
 
 const stacksPay = new StacksPay({
@@ -104,7 +104,7 @@ if (payment.status === 'confirmed') {
     id: '4',
     title: 'Initialize Payment',
     language: 'python',
-    description: 'Create a new sBTC payment using Python SDK',
+    description: 'Create a new Bitcoin payment using Python SDK',
     code: `import stackspay
 
 # Initialize client

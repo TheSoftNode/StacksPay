@@ -334,6 +334,19 @@ class ApiKeyApiClient {
   }
 
   /**
+   * Generate onboarding API keys (test and live keys + webhook secret)
+   */
+  async generateOnboardingKeys(): Promise<ApiResponse<{
+    testKey: { key: string; keyId: string };
+    liveKey: { key: string; keyId: string };
+    webhookSecret: string;
+  }>> {
+    return this.makeRequest('/api/api-keys/onboarding', {
+      method: 'POST',
+    });
+  }
+
+  /**
    * Get API key documentation and examples
    */
   getApiDocumentation(): {

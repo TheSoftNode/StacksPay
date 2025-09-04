@@ -23,7 +23,7 @@ const EnterpriseUseCasesSection = () => {
                     </h2>
 
                     <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-                        From startups to Fortune 500 companies, see how businesses use sBTC Gateway 
+                        From startups to Fortune 500 companies, see how businesses use StacksPay 
                         to power their payment infrastructure.
                     </p>
                 </motion.div>

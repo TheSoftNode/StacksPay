@@ -113,7 +113,7 @@ export const useUpdateApiKey = () => {
     },
     onSuccess: (apiKey) => {
       queryClient.invalidateQueries({ queryKey: apiKeyQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: apiKeyQueryKeys.detail(apiKey.id) });
+      queryClient.invalidateQueries({ queryKey: apiKeyQueryKeys.detail(apiKey.keyId) });
       toast({
         title: "Success",
         description: "API key updated successfully",
@@ -217,7 +217,7 @@ export const useToggleApiKey = () => {
     },
     onSuccess: (apiKey, { activate }) => {
       queryClient.invalidateQueries({ queryKey: apiKeyQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: apiKeyQueryKeys.detail(apiKey.id) });
+      queryClient.invalidateQueries({ queryKey: apiKeyQueryKeys.detail(apiKey.keyId) });
       toast({
         title: "Success",
         description: `API key ${activate ? 'activated' : 'deactivated'} successfully`,

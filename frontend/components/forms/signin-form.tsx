@@ -11,7 +11,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Eye, EyeOff, Mail, Lock, Shield, ArrowRight, Wallet, CheckCircle, AlertCircle } from 'lucide-react';
 import { walletService } from '@/lib/services/wallet-service';
-import { walletAuthService } from '@/lib/services/wallet-auth-service';
 
 interface SignInFormProps {
   redirectUrl?: string;

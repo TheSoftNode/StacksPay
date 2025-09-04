@@ -105,7 +105,7 @@ const Navbar = () => {
                       </div>
                       <div>
                         <h4 className="font-medium text-gray-900 dark:text-gray-100">Payment API</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Accept sBTC payments</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Accept Bitcoin payments</p>
                       </div>
                     </div>
                     

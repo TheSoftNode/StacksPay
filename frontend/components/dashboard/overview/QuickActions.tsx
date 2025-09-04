@@ -40,7 +40,7 @@ const quickActions: QuickAction[] = [
   {
     id: 'send-invoice',
     title: 'Send Invoice',
-    description: 'Create and send an sBTC invoice',
+    description: 'Create and send a Bitcoin invoice',
     icon: Send,
     href: '/dashboard/payments'
   },

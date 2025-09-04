@@ -57,8 +57,8 @@ const ApiKeySetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
         
         // Update onboarding data with real API keys
         const keyData = {
-          testKey: testKey.key || testKey.keyPrefix || 'sk_test_generated',
-          liveKey: liveKey.key || liveKey.keyPrefix || 'sk_live_generated',
+          testKey: testKey.key || 'sk_test_generated',
+          liveKey: liveKey.key || 'sk_live_generated',
           webhookSecret
         }
         
@@ -131,7 +131,7 @@ const ApiKeySetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
           Generate Your API Keys
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          These keys allow your website to securely communicate with sBTC Gateway
+          These keys allow your website to securely communicate with StacksPay
         </p>
       </div>
 
@@ -252,7 +252,7 @@ const ApiKeySetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
                   <Badge variant="secondary">Optional</Badge>
                 </div>
                 <CardDescription>
-                  Use this secret to verify webhook signatures and ensure events come from sBTC Gateway.
+                  Use this secret to verify webhook signatures and ensure events come from StacksPay.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -331,7 +331,7 @@ const ApiKeySetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
               <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto">
                 <pre className="text-green-400 text-sm">
                   <code>{`// Your sBTC payment integration
-import { SbtcPayment } from '@sbtc-gateway/react'
+import { SbtcPayment } from 'stacks-pay-react'
 
 <SbtcPayment 
   apiKey="${apiKeys.testKey.substring(0, 20)}..."
@@ -372,7 +372,7 @@ import { SbtcPayment } from '@sbtc-gateway/react'
                     1. Install SDK
                   </h4>
                   <code className="text-sm bg-gray-100 dark:bg-gray-800 p-2 rounded block">
-                    npm install @sbtc-gateway/node
+                    npm install stacks-pay-node
                   </code>
                 </div>
                 <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">

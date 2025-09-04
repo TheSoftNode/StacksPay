@@ -288,7 +288,7 @@ const GoLiveStep = ({ data, updateData, onComplete, isLoading, setIsLoading }: G
                 🎉 Congratulations!
               </h2>
               <p className="text-lg text-green-700 dark:text-green-300 mb-6">
-                Your sBTC Gateway account is now live and ready to accept real Bitcoin payments!
+                Your StacksPay account is now live and ready to accept real Bitcoin payments!
               </p>
 
               {/* Live API Key */}

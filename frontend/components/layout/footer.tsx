@@ -26,7 +26,7 @@ const Footer = () => {
     {
       title: 'Product',
       links: [
-        { name: 'Payment API', href: '#', description: 'Accept sBTC payments' },
+        { name: 'Payment API', href: '#', description: 'Accept Bitcoin payments' },
         { name: 'Payment Widgets', href: '#', description: 'Drop-in components' },
         { name: 'Enterprise', href: '#', description: 'Custom solutions' },
         { name: 'Pricing', href: '#', description: 'Transparent pricing' }

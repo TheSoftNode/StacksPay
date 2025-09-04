@@ -87,7 +87,7 @@ const WelcomeStep = ({ onComplete }: WelcomeStepProps) => {
           The Future of Business Payments
         </h2>
         <p className="text-gray-600 dark:text-gray-400 max-w-xl mx-auto">
-          Join thousands of businesses already using sBTC Gateway to accept Bitcoin payments 
+          Join thousands of businesses already using StacksPay to accept Bitcoin payments 
           with the same simplicity as credit cards.
         </p>
       </div>

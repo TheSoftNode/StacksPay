@@ -48,11 +48,11 @@ const IntegrationGuideStep = ({ data, updateData, onComplete }: IntegrationGuide
   ]
 
   const integrationExamples = {
-    react: `// Install the sBTC Gateway React SDK
-npm install @sbtc-gateway/react
+    react: `// Install the StacksPay React SDK
+npm install stacks-pay-react
 
 // In your React component
-import { SbtcPayment } from '@sbtc-gateway/react'
+import { SbtcPayment } from 'stacks-pay-react'
 
 function CheckoutPage() {
   const handlePaymentSuccess = (payment) => {
@@ -77,7 +77,7 @@ function CheckoutPage() {
 }`,
 
     nextjs: `// pages/api/webhook.js - Webhook handler
-import { verifyWebhookSignature } from '@sbtc-gateway/node'
+import { verifyWebhookSignature } from 'stacks-pay-node'
 
 export default async function handler(req, res) {
   const signature = req.headers['sbtc-signature']
@@ -98,7 +98,7 @@ export default async function handler(req, res) {
 }
 
 // In your page component
-import { SbtcPayment } from '@sbtc-gateway/react'
+import { SbtcPayment } from 'stacks-pay-react'
 
 export default function Checkout() {
   return (
@@ -111,16 +111,16 @@ export default function Checkout() {
   )
 }`,
 
-    vanilla: `<!-- Include sBTC Gateway JS -->
-<script src="https://js.sbtc-gateway.com/v1/"></script>
+    vanilla: `<!-- Include StacksPay JS -->
+<script src="https://js.stackspay.com/v1/"></script>
 
 <!-- Payment button -->
-<div id="sbtc-payment"></div>
+<div id="stackspay-payment"></div>
 
 <script>
-  const sbtc = SbtcGateway('${apiKey}')
+  const stacksPay = StacksPay('${apiKey}')
   
-  sbtc.mount('#sbtc-payment', {
+  stacksPay.mount('#stackspay-payment', {
     amount: 0.001,
     currency: 'btc',
     description: 'Your product',
@@ -132,15 +132,15 @@ export default function Checkout() {
 </script>`,
 
     node: `// Install the Node.js SDK
-npm install @sbtc-gateway/node
+npm install stacks-pay-node
 
 // Create a payment
-const SbtcGateway = require('@sbtc-gateway/node')
-const sbtc = new SbtcGateway('${apiKey}')
+const StacksPay = require('stacks-pay-node')
+const stacksPay = new StacksPay('${apiKey}')
 
 app.post('/create-payment', async (req, res) => {
   try {
-    const payment = await sbtc.payments.create({
+    const payment = await stacksPay.payments.create({
       amount: 0.001,
       currency: 'btc',
       description: 'Premium subscription',
@@ -159,17 +159,17 @@ app.post('/create-payment', async (req, res) => {
 })`,
 
     python: `# Install the Python SDK
-pip install sbtc-gateway
+pip install stacks-pay-python
 
 # Create a payment
-from sbtc_gateway import SbtcGateway
+from stacks_pay import StacksPay
 
-sbtc = SbtcGateway('${apiKey}')
+stacksPay = StacksPay('${apiKey}')
 
 @app.route('/create-payment', methods=['POST'])
 def create_payment():
     try:
-        payment = sbtc.payments.create(
+        payment = stacksPay.payments.create(
             amount=0.001,
             currency='btc',
             description='Premium subscription',
@@ -186,7 +186,7 @@ def create_payment():
         return {'error': str(e)}, 400`,
 
     vue: `<!-- Install the Vue SDK -->
-npm install @sbtc-gateway/vue
+npm install stacks-pay-vue
 
 <!-- In your Vue component -->
 <template>
@@ -201,7 +201,7 @@ npm install @sbtc-gateway/vue
 </template>
 
 <script>
-import { SbtcPayment } from '@sbtc-gateway/vue'
+import { SbtcPayment } from 'stacks-pay-vue'
 
 export default {
   components: {
@@ -385,7 +385,7 @@ export default {
                 Copy the code above and follow these steps:
               </p>
               <ol className="list-decimal list-inside text-sm text-orange-700 dark:text-orange-300 space-y-1">
-                <li>Install the sBTC Gateway SDK for your framework</li>
+                <li>Install the StacksPay SDK for your framework</li>
                 <li>Copy your API key to your environment variables</li>
                 <li>Add the payment component to your checkout page</li>
                 <li>Test with the next step to make sure everything works</li>

@@ -291,7 +291,7 @@ const Sidebar = ({ collapsed, onCollapse }: SidebarProps) => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={logout}
+            onClick={() => logout()}
             className={cn(
               'text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400',
               collapsed ? 'w-8 h-8 p-0' : 'w-full justify-start'

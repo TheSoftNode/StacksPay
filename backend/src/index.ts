@@ -9,6 +9,7 @@ import authRoutes from '@/routes/auth.routes';
 import paymentRoutes from '@/routes/payment.routes';
 import paymentMerchantRoutes from '@/routes/payment-merchant.routes';
 import paymentPublicRoutes from '@/routes/payment-public.routes';
+import paymentLinksRoutes from '@/routes/payment-links.routes';
 import webhookRoutes from '@/routes/webhook.routes';
 import webhookEventsRoutes from '@/routes/webhook-events.routes';
 import apiKeyRoutes from '@/routes/api-key.routes';
@@ -129,6 +130,7 @@ class sBTCPaymentGatewayServer {
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/v1/payments', paymentRoutes); // API key auth for external developers
     this.app.use('/api/payments', paymentMerchantRoutes); // JWT auth for merchant dashboard
+    this.app.use('/api/payment-links', paymentLinksRoutes); // JWT auth for merchant dashboard
     this.app.use('/api/public/payments', paymentPublicRoutes); // No auth for customer checkout
     this.app.use('/api/webhooks', webhookRoutes); // JWT auth for merchant dashboard
     this.app.use('/api/webhook-events', webhookEventsRoutes); // JWT auth for merchant dashboard

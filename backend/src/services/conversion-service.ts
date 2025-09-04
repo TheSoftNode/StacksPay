@@ -83,24 +83,16 @@ class UpdatedConversionService {
    */
   async getConversionRates(): Promise<Record<string, number>> {
     try {
-      // Primary: Circle API rates
-      const circleRates = await this.fetchCircleRates();
-      
-      // Secondary: Coinbase Commerce rates 
-      const coinbaseRates = await this.fetchCoinbaseRates();
-      
-      // Tertiary: CoinGecko API
+      // Primary: CoinGecko API (reliable real-time crypto rates)
       const coingeckoRates = await this.fetchCoingeckoRates();
       
       // Fallback: Static rates
       const fallbackRates = await this.getFallbackRates();
       
-      // Combine rates with priority: Circle > Coinbase > CoinGecko > Fallback
+      // Combine rates with priority: CoinGecko > Fallback
       const rates = { 
         ...fallbackRates, 
-        ...coingeckoRates, 
-        ...coinbaseRates, 
-        ...circleRates 
+        ...coingeckoRates 
       };
       
       // Cache all rates
@@ -110,14 +102,14 @@ class UpdatedConversionService {
           to: pair.split('/')[1],
           rate: rate as number,
           timestamp: new Date(),
-          source: circleRates[pair] ? 'circle' : coinbaseRates[pair] ? 'coinbase' : 'coingecko',
+          source: coingeckoRates[pair] ? 'coingecko' : 'fallback',
         });
       });
 
       return rates;
 
     } catch (error) {
-      console.error('Failed to fetch conversion rates from all sources:', error);
+      console.error('Failed to fetch conversion rates from CoinGecko:', error);
       return this.getFallbackRates();
     }
   }
@@ -341,60 +333,7 @@ class UpdatedConversionService {
         throw new Error(`Unsupported to currency: ${toCurrency}`);
       }
 
-      // Use Circle's transaction validation for supported pairs
-      const provider = this.getBestProvider(fromCurrency, toCurrency, preferredProvider);
-      if (provider === 'circle') {
-        // Use Circle's comprehensive validation and fee calculation
-        const circleValidation = circleApiService.validateTransactionLimits(amount.toString(), fromCurrency);
-        if (!circleValidation.valid) {
-          throw new Error(`Transaction validation failed: ${circleValidation.violations.join(', ')}`);
-        }
-
-        // Use Circle's fee calculation for more accuracy
-        const circleFees = circleApiService.calculateTransactionFees(
-          amount.toString(), 
-          'conversion',
-          fromCurrency
-        );
-
-        // Get current rates from real sources
-        const rates = await this.getConversionRates();
-        const conversionPair = `${fromCurrency}/${toCurrency}`;
-        const rate = rates[conversionPair];
-
-        if (!rate) {
-          throw new Error(`No conversion rate available for ${conversionPair}`);
-        }
-
-        // Calculate conversion using Circle's fee structure
-        const baseConvertedAmount = amount * rate;
-        const totalFees = parseFloat(circleFees.fees);
-        const finalAmount = baseConvertedAmount - totalFees;
-
-        // Apply slippage tolerance for volatile conversions
-        const adjustedAmount = this.shouldApplySlippage(fromCurrency, toCurrency) 
-          ? finalAmount * (1 - slippageTolerance)
-          : finalAmount;
-
-        return {
-          success: true,
-          fromAmount: amount,
-          fromCurrency,
-          toAmount: Math.max(0, adjustedAmount),
-          toCurrency,
-          rate,
-          fees: {
-            conversion: parseFloat(circleFees.breakdown.baseFee),
-            network: parseFloat(circleFees.breakdown.networkFee),
-            total: totalFees,
-          },
-          estimatedTime: this.getEstimatedTime(fromCurrency, toCurrency, provider),
-          minAmount: this.currencies[fromCurrency as keyof typeof this.currencies].minAmount,
-          maxAmount: this.currencies[fromCurrency as keyof typeof this.currencies].maxAmount,
-        };
-      }
-
-      // Fallback to original logic for non-Circle providers
+      // Get current rates from CoinGecko (primary source)
       const rates = await this.getConversionRates();
       const conversionPair = `${fromCurrency}/${toCurrency}`;
       const rate = rates[conversionPair];
@@ -403,21 +342,23 @@ class UpdatedConversionService {
         throw new Error(`No conversion rate available for ${conversionPair}`);
       }
 
-      // Check amount limits
+      // Check amount limits with more reasonable maximums
       const fromCurrencyInfo = this.currencies[fromCurrency as keyof typeof this.currencies];
       const toCurrencyInfo = this.currencies[toCurrency as keyof typeof this.currencies];
 
       if (amount < fromCurrencyInfo.minAmount) {
         throw new Error(`Amount below minimum: ${fromCurrencyInfo.minAmount} ${fromCurrency}`);
       }
-      if (amount > fromCurrencyInfo.maxAmount) {
-        throw new Error(`Amount above maximum: ${fromCurrencyInfo.maxAmount} ${fromCurrency}`);
+      // Increase max limits for better usability  
+      const maxAmount = fromCurrency === 'BTC' || fromCurrency === 'sBTC' ? 10 : fromCurrencyInfo.maxAmount;
+      if (amount > maxAmount) {
+        throw new Error(`Amount above maximum: ${maxAmount} ${fromCurrency}`);
       }
 
       // Calculate conversion
       const baseConvertedAmount = amount * rate;
 
-      // Calculate fees based on provider
+      // Calculate fees based on currency pair
       const conversionFee = baseConvertedAmount * conversionFeeRate;
       const networkFee = includeNetworkFees ? toCurrencyInfo.networkFee : 0;
       const totalFees = conversionFee + networkFee;
@@ -429,9 +370,6 @@ class UpdatedConversionService {
       const adjustedAmount = this.shouldApplySlippage(fromCurrency, toCurrency) 
         ? finalAmount * (1 - slippageTolerance)
         : finalAmount;
-
-      // Get estimated completion time
-      const estimatedTime = this.getEstimatedTime(fromCurrency, toCurrency, preferredProvider);
 
       return {
         success: true,
@@ -445,9 +383,9 @@ class UpdatedConversionService {
           network: networkFee,
           total: totalFees,
         },
-        estimatedTime,
+        estimatedTime: this.getEstimatedTime(fromCurrency, toCurrency),
         minAmount: fromCurrencyInfo.minAmount,
-        maxAmount: fromCurrencyInfo.maxAmount,
+        maxAmount: maxAmount,
       };
 
     } catch (error) {
@@ -770,34 +708,27 @@ class UpdatedConversionService {
 
   /**
    * Determine the best provider for a conversion pair
+   * Note: Circle is only used for actual USDC payment processing, not rate fetching
    */
   private getBestProvider(
     fromCurrency: string, 
     toCurrency: string, 
     preferred?: 'circle' | 'coinbase' | 'internal'
   ): 'circle' | 'coinbase' | 'internal' {
-    // Circle API is best for USDC/USD institutional conversions
+    // Circle API is only for actual USDC payment processing (not rate conversion)
+    // All rates come from CoinGecko, Circle is used for payment execution only
+    
+    // Internal for sBTC/STX operations and BTC operations
+    if (fromCurrency === 'sBTC' || toCurrency === 'sBTC' || 
+        fromCurrency === 'STX' || toCurrency === 'STX' ||
+        fromCurrency === 'BTC' || toCurrency === 'BTC') {
+      return 'internal';
+    }
+
+    // Circle for USDC payment processing only (when actually executing payments)
     if ((fromCurrency === 'USDC' && toCurrency === 'USD') || 
         (fromCurrency === 'USD' && toCurrency === 'USDC')) {
       return 'circle';
-    }
-
-    // Circle is also good for BTC/USDC if available
-    if ((fromCurrency === 'BTC' && toCurrency === 'USDC') ||
-        (fromCurrency === 'USDC' && toCurrency === 'BTC')) {
-      return 'circle';
-    }
-
-    // Coinbase Commerce for broad crypto acceptance
-    const coinbaseCryptos = ['BTC', 'ETH', 'USDC', 'USDT'];
-    if (coinbaseCryptos.includes(fromCurrency) && coinbaseCryptos.includes(toCurrency)) {
-      return 'coinbase';
-    }
-
-    // Internal for sBTC/STX operations
-    if (fromCurrency === 'sBTC' || toCurrency === 'sBTC' || 
-        fromCurrency === 'STX' || toCurrency === 'STX') {
-      return 'internal';
     }
 
     // Use preferred if specified and valid
@@ -805,24 +736,19 @@ class UpdatedConversionService {
   }
 
   /**
-   * Enhanced conversion fee calculation based on provider
+   * Conversion fee calculation based on currency pairs
    */
   private getConversionFee(fromCurrency: string, toCurrency: string): number {
-    // Circle API fees (institutional grade)
+    // Circle USDC/USD operations (when actually using Circle for payments)
     if ((fromCurrency === 'USD' && toCurrency === 'USDC') || 
         (fromCurrency === 'USDC' && toCurrency === 'USD')) {
       return 0.003; // 0.3% for Circle USDC/USD
     }
 
-    // Coinbase Commerce fees
-    const coinbaseCryptos = ['BTC', 'ETH', 'USDC', 'USDT'];
-    if (coinbaseCryptos.includes(fromCurrency) && coinbaseCryptos.includes(toCurrency)) {
-      return 0.01; // 1% Coinbase Commerce fee
-    }
-
-    // Internal sBTC/STX operations
+    // Internal sBTC/STX/BTC operations (using our internal systems)
     if (fromCurrency === 'sBTC' || toCurrency === 'sBTC' || 
-        fromCurrency === 'STX' || toCurrency === 'STX') {
+        fromCurrency === 'STX' || toCurrency === 'STX' ||
+        fromCurrency === 'BTC' || toCurrency === 'BTC') {
       return 0.005; // 0.5% for internal operations
     }
 

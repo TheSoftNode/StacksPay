@@ -385,7 +385,7 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-700 dark:text-gray-300">
-                    sBTC Gateway Fee
+                    StacksPay Fee
                   </span>
                   <Badge className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
                     0.5%

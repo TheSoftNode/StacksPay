@@ -156,7 +156,7 @@ export const usePaymentStore = create<PaymentState>()(
     }),
     {
       name: 'payment-store',
-      partialize: (state) => ({
+      partialize: (state: PaymentState) => ({
         // Only persist filters and pagination preferences
         statusFilter: state.statusFilter,
         paymentMethodFilter: state.paymentMethodFilter,

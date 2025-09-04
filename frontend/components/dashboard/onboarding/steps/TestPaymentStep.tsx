@@ -48,43 +48,59 @@ interface TestPayment {
 const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading }: TestPaymentStepProps) => {
   const [testPayment, setTestPayment] = useState<TestPayment | null>(null)
   const [testAmount, setTestAmount] = useState('0.001')
-  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'creating' | 'waiting' | 'completed' | 'failed'>('idle')
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'creating' | 'waiting' | 'completed' | 'failed'>('idle' as const)
   const [copied, setCopied] = useState(false)
 
   const createTestPayment = async () => {
+    // Check if API keys are available
+    if (!data.apiKeys.testKey || data.apiKeys.testKey.length < 20) {
+      setPaymentStatus('failed');
+      throw new Error('Test API key not available. Please complete the API Keys setup step first.');
+    }
+
     setIsLoading(true)
     setPaymentStatus('creating')
 
     try {
-      // Simulate creating a test payment
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Create real test payment using API
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/v1/payments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${data.apiKeys.testKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          amount: parseFloat(testAmount), // Keep in BTC units
+          currency: 'BTC',
+          paymentMethod: 'btc',
+          payoutMethod: 'sbtc',
+          description: 'Test payment from onboarding',
+          metadata: { source: 'onboarding_test' }
+        })
+      })
       
-      const mockPayment: TestPayment = {
-        id: `test_payment_${Date.now()}`,
-        amount: parseFloat(testAmount),
-        currency: 'BTC',
-        status: 'pending',
-        paymentUrl: `https://pay.sbtc-gateway.com/test_${Date.now()}`,
-        qrCode: `data:image/svg+xml;base64,${btoa('<svg>mock qr code</svg>')}`,
-        createdAt: new Date()
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
       }
       
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/v1/payments', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Authorization': `Bearer ${data.apiKeys.testKey}`,
-      //     'Content-Type': 'application/json'
-      //   },
-      //   body: JSON.stringify({
-      //     amount: parseFloat(testAmount) * 100000000, // Convert to satoshis
-      //     currency: 'btc',
-      //     description: 'Test payment from onboarding',
-      //     metadata: { source: 'onboarding_test' }
-      //   })
-      // })
+      const paymentData = await response.json();
       
-      setTestPayment(mockPayment)
+      if (!paymentData.success) {
+        throw new Error(paymentData.error || 'Payment creation failed');
+      }
+      
+      const realPayment: TestPayment = {
+        id: paymentData.data.id,
+        amount: paymentData.data.amount,
+        currency: paymentData.data.currency,
+        status: paymentData.data.status,
+        paymentUrl: paymentData.data.checkoutUrl,
+        qrCode: paymentData.qrCode,
+        createdAt: new Date(paymentData.data.createdAt || new Date())
+      }
+      
+      setTestPayment(realPayment)
       setPaymentStatus('waiting')
       
       // Simulate payment completion after 5 seconds
@@ -128,7 +144,7 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
         </p>
       </div>
 
-      {paymentStatus === 'idle' ? (
+      {(paymentStatus as string) === 'idle' ? (
         /* Test Payment Setup */
         <div className="max-w-md mx-auto space-y-6">
           <Card>
@@ -394,7 +410,6 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
                     <Button 
                       variant="outline" 
                       onClick={() => setPaymentStatus('idle')}
-                      variant="outline"
                     >
                       <RefreshCw className="mr-2 h-4 w-4" />
                       Try Again
@@ -406,7 +421,7 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
           </AnimatePresence>
 
           {/* Integration Check */}
-          {paymentStatus === 'idle' && (
+          {(paymentStatus as string) === 'idle' && (
             <Card className="bg-white dark:bg-gray-900 border shadow-sm">
               <CardContent className="p-6">
                 <div className="flex items-start space-x-4">
@@ -437,7 +452,7 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
             </Card>
           )}
 
-          {paymentStatus === 'idle' && (
+          {(paymentStatus as string) === 'idle' && (
             <div className="text-center">
               <Button 
                 size="lg"

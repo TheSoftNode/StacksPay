@@ -13,6 +13,121 @@ const logger = createLogger('ApiKeyController');
 router.use(sessionMiddleware);
 
 /**
+ * Generate onboarding API keys (test + live + webhook secret)
+ */
+router.post('/onboarding', asyncHandler(async (req: express.Request, res: express.Response) => {
+  const merchantId = req.merchant?.id;
+
+  if (!merchantId) {
+    res.status(401).json({
+      success: false,
+      error: 'Merchant authentication required'
+    });
+    return;
+  }
+
+  try {
+    const merchant = await Merchant.findById(merchantId);
+    if (!merchant) {
+      res.status(404).json({
+        success: false,
+        error: 'Merchant not found'
+      });
+      return;
+    }
+
+    // Generate test API key
+    const testKeyRandom = crypto.randomBytes(32).toString('hex');
+    const testApiKey = `sk_test_${testKeyRandom}`;
+    const testKeyHash = await bcrypt.hash(testApiKey, 10);
+    const testKeyId = crypto.randomBytes(16).toString('hex');
+
+    // Generate live API key
+    const liveKeyRandom = crypto.randomBytes(32).toString('hex');
+    const liveApiKey = `sk_live_${liveKeyRandom}`;
+    const liveKeyHash = await bcrypt.hash(liveApiKey, 10);
+    const liveKeyId = crypto.randomBytes(16).toString('hex');
+
+    // Generate webhook secret
+    const webhookSecret = `whsec_${crypto.randomBytes(32).toString('hex')}`;
+
+    // Create API key records
+    const defaultPermissions = [
+      'payments:create', 'payments:read', 'payments:webhook',
+      'merchant:read', 'webhooks:create', 'webhooks:read'
+    ];
+
+    const testKeyData = {
+      keyId: testKeyId,
+      keyHash: testKeyHash,
+      keyPrefix: testApiKey.substring(0, 12) + '...' + testApiKey.substring(testApiKey.length - 4),
+      name: 'Test Key (Auto-generated)',
+      permissions: defaultPermissions,
+      environment: 'test',
+      ipRestrictions: [],
+      rateLimit: 1000,
+      isActive: true,
+      createdAt: new Date(),
+      lastUsed: null,
+      requestCount: 0
+    };
+
+    const liveKeyData = {
+      keyId: liveKeyId,
+      keyHash: liveKeyHash,
+      keyPrefix: liveApiKey.substring(0, 12) + '...' + liveApiKey.substring(liveApiKey.length - 4),
+      name: 'Live Key (Auto-generated)',
+      permissions: defaultPermissions,
+      environment: 'live',
+      ipRestrictions: [],
+      rateLimit: 1000,
+      isActive: false, // Start inactive for security
+      createdAt: new Date(),
+      lastUsed: null,
+      requestCount: 0
+    };
+
+    // Update merchant with API keys and webhook secret
+    merchant.apiKeys = merchant.apiKeys || [];
+    merchant.apiKeys.push(testKeyData, liveKeyData);
+    
+    merchant.webhooks = merchant.webhooks || {};
+    merchant.webhooks.secret = webhookSecret;
+    
+    await merchant.save();
+
+    logger.info('Onboarding API keys generated', {
+      merchantId,
+      testKeyId,
+      liveKeyId,
+      timestamp: new Date().toISOString()
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        testKey: {
+          key: testApiKey, // Only return the actual key on creation
+          keyId: testKeyId
+        },
+        liveKey: {
+          key: liveApiKey,
+          keyId: liveKeyId
+        },
+        webhookSecret
+      }
+    });
+
+  } catch (error) {
+    logger.error('Onboarding API key generation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate onboarding API keys'
+    });
+  }
+}));
+
+/**
  * Generate new API key for merchant
  */
 router.post('/generate', asyncHandler(async (req: express.Request, res: express.Response) => {

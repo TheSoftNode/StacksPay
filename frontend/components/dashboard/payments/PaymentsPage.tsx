@@ -244,11 +244,24 @@ const PaymentsPage = () => {
 
     setIsRefundModalOpen(false);
     setModalPayment(null);
+  }
 
   const handleCancel = async () => {
     if (!modalPayment) return;
 
-    await cancelPayment.mutateAsync(modalPayment.id);
+    console.log('Modal payment object:', modalPayment);
+    console.log('Payment ID:', modalPayment.id);
+    console.log('Payment _id:', (modalPayment as any)._id);
+
+    // Use _id if id is not available (MongoDB compatibility)
+    const paymentId = modalPayment.id || (modalPayment as any)._id;
+    
+    if (!paymentId) {
+      console.error('No payment ID found in modalPayment:', modalPayment);
+      return;
+    }
+
+    await cancelPayment.mutateAsync(paymentId);
     setIsCancelModalOpen(false);
     setModalPayment(null);
   }
@@ -1045,7 +1058,6 @@ const PaymentsPage = () => {
       </Dialog>
     </div>
   )
-}
 }
 
 export default PaymentsPage

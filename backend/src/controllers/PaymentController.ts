@@ -19,8 +19,15 @@ export class PaymentController {
 
   async createPayment(req: Request, res: Response): Promise<void> {
     try {
+      logger.info('Payment creation request received', { 
+        body: req.body, 
+        merchant: req.merchant,
+        authHeader: req.headers.authorization?.substring(0, 20) + '...'
+      });
+
       const merchantId = req.merchant?.id;
       if (!merchantId) {
+        logger.error('No merchant ID found in request', { merchant: req.merchant });
         res.status(401).json({
           success: false,
           error: 'Merchant authentication required'
@@ -60,6 +67,11 @@ export class PaymentController {
           data: result.payment
         });
       } else {
+        logger.error('Payment creation failed in service', { 
+          error: result.error, 
+          paymentData,
+          merchantId 
+        });
         res.status(400).json({
           success: false,
           error: result.error
@@ -483,17 +495,8 @@ export class PaymentController {
         return;
       }
 
-      // For public QR codes, include basic payment info
-      const qrData = {
-        paymentId: payment._id || payment.id,
-        amount: payment.amount || payment.paymentAmount,
-        currency: payment.currency || payment.paymentCurrency,
-        address: payment.depositAddress || payment.paymentAddress,
-        url: `${process.env.FRONTEND_URL}/pay/${paymentId}`
-      };
-
-      // Generate actual QR code using the installed qrcode library
-      const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {
+      // For public QR codes, use just the URL for better compatibility
+      const qrCodeDataUrl = await QRCode.toDataURL(`${process.env.FRONTEND_URL}/checkout/${paymentId}`, {
         width: size,
         margin: 2,
         color: {
@@ -505,8 +508,8 @@ export class PaymentController {
       res.json({
         success: true,
         data: {
-          qrData: JSON.stringify(qrData),
           qrUrl: qrCodeDataUrl,
+          paymentUrl: `${process.env.FRONTEND_URL}/checkout/${paymentId}`,
           size
         }
       });
@@ -548,18 +551,8 @@ export class PaymentController {
       }
 
       // For merchant QR codes, include more detailed info
-      const qrData = {
-        paymentId: payment._id || payment.id,
-        amount: payment.amount || payment.paymentAmount,
-        currency: payment.currency || payment.paymentCurrency,
-        address: payment.depositAddress || payment.paymentAddress,
-        merchantId,
-        url: `${process.env.FRONTEND_URL}/pay/${paymentId}`,
-        expiresAt: payment.expiresAt
-      };
-
-      // Generate actual QR code using the installed qrcode library
-      const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {
+      // For merchant QR codes, use just the URL for better compatibility
+      const qrCodeDataUrl = await QRCode.toDataURL(`${process.env.FRONTEND_URL}/checkout/${paymentId}`, {
         width: size,
         margin: 2,
         color: {
@@ -571,15 +564,145 @@ export class PaymentController {
       res.json({
         success: true,
         data: {
-          qrData: JSON.stringify(qrData),
           qrUrl: qrCodeDataUrl,
-          size,
-          expiresAt: payment.expiresAt
+          paymentUrl: `${process.env.FRONTEND_URL}/checkout/${paymentId}`,
+          payment: {
+            id: payment._id || payment.id,
+            amount: payment.amount || payment.paymentAmount,
+            currency: payment.currency || payment.paymentCurrency,
+            address: payment.depositAddress || payment.paymentAddress,
+            expiresAt: payment.expiresAt
+          },
+          size
         }
       });
 
     } catch (error) {
       logger.error('Generate QR code API error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
+
+  /**
+   * Create payment link for sharing (merchant dashboard)
+   */
+  async createPaymentLink(req: Request, res: Response): Promise<void> {
+    try {
+      logger.info('Payment link creation request received', { 
+        body: req.body, 
+        merchant: req.merchant,
+        authHeader: req.headers.authorization?.substring(0, 20) + '...'
+      });
+
+      const merchantId = req.merchant?.id;
+      if (!merchantId) {
+        logger.error('No merchant ID found in request', { merchant: req.merchant });
+        res.status(401).json({
+          success: false,
+          error: 'Merchant authentication required'
+        });
+        return;
+      }
+
+      // Validate required fields
+      if (!req.body.amount || !req.body.currency) {
+        res.status(400).json({
+          success: false,
+          error: 'Amount and currency are required'
+        });
+        return;
+      }
+
+      // Set default paymentMethod based on currency if not provided
+      let paymentMethod = req.body.paymentMethod;
+      if (!paymentMethod) {
+        const currency = req.body.currency.toLowerCase();
+        switch (currency) {
+          case 'btc':
+            paymentMethod = 'btc';
+            break;
+          case 'stx':
+            paymentMethod = 'stx';
+            break;
+          case 'sbtc':
+            paymentMethod = 'sbtc';
+            break;
+          default:
+            paymentMethod = 'btc'; // Default fallback
+        }
+      }
+
+      // Create payment with the same logic as regular payments
+      const paymentData = {
+        merchantId,
+        amount: req.body.amount,
+        currency: req.body.currency,
+        paymentMethod: paymentMethod,
+        payoutMethod: req.body.payoutMethod || 'usd',
+        description: req.body.description || 'Payment Link',
+        metadata: { 
+          ...req.body.metadata,
+          isPaymentLink: true,
+          source: 'payment_link'
+        },
+        customerInfo: req.body.customerInfo,
+        webhookUrl: req.body.webhookUrl,
+        successUrl: req.body.successUrl,
+        cancelUrl: req.body.cancelUrl,
+        expiresAt: req.body.expiresAt ? new Date(req.body.expiresAt) : undefined,
+        allowedPaymentMethods: req.body.allowedPaymentMethods,
+        preferredPaymentMethod: req.body.preferredPaymentMethod
+      } as any;
+
+      logger.info('Creating payment for payment link', { 
+        merchantId,
+        amount: paymentData.amount,
+        currency: paymentData.currency
+      });
+
+      const result = await this.paymentService.createPayment(paymentData);
+
+      if (result.success && result.payment) {
+        // Generate payment URL and QR code
+        const paymentUrl = `${process.env.FRONTEND_URL}/checkout/${result.payment.id}`;
+        
+        // Generate QR code for the payment link - just use the URL for better compatibility
+        const qrCodeDataUrl = await QRCode.toDataURL(paymentUrl, {
+          width: 256,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+
+        res.status(201).json({
+          success: true,
+          data: {
+            id: result.payment.id,
+            url: paymentUrl,
+            qrCode: qrCodeDataUrl,
+            payment: result.payment,
+            expiresAt: result.payment.expiresAt
+          }
+        });
+      } else {
+        logger.error('Payment link creation failed in service', { 
+          error: result.error, 
+          paymentData,
+          merchantId 
+        });
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+
+    } catch (error) {
+      logger.error('Payment link creation API error:', error);
       res.status(500).json({
         success: false,
         error: 'Internal server error'

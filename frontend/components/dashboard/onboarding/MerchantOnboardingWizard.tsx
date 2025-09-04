@@ -118,7 +118,7 @@ const steps = [
   {
     id: 'welcome',
     title: 'Welcome',
-    description: 'Get started with sBTC payments',
+    description: 'Get started with Bitcoin payments',
     icon: Star,
     component: WelcomeStep
   },
@@ -375,7 +375,7 @@ const MerchantOnboardingWizard = () => {
           className="space-y-2"
         >
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Welcome to sBTC Gateway
+            Welcome to StacksPay
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
             Let's get your business ready to accept Bitcoin payments in minutes

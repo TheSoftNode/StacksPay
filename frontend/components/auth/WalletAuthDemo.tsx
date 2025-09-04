@@ -30,7 +30,7 @@ export const WalletAuthDemo: React.FC = () => {
       alert('Please enter a business name');
       return;
     }
-    register({ businessName, businessType, email: email || undefined });
+    register();
   };
 
   const handleLogin = () => {

@@ -114,7 +114,7 @@ const Logo = ({ size = 'md', showText = true, className = '' }: LogoProps) => {
             StacksPay
           </motion.h1>
           <p className="text-xs text-orange-600 dark:text-orange-400 font-medium tracking-wide">
-            sBTC Gateway
+            StacksPay
           </p>
         </motion.div>
       )}

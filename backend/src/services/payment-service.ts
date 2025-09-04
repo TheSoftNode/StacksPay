@@ -81,48 +81,234 @@ export interface PaymentVerificationData {
  */
 export class PaymentService {
   /**
+   * Normalize currency names to match conversion service expectations
+   */
+  private normalizeCurrency(currency: string): string {
+    if (!currency) {
+      return 'BTC'; // Default fallback
+    }
+    const normalized = currency.toLowerCase();
+    switch (normalized) {
+      case 'sbtc':
+        return 'sBTC';
+      case 'btc':
+        return 'BTC';
+      case 'stx':
+        return 'STX';
+      case 'usd':
+        return 'USD';
+      case 'usdc':
+        return 'USDC';
+      case 'usdt':
+        return 'USDT';
+      case 'eth':
+        return 'ETH';
+      default:
+        return currency.toUpperCase();
+    }
+  }
+
+  /**
+   * Normalize payment method to match Payment model enum values
+   */
+  private normalizePaymentMethod(paymentMethod: string): string {
+    if (!paymentMethod) {
+      return 'bitcoin'; // Default fallback
+    }
+    const normalized = paymentMethod.toLowerCase();
+    switch (normalized) {
+      case 'btc':
+        return 'bitcoin';
+      case 'stx':
+        return 'stx';
+      case 'sbtc':
+        return 'sbtc';
+      default:
+        return normalized;
+    }
+  }
+
+  /**
+   * Normalize payout method to match expected values
+   */
+  private normalizePayoutMethod(payoutMethod: string): string {
+    if (!payoutMethod) {
+      return 'usd'; // Default fallback
+    }
+    const normalized = payoutMethod.toLowerCase();
+    switch (normalized) {
+      case 'sbtc':
+        return 'sbtc';
+      case 'usd':
+        return 'usd';
+      case 'usdc':
+        return 'usdc';
+      case 'usdt':
+        return 'usdt';
+      default:
+        return normalized;
+    }
+  }
+
+  /**
+   * Get customer wallet type based on payment method
+   */
+  private getCustomerWalletType(paymentMethod: string): string {
+    if (!paymentMethod) {
+      return 'stacks'; // Default fallback
+    }
+    const normalized = paymentMethod.toLowerCase();
+    switch (normalized) {
+      case 'btc':
+        return 'bitcoin';
+      case 'stx':
+      case 'sbtc':
+        return 'stacks';
+      default:
+        return 'stacks';
+    }
+  }
+
+  /**
+   * Get required confirmations based on payment method
+   */
+  private getRequiredConfirmations(paymentMethod: string): number {
+    if (!paymentMethod) {
+      return 1; // Default fallback
+    }
+    const normalized = paymentMethod.toLowerCase();
+    switch (normalized) {
+      case 'btc':
+        return 1;
+      case 'stx':
+        return 1;
+      case 'sbtc':
+        return 1;
+      default:
+        return 1;
+    }
+  }
+
+  /**
    * Create a new payment request
    */
   async createPayment(options: CreatePaymentOptions): Promise<PaymentResult> {
     await connectToDatabase();
 
     try {
+      console.log('PaymentService.createPayment called with options:', options);
+      
       // Get merchant details
       const merchant = await Merchant.findById(options.merchantId);
       if (!merchant) {
+        console.log('Merchant not found:', options.merchantId);
         return { success: false, error: 'Merchant not found' };
       }
+      
+      console.log('Merchant found:', merchant._id, merchant.businessName);
 
       // Calculate customer payment conversion using ConversionService
-      const paymentConversion = await conversionService.convertCurrency(
-        options.amount,
-        options.currency,
-        options.paymentMethod.toUpperCase()
-      );
-
-      if (!paymentConversion.success) {
-        return { success: false, error: 'Payment currency conversion failed' };
+      // Skip conversion if currency and payment method are the same
+      console.log('Starting currency conversion check');
+      let paymentConversion;
+      const fromCurrency = this.normalizeCurrency(options.currency);
+      const toCurrency = this.normalizeCurrency(options.paymentMethod);
+      
+      console.log('Normalized currencies:', { fromCurrency, toCurrency });
+      
+      if (fromCurrency === toCurrency) {
+        // No conversion needed - same currency
+        console.log('Skipping conversion - same currency');
+        paymentConversion = {
+          success: true,
+          fromAmount: options.amount,
+          fromCurrency,
+          toAmount: options.amount,
+          toCurrency,
+          rate: 1,
+          fees: {
+            conversion: 0,
+            network: 0,
+            total: 0
+          }
+        };
+      } else {
+        console.log('Different currencies - performing conversion');
+        paymentConversion = await conversionService.convertCurrency(
+          options.amount,
+          fromCurrency,
+          toCurrency
+        );
+        
+        if (!paymentConversion.success) {
+          return { success: false, error: 'Payment currency conversion failed' };
+        }
       }
+
+      console.log('Payment conversion completed:', paymentConversion);
 
       // Calculate merchant payout conversion (payment method to payout method)
-      const payoutConversion = await conversionService.convertCurrency(
-        paymentConversion.toAmount,
-        paymentConversion.toCurrency,
-        options.payoutMethod.toUpperCase()
-      );
+      // Skip conversion if payment method and payout method are the same
+      console.log('Starting payout conversion check');
+      let payoutConversion;
+      const paymentMethodCurrency = paymentConversion.toCurrency;
+      const payoutMethodCurrency = this.normalizeCurrency(options.payoutMethod);
+      
+      console.log('Payout currencies:', { paymentMethodCurrency, payoutMethodCurrency });
+      
+      if (paymentMethodCurrency === payoutMethodCurrency) {
+        // No conversion needed - same currency
+        payoutConversion = {
+          success: true,
+          fromAmount: paymentConversion.toAmount,
+          fromCurrency: paymentMethodCurrency,
+          toAmount: paymentConversion.toAmount,
+          toCurrency: payoutMethodCurrency,
+          rate: 1,
+          fees: {
+            conversion: 0,
+            network: 0,
+            total: 0
+          }
+        };
+      } else {
+        console.log('Performing payout conversion from', paymentConversion.toCurrency, 'to', payoutMethodCurrency);
+        try {
+          payoutConversion = await conversionService.convertCurrency(
+            paymentConversion.toAmount,
+            paymentConversion.toCurrency,
+            payoutMethodCurrency
+          );
 
-      if (!payoutConversion.success) {
-        return { success: false, error: 'Payout currency conversion failed' };
+          console.log('Payout conversion result:', payoutConversion);
+          
+          if (!payoutConversion.success) {
+            console.log('Payout conversion failed');
+            return { success: false, error: 'Payout currency conversion failed' };
+          }
+        } catch (conversionError) {
+          console.log('Payout conversion threw error:', conversionError);
+          return { 
+            success: false, 
+            error: `Payout currency conversion failed: ${conversionError instanceof Error ? conversionError.message : conversionError}` 
+          };
+        }
       }
 
+      console.log('Payout conversion completed:', payoutConversion);
+
       // Generate payment address using specialized services
+      console.log('Generating payment address for method:', options.paymentMethod);
       const addressResult = await this.generatePaymentAddress(
         options.paymentMethod,
         merchant,
         paymentConversion.toAmount
       );
 
+      console.log('Address generation result:', addressResult);
+      
       if (!addressResult.success) {
+        console.log('Address generation failed:', addressResult.error);
         return { success: false, error: addressResult.error };
       }
 
@@ -133,33 +319,42 @@ export class PaymentService {
         total: paymentConversion.fees.total + payoutConversion.fees.total,
       };
 
-      // Create payment record
+      // Create payment record with model-compliant data
       const payment = new Payment({
         merchantId: options.merchantId,
         amount: options.amount,
         currency: options.currency,
-        paymentMethod: options.paymentMethod,
-        payoutMethod: options.payoutMethod,
-        paymentAmount: paymentConversion.toAmount,
-        paymentCurrency: paymentConversion.toCurrency,
-        payoutAmount: payoutConversion.toAmount,
-        payoutCurrency: payoutConversion.toCurrency,
-        conversionRate: paymentConversion.rate,
-        payoutConversionRate: payoutConversion.rate,
-        fees: totalFees,
-        netAmount: payoutConversion.toAmount - totalFees.total,
+        paymentMethod: this.normalizePaymentMethod(options.paymentMethod), // Convert btc→bitcoin
+        merchantReceivesCurrency: this.normalizePayoutMethod(options.payoutMethod), // Convert sbtc→sbtc  
+        customerWalletType: this.getCustomerWalletType(options.paymentMethod), // Required field
         status: 'pending',
-        paymentAddress: addressResult.address,
-        paymentDetails: addressResult.details,
-        description: options.description,
+        confirmations: 0,
+        requiredConfirmations: this.getRequiredConfirmations(options.paymentMethod),
+        expiresAt: options.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000),
         metadata: options.metadata || {},
         customerInfo: options.customerInfo || {},
-        urls: {
-          success: options.successUrl,
-          cancel: options.cancelUrl,
-          webhook: options.webhookUrl,
+        // Store conversion data in metadata for reference
+        exchangeRate: {
+          btcToUsd: paymentConversion.rate * (paymentConversion.fromCurrency === 'BTC' ? 45000 : 1),
+          timestamp: new Date(),
         },
-        expiresAt: options.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000),
+        conversionFee: totalFees.total,
+        // Store payment address details in the appropriate section
+        ...(options.paymentMethod === 'btc' && {
+          bitcoin: {
+            depositAddress: addressResult.address, // Stacks address for sBTC deposit
+          }
+        }),
+        ...(options.paymentMethod === 'stx' && {
+          stx: {
+            toAddress: addressResult.address,
+          }
+        }),
+        ...(options.paymentMethod === 'sbtc' && {
+          sbtc: {
+            depositAddress: addressResult.address,
+          }
+        }),
       });
 
       await payment.save();
@@ -572,18 +767,21 @@ export class PaymentService {
           };
 
         case 'btc':
-          // Return merchant's Bitcoin address
-          if (!merchant.walletSetup?.btcAddress && !merchant.btcAddress) {
-            return { success: false, error: 'Merchant must configure Bitcoin wallet address' };
+          // For BTC payments, use merchant's Stacks address for sBTC conversion
+          // The frontend sBTC service will generate the actual Bitcoin deposit address
+          const btcStacksAddress = merchant.walletSetup?.stacksAddress || merchant.stacksAddress;
+          if (!btcStacksAddress) {
+            return { success: false, error: 'Merchant must have a connected Stacks wallet for Bitcoin payments' };
           }
-          const btcAddress = merchant.walletSetup?.btcAddress || merchant.btcAddress;
+          
           return {
             success: true,
-            address: btcAddress,
+            address: btcStacksAddress, // Frontend will convert this to Bitcoin deposit address
             details: {
-              paymentAddress: btcAddress,
+              stacksAddress: btcStacksAddress,
               amount: amount,
-              method: 'btc'
+              method: 'btc',
+              requiresSbtcDeposit: true // Flag that frontend needs to generate deposit address
             },
           };
 
@@ -592,17 +790,17 @@ export class PaymentService {
           if (!merchant.walletSetup?.stacksAddress && !merchant.stacksAddress) {
             return { success: false, error: 'Merchant must configure Stacks wallet for STX payments' };
           }
-          const stacksAddress = merchant.walletSetup?.stacksAddress || merchant.stacksAddress;
+          const stxStacksAddress = merchant.walletSetup?.stacksAddress || merchant.stacksAddress;
           
           // Simple address validation (Stacks addresses start with SP or SM)
-          if (!stacksAddress.match(/^S[PM][0-9A-Z]{39}$/)) {
+          if (!stxStacksAddress.match(/^S[PM][0-9A-Z]{39}$/)) {
             return { success: false, error: 'Invalid Stacks address configured for merchant' };
           }
           
           return {
             success: true,
-            address: stacksAddress,
-            details: { address: stacksAddress },
+            address: stxStacksAddress,
+            details: { address: stxStacksAddress },
           };
 
         default:
