@@ -1,7 +1,7 @@
 {
-  "name": "@sbtc-gateway/node",
+  "name": "@stackspay/node",
   "version": "1.0.0",
-  "description": "Official Node.js SDK for sBTC Payment Gateway - Accept Bitcoin and STX payments",
+  "description": "Official Node.js SDK for StacksPay - Accept Bitcoin and STX payments",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -27,7 +27,7 @@
     "api",
     "sdk"
   ],
-  "author": "sBTC Gateway Team",
+  "author": "StacksPay Team",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -37,7 +37,7 @@
   "bugs": {
     "url": "https://github.com/TheSoftNode/sbtc-payment-gateway/issues"
   },
-  "homepage": "https://sbtc-gateway.com",
+  "homepage": "https://stackspay.com",
   "devDependencies": {
     "@types/jest": "^29.5.5",
     "@types/node": "^20.5.0",

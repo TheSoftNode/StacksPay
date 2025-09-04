@@ -95,7 +95,7 @@ class ApiKeyApiClient {
    */
   async getApiKeys(): Promise<ApiResponse<ApiKeyData[]>> {
     try {
-      const response = await fetch(`${this.baseURL}/api/auth/api-keys`, {
+      const response = await fetch(`${this.baseURL}/api/api-keys`, {
         headers: this.getAuthHeaders()
       });
 
@@ -123,7 +123,7 @@ class ApiKeyApiClient {
    */
   async revokeApiKey(keyId: string): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/api/auth/api-keys/${keyId}`, {
+      const response = await fetch(`${this.baseURL}/api/api-keys/${keyId}`, {
         method: 'DELETE',
         headers: this.getAuthHeaders()
       });
@@ -133,8 +133,6 @@ class ApiKeyApiClient {
         throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      
       return {
         success: true,
         message: 'API key revoked successfully'
@@ -161,9 +159,10 @@ class ApiKeyApiClient {
 # Quick Start Guide
 
 ## 1. Install SDK (Optional)
-npm install @stackspay/sdk
+npm install @stackspay/node
 
 ## 2. Initialize Client
+const StacksPay = require('@stackspay/node')
 const client = new StacksPay({
   apiKey: 'your_api_key_here',
   environment: 'test' // or 'live'

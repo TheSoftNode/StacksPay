@@ -3,16 +3,16 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sbtc-gateway"
+name = "stackspay"
 version = "1.0.0"
-description = "Official Python SDK for sBTC Payment Gateway - Accept Bitcoin and STX payments"
+description = "Official Python SDK for StacksPay - Accept Bitcoin and STX payments"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "sBTC Gateway Team", email = "developers@sbtc-gateway.com"}
+    {name = "StacksPay Team", email = "developers@stackspay.com"}
 ]
 maintainers = [
-    {name = "sBTC Gateway Team", email = "developers@sbtc-gateway.com"}
+    {name = "StacksPay Team", email = "developers@stackspay.com"}
 ]
 keywords = ["bitcoin", "stacks", "sbtc", "payments", "crypto", "gateway", "api", "sdk"]
 classifiers = [
@@ -47,8 +47,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://sbtc-gateway.com"
-Documentation = "https://docs.sbtc-gateway.com"
+Homepage = "https://stackspay.com"
+Documentation = "https://docs.stackspay.com"
 Repository = "https://github.com/TheSoftNode/sbtc-payment-gateway"
 Issues = "https://github.com/TheSoftNode/sbtc-payment-gateway/issues"
 

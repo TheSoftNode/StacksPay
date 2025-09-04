@@ -1,7 +1,7 @@
 import { connectToDatabase } from '@/config/database';
 import { conversionService } from './conversion-service';
 import { webhookService } from './webhook-service';
-import { multiWalletAuthService } from './multi-wallet-auth-service';
+// Multi-wallet auth service moved to frontend
 import { Payment } from '@/models/Payment';
 import { Merchant } from '@/models/Merchant';
 
