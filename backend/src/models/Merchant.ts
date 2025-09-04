@@ -76,6 +76,7 @@ export interface IMerchant extends Document {
     keyId: string;
     keyHash: string;
     keyPreview: string;
+    name: string;
     permissions: string[];
     environment: 'test' | 'live';
     isActive: boolean;
@@ -84,6 +85,7 @@ export interface IMerchant extends Document {
     expiresAt?: Date;
     ipRestrictions?: string[];
     rateLimit: number;
+    requestCount?: number;
   }>;
   sessions: Array<{
     sessionId: string;
@@ -304,6 +306,7 @@ const merchantSchema = new Schema<IMerchant>({
       keyId: String,
       keyHash: String,
       keyPreview: String,
+      name: String,
       permissions: [String],
       environment: {
         type: String,
@@ -322,8 +325,10 @@ const merchantSchema = new Schema<IMerchant>({
         type: Number,
         default: 1000,
       },
-      lastUsedAt: Date,
-      requestCount: Number,
+      requestCount: {
+        type: Number,
+        default: 0,
+      },
     },
   ],
 

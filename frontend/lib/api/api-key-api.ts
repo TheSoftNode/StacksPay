@@ -1,10 +1,66 @@
-/**
- * API Key Management Client (Backend-Only Operations)
- * Frontend only displays and manages existing keys, creation happens in backend
- */
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+export interface ApiKeyCreateRequest {
+  name: string;
+  environment: 'test' | 'live';
+  permissions: string[];
+  description?: string;
+  expiresAt?: string;
+}
+
+export interface ApiKeyUpdateRequest {
+  name?: string;
+  permissions?: string[];
+  description?: string;
+  isActive?: boolean;
+}
+
+export interface ApiKey {
+  keyId: string;
+  name: string;
+  keyPreview: string;
+  environment: 'test' | 'live';
+  permissions: string[];
+  ipRestrictions: string[];
+  rateLimit: number;
+  createdAt: string;
+  lastUsed?: string;
+  expiresAt?: string;
+  isActive: boolean;
+  requestCount: number;
+}
+
+export interface ApiKeyUsage {
+  keyId: string;
+  period: string;
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  uniqueIPs: number;
+  usageByEndpoint: Array<{
+    endpoint: string;
+    method: string;
+    count: number;
+    lastUsed: string;
+  }>;
+  usageByDay: Array<{
+    date: string;
+    requests: number;
+    errors: number;
+  }>;
+}
+
+export interface ApiKeyListResponse {
+  apiKeys: ApiKey[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// Legacy interface for backward compatibility
 export interface ApiKeyData {
   id?: string;
   keyId?: string;
@@ -82,68 +138,199 @@ class ApiKeyApiClient {
     this.baseURL = API_BASE_URL;
   }
 
-  private getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+  private getAuthHeaders(): Record<string, string> {
+    const token = this.getStoredToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  private getStoredToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('authToken');
+  }
+
+  private async makeRequest<T = any>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> {
+    const url = `${this.baseURL}${endpoint}`;
+    
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    try {
+      const response = await fetch(url, config);
+      const data = await response.json();
+
+      // Handle authentication errors
+      if (response.status === 401) {
+        if (typeof window !== 'undefined' && window.location.pathname !== '/auth/login') {
+          window.location.href = '/auth/login';
+        }
+      }
+
+      return {
+        success: response.ok,
+        ...data,
+      };
+    } catch (error) {
+      console.error('API Key API request failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Network error',
+      };
+    }
+  }
+
+  // API Key Management
+  async createApiKey(keyData: ApiKeyCreateRequest): Promise<ApiResponse<ApiKey>> {
+    return this.makeRequest('/api/api-keys/generate', {
+      method: 'POST',
+      body: JSON.stringify(keyData),
+    });
+  }
+
+  async getApiKey(keyId: string): Promise<ApiResponse<ApiKey>> {
+    return this.makeRequest(`/api/api-keys/${keyId}`);
+  }
+
+  async updateApiKey(keyId: string, updateData: ApiKeyUpdateRequest): Promise<ApiResponse<ApiKey>> {
+    return this.makeRequest(`/api/api-keys/${keyId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
+  }
+
+  async deleteApiKey(keyId: string): Promise<ApiResponse> {
+    return this.makeRequest(`/api/api-keys/${keyId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async listApiKeys(query?: {
+    page?: number;
+    limit?: number;
+    environment?: 'test' | 'live';
+    status?: string;
+  }): Promise<ApiResponse<ApiKeyListResponse>> {
+    const params = new URLSearchParams();
+    if (query) {
+      Object.entries(query).forEach(([key, value]) => {
+        if (value !== undefined) {
+          params.append(key, value.toString());
+        }
+      });
+    }
+
+    const endpoint = `/api/api-keys${params.toString() ? `?${params.toString()}` : ''}`;
+    return this.makeRequest(endpoint);
+  }
+
+  // API Key Operations
+  async regenerateApiKey(keyId: string): Promise<ApiResponse<{ key: string }>> {
+    return this.makeRequest(`/api/api-keys/${keyId}/regenerate`, {
+      method: 'POST',
+    });
+  }
+
+  async activateApiKey(keyId: string): Promise<ApiResponse<ApiKey>> {
+    return this.makeRequest(`/api/api-keys/${keyId}/activate`, {
+      method: 'POST',
+    });
+  }
+
+  async deactivateApiKey(keyId: string): Promise<ApiResponse<ApiKey>> {
+    return this.makeRequest(`/api/api-keys/${keyId}/deactivate`, {
+      method: 'POST',
+    });
+  }
+
+  // API Key Usage and Analytics
+  async getApiKeyUsage(keyId: string, period?: string): Promise<ApiResponse<ApiKeyUsage>> {
+    const params = period ? `?period=${period}` : '';
+    return this.makeRequest(`/api/api-keys/${keyId}/usage${params}`);
+  }
+
+  async getApiKeyStats(): Promise<ApiResponse<{
+    totalKeys: number;
+    activeKeys: number;
+    testKeys: number;
+    liveKeys: number;
+    totalRequests: number;
+    requestsToday: number;
+    averageRequestsPerKey: number;
+  }>> {
+    return this.makeRequest('/api/api-keys/stats');
+  }
+
+  // Permission Management
+  async getAvailablePermissions(): Promise<ApiResponse<{
+    permissions: Array<{
+      id: string;
+      name: string;
+      description: string;
+      category: string;
+    }>;
+  }>> {
+    return this.makeRequest('/api/api-keys/permissions');
+  }
+
+  async validateApiKey(key: string): Promise<ApiResponse<{
+    valid: boolean;
+    keyInfo?: {
+      id: string;
+      name: string;
+      environment: string;
+      permissions: string[];
+      merchantId: string;
+    };
+  }>> {
+    return this.makeRequest('/api/api-keys/validate', {
+      method: 'POST',
+      body: JSON.stringify({ key }),
+    });
+  }
+
+  // API Key Testing
+  async testApiKey(keyId: string): Promise<ApiResponse<{
+    success: boolean;
+    endpoint: string;
+    responseTime: number;
+    status: number;
+    error?: string;
+  }>> {
+    return this.makeRequest(`/api/api-keys/${keyId}/test`, {
+      method: 'POST',
+    });
+  }
+
+  /**
+   * Legacy method for backward compatibility
+   */
+  async getApiKeys(): Promise<ApiResponse<ApiKey[]>> {
+    const response = await this.listApiKeys();
+    if (response.success && response.data) {
+      return {
+        success: true,
+        data: response.data.apiKeys,
+      };
+    }
     return {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
+      success: false,
+      error: response.error || 'Failed to fetch API keys',
     };
   }
 
   /**
-   * Get all API keys for the current merchant (display only)
-   */
-  async getApiKeys(): Promise<ApiResponse<ApiKeyData[]>> {
-    try {
-      const response = await fetch(`${this.baseURL}/api/api-keys`, {
-        headers: this.getAuthHeaders()
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch API keys: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      
-      return {
-        success: true,
-        data: result.data || result.apiKeys || []
-      };
-    } catch (error) {
-      console.error('Error fetching API keys:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch API keys'
-      };
-    }
-  }
-
-  /**
-   * Revoke an API key (backend handles this)
+   * Legacy method for backward compatibility
    */
   async revokeApiKey(keyId: string): Promise<ApiResponse> {
-    try {
-      const response = await fetch(`${this.baseURL}/api/api-keys/${keyId}`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders()
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return {
-        success: true,
-        message: 'API key revoked successfully'
-      };
-    } catch (error) {
-      console.error('Error revoking API key:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to revoke API key'
-      };
-    }
+    return this.deleteApiKey(keyId);
   }
 
   /**

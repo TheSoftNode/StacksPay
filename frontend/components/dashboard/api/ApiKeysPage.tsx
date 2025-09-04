@@ -17,7 +17,8 @@ import {
   Settings,
   Code,
   Globe,
-  Lock
+  Lock,
+  Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,75 +53,52 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { 
+  useApiKeys, 
+  useCreateApiKey, 
+  useUpdateApiKey, 
+  useDeleteApiKey,
+  useAvailablePermissions 
+} from '@/hooks/use-api-keys'
+import { 
+  ApiKey,
+  ApiKeyCreateRequest,
+  ApiKeyUpdateRequest
+} from '@/lib/api/api-key-api'
+import { useToast } from '@/hooks/use-toast'
 
-interface ApiKey {
-  id: string
-  name: string
-  key: string
-  environment: 'test' | 'live'
-  permissions: string[]
-  createdAt: string
-  lastUsed?: string
-  status: 'active' | 'inactive' | 'expired'
-  expiresAt?: string
+interface ApiKeyCreated extends ApiKey {
+  apiKey: string // Full key only returned during creation
 }
 
-const mockApiKeys: ApiKey[] = [
-  {
-    id: '1',
-    name: 'Production API Key',
-    key: 'sk_live_1234567890abcdef1234567890abcdef',
-    environment: 'live',
-    permissions: ['payments.read', 'payments.write', 'webhooks.write'],
-    createdAt: '2024-08-01T10:00:00Z',
-    lastUsed: '2024-08-18T09:30:00Z',
-    status: 'active'
-  },
-  {
-    id: '2', 
-    name: 'Test Environment',
-    key: 'sk_test_abcdef1234567890abcdef1234567890',
-    environment: 'test',
-    permissions: ['payments.read', 'payments.write'],
-    createdAt: '2024-07-15T14:20:00Z',
-    lastUsed: '2024-08-17T16:45:00Z',
-    status: 'active'
-  },
-  {
-    id: '3',
-    name: 'Legacy Key',
-    key: 'sk_live_fedcba0987654321fedcba0987654321',
-    environment: 'live',
-    permissions: ['payments.read'],
-    createdAt: '2024-06-01T08:00:00Z',
-    lastUsed: '2024-07-20T12:15:00Z',
-    status: 'inactive'
-  }
-]
-
-const availablePermissions = [
-  { id: 'payments.read', name: 'Read Payments', description: 'View payment data' },
-  { id: 'payments.write', name: 'Write Payments', description: 'Create and modify payments' },
-  { id: 'customers.read', name: 'Read Customers', description: 'View customer data' },
-  { id: 'customers.write', name: 'Write Customers', description: 'Create and modify customers' },
-  { id: 'webhooks.write', name: 'Manage Webhooks', description: 'Create and modify webhooks' },
-  { id: 'analytics.read', name: 'Read Analytics', description: 'View analytics data' }
-]
-
 const ApiKeysPage = () => {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>(mockApiKeys)
+  // Fetch data from backend
+  const { data: apiKeysResponse, isLoading, error } = useApiKeys()
+  const { data: availablePermissions = [] } = useAvailablePermissions()
+  const { toast } = useToast()
+  
+  // Extract apiKeys array from response
+  const apiKeys = apiKeysResponse?.apiKeys || []
+  
+  // Mutations
+  const createApiKeyMutation = useCreateApiKey()
+  const updateApiKeyMutation = useUpdateApiKey()
+  const deleteApiKeyMutation = useDeleteApiKey()
+  
+  // Local state
   const [showKeys, setShowKeys] = useState<{[key: string]: boolean}>({})
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isRegenerateDialogOpen, setIsRegenerateDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedKey, setSelectedKey] = useState<ApiKey | null>(null)
-  const [newKeyData, setNewKeyData] = useState({
+  const [newKeyData, setNewKeyData] = useState<ApiKeyCreateRequest & { description: string }>({
     name: '',
     environment: 'test' as 'test' | 'live',
     permissions: [] as string[],
     description: ''
   })
+  const [createdKeyData, setCreatedKeyData] = useState<ApiKeyCreated | null>(null)
 
   const toggleKeyVisibility = (keyId: string) => {
     setShowKeys(prev => ({
@@ -131,7 +109,11 @@ const ApiKeysPage = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    // Toast notification would go here
+    toast({
+      title: "Copied",
+      description: "API key copied to clipboard",
+      variant: "default",
+    })
   }
 
   const formatDate = (dateString: string) => {
@@ -144,16 +126,14 @@ const ApiKeysPage = () => {
     })
   }
 
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      active: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300',
-      inactive: 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-300',
-      expired: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300'
-    }
-
-    return (
-      <Badge className={cn('text-xs font-medium', variants[status as keyof typeof variants])}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+  const getStatusBadge = (isActive: boolean) => {
+    return isActive ? (
+      <Badge className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
+        Active
+      </Badge>
+    ) : (
+      <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-300">
+        Inactive
       </Badge>
     )
   }
@@ -172,25 +152,36 @@ const ApiKeysPage = () => {
     )
   }
 
-  const handleCreateKey = () => {
-    const newKey: ApiKey = {
-      id: Date.now().toString(),
-      name: newKeyData.name,
-      key: `sk_${newKeyData.environment}_${Math.random().toString(36).substring(2, 34)}`,
-      environment: newKeyData.environment,
-      permissions: newKeyData.permissions,
-      createdAt: new Date().toISOString(),
-      status: 'active'
+  const handleCreateKey = async () => {
+    if (!newKeyData.name || newKeyData.permissions.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Name and at least one permission are required",
+        variant: "destructive",
+      })
+      return
     }
 
-    setApiKeys(prev => [newKey, ...prev])
-    setIsCreateDialogOpen(false)
-    setNewKeyData({
-      name: '',
-      environment: 'test',
-      permissions: [],
-      description: ''
-    })
+    try {
+      const result = await createApiKeyMutation.mutateAsync({
+        name: newKeyData.name,
+        environment: newKeyData.environment,
+        permissions: newKeyData.permissions,
+      })
+
+      if (result) {
+        setCreatedKeyData(result as ApiKeyCreated)
+        setIsCreateDialogOpen(false)
+        setNewKeyData({
+          name: '',
+          environment: 'test',
+          permissions: [],
+          description: ''
+        })
+      }
+    } catch (error) {
+      // Error handled by mutation
+    }
   }
 
   const togglePermission = (permission: string) => {
@@ -223,39 +214,88 @@ const ApiKeysPage = () => {
     setIsDeleteDialogOpen(true)
   }
 
-  const handleEditKey = () => {
-    if (!selectedKey) return
-    setApiKeys(prev => prev.map(key => 
-      key.id === selectedKey.id 
-        ? { ...key, name: newKeyData.name, permissions: newKeyData.permissions }
-        : key
-    ))
-    setIsEditDialogOpen(false)
-    setSelectedKey(null)
+  const handleEditKey = async () => {
+    if (!selectedKey || !newKeyData.name) {
+      toast({
+        title: "Validation Error",
+        description: "Name is required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      await updateApiKeyMutation.mutateAsync({
+        keyId: selectedKey.keyId,
+        updateData: {
+          name: newKeyData.name,
+          permissions: newKeyData.permissions,
+        }
+      })
+      setIsEditDialogOpen(false)
+      setSelectedKey(null)
+    } catch (error) {
+      // Error handled by mutation
+    }
   }
 
   const handleRegenerateKey = () => {
-    if (!selectedKey) return
-    const newKeyValue = `sk_${selectedKey.environment}_${Math.random().toString(36).substring(2, 34)}`
-    setApiKeys(prev => prev.map(key => 
-      key.id === selectedKey.id 
-        ? { ...key, key: newKeyValue, createdAt: new Date().toISOString() }
-        : key
-    ))
+    // Regenerate not implemented in backend yet
+    toast({
+      title: "Not Implemented",
+      description: "API key regeneration is not yet available",
+      variant: "destructive",
+    })
     setIsRegenerateDialogOpen(false)
     setSelectedKey(null)
   }
 
-  const deleteKey = (keyId: string) => {
-    setApiKeys(prev => prev.filter(key => key.id !== keyId))
-    setIsDeleteDialogOpen(false)
-    setSelectedKey(null)
+  const handleDeleteKey = async () => {
+    if (!selectedKey) return
+
+    try {
+      await deleteApiKeyMutation.mutateAsync(selectedKey.keyId)
+      setIsDeleteDialogOpen(false)
+      setSelectedKey(null)
+    } catch (error) {
+      // Error handled by mutation
+    }
   }
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+          <span className="ml-2 text-gray-600 dark:text-gray-400">Loading API keys...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <Card className="bg-white dark:bg-gray-900 border border-red-500 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-medium text-red-900 dark:text-red-100">
+                  Failed to load API keys
+                </h3>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  {error instanceof Error ? error.message : 'An unexpected error occurred'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Content when loaded */}
+      {!isLoading && !error && (
+        <>
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
             API Keys
@@ -348,10 +388,17 @@ const ApiKeysPage = () => {
               </Button>
               <Button 
                 onClick={handleCreateKey}
-                disabled={!newKeyData.name || newKeyData.permissions.length === 0}
+                disabled={!newKeyData.name || newKeyData.permissions.length === 0 || createApiKeyMutation.isPending}
                 className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
               >
-                Create Key
+                {createApiKeyMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Key'
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -380,7 +427,7 @@ const ApiKeysPage = () => {
       <div className="space-y-4">
         {apiKeys.map((apiKey, index) => (
           <motion.div
-            key={apiKey.id}
+            key={apiKey.keyId}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
@@ -394,23 +441,23 @@ const ApiKeysPage = () => {
                         {apiKey.name}
                       </h3>
                       {getEnvironmentBadge(apiKey.environment)}
-                      {getStatusBadge(apiKey.status)}
+                      {getStatusBadge(apiKey.isActive)}
                     </div>
                     
                     <div className="flex items-center space-x-3 mb-4">
                       <div className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 font-mono text-sm">
-                        {showKeys[apiKey.id] 
-                          ? apiKey.key 
-                          : `${apiKey.key.substring(0, 12)}${'•'.repeat(20)}`
+                        {showKeys[apiKey.keyId] 
+                          ? apiKey.keyPreview // Show more of the preview since we don't have full key
+                          : `${apiKey.keyPreview.substring(0, 12)}${'•'.repeat(20)}`
                         }
                       </div>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => toggleKeyVisibility(apiKey.id)}
+                        onClick={() => toggleKeyVisibility(apiKey.keyId)}
                         className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
-                        {showKeys[apiKey.id] ? (
+                        {showKeys[apiKey.keyId] ? (
                           <EyeOff className="h-4 w-4" />
                         ) : (
                           <Eye className="h-4 w-4" />
@@ -419,7 +466,7 @@ const ApiKeysPage = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => copyToClipboard(apiKey.key)}
+                        onClick={() => copyToClipboard(apiKey.keyPreview)}
                         className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
                         <Copy className="h-4 w-4" />
@@ -579,10 +626,17 @@ const ApiKeysPage = () => {
             </Button>
             <Button 
               onClick={handleEditKey}
-              disabled={!newKeyData.name}
+              disabled={!newKeyData.name || updateApiKeyMutation.isPending}
               className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
             >
-              Save Changes
+              {updateApiKeyMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -655,14 +709,80 @@ const ApiKeysPage = () => {
               Cancel
             </Button>
             <Button 
-              onClick={() => selectedKey && deleteKey(selectedKey.id)}
+              onClick={handleDeleteKey}
+              disabled={deleteApiKeyMutation.isPending}
               className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
             >
-              Delete Key
+              {deleteApiKeyMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Key'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* New API Key Created Dialog */}
+      {createdKeyData && (
+        <Dialog open={!!createdKeyData} onOpenChange={() => setCreatedKeyData(null)}>
+          <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <CheckCircle className="mr-2 h-5 w-5 text-green-600" />
+                API Key Created
+              </DialogTitle>
+              <DialogDescription>
+                Your new API key has been created. Please copy and store it securely as it will not be shown again.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <Label className="text-sm font-medium mb-2 block">Your API Key</Label>
+                <div className="flex items-center space-x-2">
+                  <code className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-mono">
+                    {createdKeyData.apiKey}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(createdKeyData.apiKey)}
+                    className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
+                <div className="flex items-start space-x-2">
+                  <Shield className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-orange-900 dark:text-orange-100">
+                      Security Notice
+                    </p>
+                    <p className="text-orange-700 dark:text-orange-300">
+                      This key will not be shown again. Store it in a secure location.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button onClick={() => setCreatedKeyData(null)} className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700">
+                I have saved the key
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+        </>
+      )}
     </div>
   )
 }

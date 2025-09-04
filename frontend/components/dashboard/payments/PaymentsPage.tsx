@@ -74,10 +74,13 @@ import {
   useRefundPayment,
   useUpdatePayment
 } from '@/hooks/use-payments'
+import { Payment } from '@/lib/api/payment-api'
 import { usePaymentStore, useFilteredPayments } from '@/stores/payment-store'
-import { toast } from 'sonner'
+import { useToast } from '@/hooks/use-toast'
 
 const PaymentsPage = () => {
+  const { toast } = useToast()
+  
   // Get payment state and actions from store
   const {
     selectedPayment,
@@ -123,7 +126,7 @@ const PaymentsPage = () => {
   const downloadRef = useRef<HTMLAnchorElement>(null)
   
   // Modal states
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  const [modalPayment, setModalPayment] = useState<Payment | null>(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
@@ -202,33 +205,33 @@ const PaymentsPage = () => {
 
   // Modal handlers
   const openDetailsModal = (payment: any) => {
-    setSelectedPayment(payment)
+    setModalPayment(payment)
     setIsDetailsModalOpen(true)
   }
 
   const openRefundModal = (payment: any) => {
-    setSelectedPayment(payment)
+    setModalPayment(payment)
     setRefundAmount(payment.amount.toString())
     setIsRefundModalOpen(true)
   }
 
   const openCancelModal = (payment: any) => {
-    setSelectedPayment(payment)
+    setModalPayment(payment)
     setIsCancelModalOpen(true)
   }
 
   const openRetryModal = (payment: any) => {
-    setSelectedPayment(payment)
+    setModalPayment(payment)
     setIsRetryModalOpen(true)
   }
 
   const handleRefund = async () => {
-    if (!selectedPayment || !refundAmount) return;
+    if (!modalPayment || !refundAmount) return;
 
     // TODO: Add blockchain transaction handling for refunds
     // For now, this is a placeholder that marks the payment as refunded
     await refundPayment.mutateAsync({
-      paymentId: selectedPayment.id,
+      paymentId: modalPayment.id,
       refundData: {
         amount: parseFloat(refundAmount),
         reason: refundReason,
@@ -240,35 +243,36 @@ const PaymentsPage = () => {
     });
 
     setIsRefundModalOpen(false);
-    setRefundAmount('');
-    setRefundReason('');
-    setSelectedPayment(null);
-  }
+    setModalPayment(null);
 
   const handleCancel = async () => {
-    if (!selectedPayment) return;
+    if (!modalPayment) return;
 
-    await cancelPayment.mutateAsync(selectedPayment.id);
+    await cancelPayment.mutateAsync(modalPayment.id);
     setIsCancelModalOpen(false);
-    setSelectedPayment(null);
+    setModalPayment(null);
   }
 
   const handleRetry = async () => {
-    if (!selectedPayment) return;
+    if (!modalPayment) return;
 
     // Retry by updating status back to pending
     await updatePayment.mutateAsync({
-      paymentId: selectedPayment.id,
+      paymentId: modalPayment.id,
       updateData: { status: 'completed' } // Mock retry as success
     });
 
     setIsRetryModalOpen(false);
-    setSelectedPayment(null);
+    setModalPayment(null);
   }
 
   const generatePaymentLink = async () => {
     if (!paymentLinkData.amount || !paymentLinkData.description) {
-      toast.error('Please fill in required fields');
+      toast({
+        title: "Error",
+        description: "Please fill in required fields",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -404,7 +408,7 @@ const PaymentsPage = () => {
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
-                    {(payment.status === 'completed' || payment.status === 'confirmed') && (
+                    {payment.status === 'confirmed' && (
                       <DropdownMenuItem onClick={() => openRefundModal(payment)} className="text-orange-600">
                         <RotateCcw className="mr-2 h-4 w-4" />
                         Refund Payment
@@ -582,91 +586,30 @@ const PaymentsPage = () => {
       {/* Payment Details Modal */}
       <Dialog open={isDetailsModalOpen} onOpenChange={(open) => {
         setIsDetailsModalOpen(open)
-        if (!open) setSelectedPayment(null)
+        if (!open) setModalPayment(null)
       }}>
         <DialogContent className="max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle>Payment Details</DialogTitle>
             <DialogDescription>
-              Complete information about payment {selectedPayment?.id}
+              Complete information about payment {modalPayment?.id}
             </DialogDescription>
           </DialogHeader>
           
-          {selectedPayment && (
+          {modalPayment && (
             <div className="space-y-6">
               {/* Payment Summary */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Payment ID</Label>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">{selectedPayment.id}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">{modalPayment.id}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Status</Label>
-                  <div className="flex items-center space-x-2 mt-1">
-                    {getStatusIcon(selectedPayment.status)}
-                    {getStatusBadge(selectedPayment.status)}
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon(modalPayment.status)}
+                    {getStatusBadge(modalPayment.status)}
                   </div>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Amount</Label>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {selectedPayment.amount} {selectedPayment.currency} (${selectedPayment.usdAmount.toLocaleString()})
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Payment Method</Label>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{selectedPayment.paymentMethod}</p>
-                </div>
-              </div>
-
-              {/* Customer Information */}
-              <div className="border-t pt-4">
-                <h4 className="font-medium mb-3">Customer Information</h4>
-                <div className="flex items-center space-x-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={selectedPayment.customer.avatar} alt={selectedPayment.customer.name} />
-                    <AvatarFallback className="bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
-                      {selectedPayment.customer.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{selectedPayment.customer.name}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{selectedPayment.customer.email}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Transaction Details */}
-              <div className="border-t pt-4">
-                <h4 className="font-medium mb-3">Transaction Details</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Description:</span>
-                    <span>{selectedPayment.description}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Created:</span>
-                    <span>{formatDate(selectedPayment.createdAt)}</span>
-                  </div>
-                  {selectedPayment.completedAt && (
-                    <div className="flex justify-between">
-                      <span>Completed:</span>
-                      <span>{formatDate(selectedPayment.completedAt)}</span>
-                    </div>
-                  )}
-                  {selectedPayment.transactionHash && (
-                    <div className="flex justify-between">
-                      <span>Transaction Hash:</span>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => copyToClipboard(selectedPayment.transactionHash!)}
-                        className="h-auto p-0 text-blue-600 hover:text-blue-700"
-                      >
-                        {selectedPayment.transactionHash.slice(0, 20)}...
-                      </Button>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -678,7 +621,7 @@ const PaymentsPage = () => {
       <Dialog open={isRefundModalOpen} onOpenChange={(open) => {
         setIsRefundModalOpen(open)
         if (!open) {
-          setSelectedPayment(null)
+          setModalPayment(null)
           setRefundAmount('')
           setRefundReason('')
         }
@@ -687,39 +630,39 @@ const PaymentsPage = () => {
           <DialogHeader>
             <DialogTitle>Refund Payment</DialogTitle>
             <DialogDescription>
-              Process a refund for payment {selectedPayment?.id}
+              Process a refund for payment {modalPayment?.id}
             </DialogDescription>
           </DialogHeader>
           
-          {selectedPayment && (
+          {modalPayment && (
             <div className="space-y-4">
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="flex justify-between text-sm">
-                  <span>Original Amount:</span>
-                  <span className="font-medium">{selectedPayment.amount} {selectedPayment.currency}</span>
-                </div>
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  Original amount: <span className="font-medium">{modalPayment.amount} {modalPayment.currency}</span>
+                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="refund-amount">Refund Amount</Label>
-                <Input
-                  id="refund-amount"
+                <Label htmlFor="refundAmount">Refund Amount</Label>
+                <Input 
+                  id="refundAmount" 
                   type="number"
-                  placeholder="0.00"
                   value={refundAmount}
                   onChange={(e) => setRefundAmount(e.target.value)}
-                  max={selectedPayment.amount}
+                  min="0"
+                  max={modalPayment.amount}
+                  className="bg-white dark:bg-gray-900 border"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="refund-reason">Reason (Optional)</Label>
-                <Textarea
-                  id="refund-reason"
-                  placeholder="Describe the reason for this refund..."
+                <Label htmlFor="refundReason">Reason (Optional)</Label>
+                <Input 
+                  id="refundReason" 
                   value={refundReason}
                   onChange={(e) => setRefundReason(e.target.value)}
-                  rows={3}
+                  placeholder="Reason for refund"
+                  className="bg-white dark:bg-gray-900 border"
                 />
               </div>
             </div>
@@ -731,8 +674,8 @@ const PaymentsPage = () => {
             </Button>
             <Button 
               onClick={handleRefund}
-              disabled={!refundAmount || isSubmitting}
-              className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+              disabled={isSubmitting || !refundAmount}
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               {isSubmitting && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
               {isSubmitting ? 'Processing...' : 'Process Refund'}
@@ -744,7 +687,7 @@ const PaymentsPage = () => {
       {/* Cancel Modal */}
       <Dialog open={isCancelModalOpen} onOpenChange={(open) => {
         setIsCancelModalOpen(open)
-        if (!open) setSelectedPayment(null)
+        if (!open) setModalPayment(null)
       }}>
         <DialogContent className="max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
           <DialogHeader>
@@ -754,7 +697,7 @@ const PaymentsPage = () => {
             </DialogDescription>
           </DialogHeader>
           
-          {selectedPayment && (
+          {modalPayment && (
             <div className="space-y-4">
               <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
                 <div className="flex items-center space-x-2">
@@ -771,15 +714,15 @@ const PaymentsPage = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Payment ID:</span>
-                  <span className="font-mono">{selectedPayment.id}</span>
+                  <span className="font-mono">{modalPayment.id}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Customer:</span>
-                  <span>{selectedPayment.customer.name}</span>
+                  <span>{modalPayment.customerInfo?.name || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Amount:</span>
-                  <span>{selectedPayment.amount} {selectedPayment.currency}</span>
+                  <span>{modalPayment.amount} {modalPayment.currency}</span>
                 </div>
               </div>
             </div>
@@ -804,7 +747,7 @@ const PaymentsPage = () => {
       {/* Retry Modal */}
       <Dialog open={isRetryModalOpen} onOpenChange={(open) => {
         setIsRetryModalOpen(open)
-        if (!open) setSelectedPayment(null)
+        if (!open) setModalPayment(null)
       }}>
         <DialogContent className="max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
           <DialogHeader>
@@ -814,7 +757,7 @@ const PaymentsPage = () => {
             </DialogDescription>
           </DialogHeader>
           
-          {selectedPayment && (
+          {modalPayment && (
             <div className="space-y-4">
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <div className="flex items-center space-x-2">
@@ -831,19 +774,19 @@ const PaymentsPage = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Payment ID:</span>
-                  <span className="font-mono">{selectedPayment.id}</span>
+                  <span className="font-mono">{modalPayment.id}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Customer:</span>
-                  <span>{selectedPayment.customer.name}</span>
+                  <span>{modalPayment.customerInfo?.name || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Amount:</span>
-                  <span>{selectedPayment.amount} {selectedPayment.currency}</span>
+                  <span>{modalPayment.amount} {modalPayment.currency}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Original Date:</span>
-                  <span>{formatDate(selectedPayment.createdAt)}</span>
+                  <span>{formatDate(modalPayment.createdAt)}</span>
                 </div>
               </div>
             </div>
@@ -883,7 +826,7 @@ const PaymentsPage = () => {
             </DialogDescription>
           </DialogHeader>
           
-          {!generatedLink ? (
+          {!generatedPaymentLink ? (
             <div className="space-y-6">
               {/* Basic Information */}
               <div className="space-y-4">
@@ -1023,14 +966,14 @@ const PaymentsPage = () => {
                 <Label>Payment Link</Label>
                 <div className="flex items-center space-x-2">
                   <Input
-                    value={generatedLink}
+                    value={generatedPaymentLink?.url || ''}
                     readOnly
                     className="font-mono text-sm bg-gray-50 dark:bg-gray-800"
                   />
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => copyToClipboard(generatedLink)}
+                    onClick={() => copyToClipboard(generatedPaymentLink?.url || '')}
                     className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
                     <Copy className="h-4 w-4" />
@@ -1053,7 +996,7 @@ const PaymentsPage = () => {
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => navigator.share?.({ url: generatedLink, title: 'Payment Link' })}
+                  onClick={() => navigator.share?.({ url: generatedPaymentLink?.url || '', title: 'Payment Link' })}
                   className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   <Share className="mr-2 h-4 w-4" />
@@ -1061,7 +1004,7 @@ const PaymentsPage = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => window.open(`mailto:${paymentLinkData.customerEmail}?subject=Payment Request&body=Please complete your payment: ${generatedLink}`)}
+                  onClick={() => window.open(`mailto:${paymentLinkData.customerEmail}?subject=Payment Request&body=Please complete your payment: ${generatedPaymentLink?.url || ''}`)}
                   className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   <Mail className="mr-2 h-4 w-4" />
@@ -1077,9 +1020,9 @@ const PaymentsPage = () => {
               onClick={() => setIsPaymentLinkModalOpen(false)}
               className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
             >
-              {generatedLink ? 'Close' : 'Cancel'}
+              {generatedPaymentLink ? 'Close' : 'Cancel'}
             </Button>
-            {!generatedLink ? (
+            {!generatedPaymentLink ? (
               <Button 
                 onClick={generatePaymentLink}
                 disabled={!paymentLinkData.amount || !paymentLinkData.description || isSubmitting}
@@ -1102,6 +1045,7 @@ const PaymentsPage = () => {
       </Dialog>
     </div>
   )
+}
 }
 
 export default PaymentsPage

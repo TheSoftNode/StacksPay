@@ -61,38 +61,37 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { 
+  useWebhooks, 
+  useWebhookEvents, 
+  useWebhookStats,
+  useCreateWebhook,
+  useUpdateWebhook,
+  useDeleteWebhook,
+  useTestWebhook,
+  useRegenerateWebhookSecret,
+  useRetryWebhookEvent
+} from '@/hooks/use-webhooks'
+import { Webhook as WebhookType, WebhookEvent } from '@/lib/api/webhook-api'
 
-interface WebhookEndpoint {
-  id: string
-  url: string
-  description: string
-  events: string[]
-  status: 'active' | 'inactive' | 'failed'
-  lastDelivery: string
-  successRate: number
-  createdAt: string
-  secret: string
-}
-
-interface WebhookEvent {
-  id: string
-  type: string
-  status: 'success' | 'failed' | 'pending'
-  timestamp: string
-  endpoint: string
-  attempts: number
-  response: {
-    status: number
-    body?: string
-  }
-}
+const availableEvents = [
+  'payment.succeeded',
+  'payment.failed',
+  'payment.refunded',
+  'payment.disputed',
+  'customer.created',
+  'customer.updated',
+  'subscription.created',
+  'subscription.updated',
+  'subscription.cancelled'
+]
 
 const WebhooksPage = () => {
   const [showAddWebhook, setShowAddWebhook] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isTestDialogOpen, setIsTestDialogOpen] = useState(false)
-  const [selectedWebhook, setSelectedWebhook] = useState<WebhookEndpoint | null>(null)
+  const [selectedWebhook, setSelectedWebhook] = useState<WebhookType | null>(null)
   const [selectedEvent, setSelectedEvent] = useState<WebhookEvent | null>(null)
   const [activeTab, setActiveTab] = useState('endpoints')
   const [webhookData, setWebhookData] = useState({
@@ -104,95 +103,27 @@ const WebhooksPage = () => {
   const [testResult, setTestResult] = useState<{status: number, message: string} | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Mock data
-  const webhookEndpoints: WebhookEndpoint[] = [
-    {
-      id: '1',
-      url: 'https://api.example.com/webhooks/payments',
-      description: 'Payment notifications for main application',
-      events: ['payment.succeeded', 'payment.failed', 'payment.refunded'],
-      status: 'active',
-      lastDelivery: '2024-01-15T10:30:00Z',
-      successRate: 98.5,
-      createdAt: '2023-12-01T09:00:00Z',
-      secret: 'whsec_1234567890abcdef'
-    },
-    {
-      id: '2',
-      url: 'https://analytics.example.com/webhook',
-      description: 'Analytics and reporting webhook',
-      events: ['payment.succeeded', 'customer.created'],
-      status: 'active',
-      lastDelivery: '2024-01-15T10:25:00Z',
-      successRate: 100,
-      createdAt: '2024-01-02T14:30:00Z',
-      secret: 'whsec_abcdef1234567890'
-    },
-    {
-      id: '3',
-      url: 'https://backup.example.com/webhooks',
-      description: 'Backup webhook endpoint',
-      events: ['payment.succeeded', 'payment.failed'],
-      status: 'failed',
-      lastDelivery: '2024-01-14T15:45:00Z',
-      successRate: 45.2,
-      createdAt: '2023-11-15T11:20:00Z',
-      secret: 'whsec_fedcba0987654321'
-    }
-  ]
+  // API hooks
+  const { data: webhooksData, isLoading: isLoadingWebhooks } = useWebhooks()
+  const { data: webhookEventsData, isLoading: isLoadingEvents } = useWebhookEvents()
+  const { data: webhookStats } = useWebhookStats()
+  const createWebhookMutation = useCreateWebhook()
+  const updateWebhookMutation = useUpdateWebhook()
+  const deleteWebhookMutation = useDeleteWebhook()
+  const testWebhookMutation = useTestWebhook()
+  const regenerateSecretMutation = useRegenerateWebhookSecret()
+  const retryEventMutation = useRetryWebhookEvent()
 
-  const webhookEvents: WebhookEvent[] = [
-    {
-      id: '1',
-      type: 'payment.succeeded',
-      status: 'success',
-      timestamp: '2024-01-15T10:30:00Z',
-      endpoint: 'https://api.example.com/webhooks/payments',
-      attempts: 1,
-      response: { status: 200 }
-    },
-    {
-      id: '2',
-      type: 'payment.failed',
-      status: 'failed',
-      timestamp: '2024-01-15T10:28:00Z',
-      endpoint: 'https://backup.example.com/webhooks',
-      attempts: 3,
-      response: { status: 500, body: 'Internal Server Error' }
-    },
-    {
-      id: '3',
-      type: 'customer.created',
-      status: 'success',
-      timestamp: '2024-01-15T10:25:00Z',
-      endpoint: 'https://analytics.example.com/webhook',
-      attempts: 1,
-      response: { status: 200 }
-    },
-    {
-      id: '4',
-      type: 'payment.refunded',
-      status: 'pending',
-      timestamp: '2024-01-15T10:22:00Z',
-      endpoint: 'https://api.example.com/webhooks/payments',
-      attempts: 0,
-      response: { status: 0 }
-    }
-  ]
+  const webhookEndpoints = webhooksData?.webhooks || []
+  const webhookEvents = webhookEventsData?.events || []
 
-  const availableEvents = [
-    'payment.succeeded',
-    'payment.failed',
-    'payment.refunded',
-    'payment.disputed',
-    'customer.created',
-    'customer.updated',
-    'subscription.created',
-    'subscription.updated',
-    'subscription.cancelled'
-  ]
+  // Calculate stats from real data
+  const activeEndpoints = webhookStats?.activeWebhooks || 0
+  const totalEvents = webhookStats?.totalEvents || 0
+  const successfulEvents = webhookStats?.successfulEvents || 0
+  const failedEvents = webhookStats?.failedEvents || 0
 
-  const getStatusBadge = (status: WebhookEndpoint['status']) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
         return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">Active</Badge>
@@ -232,10 +163,118 @@ const WebhooksPage = () => {
     navigator.clipboard.writeText(text)
   }
 
-  const activeEndpoints = webhookEndpoints.filter(w => w.status === 'active').length
-  const totalEvents = webhookEvents.length
-  const successfulEvents = webhookEvents.filter(e => e.status === 'success').length
-  const failedEvents = webhookEvents.filter(e => e.status === 'failed').length
+  // Handler functions
+  const handleAddWebhook = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    
+    try {
+      await createWebhookMutation.mutateAsync({
+        url: webhookData.url,
+        description: webhookData.description,
+        events: webhookData.events,
+        isActive: webhookData.isActive
+      })
+      
+      setShowAddWebhook(false)
+      setWebhookData({ url: '', description: '', events: [], isActive: true })
+    } catch (error) {
+      console.error('Failed to create webhook:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleEditWebhook = (webhook: WebhookType) => {
+    setSelectedWebhook(webhook)
+    setWebhookData({
+      url: webhook.url,
+      description: webhook.description || '',
+      events: webhook.events,
+      isActive: webhook.status === 'active'
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const handleUpdateWebhook = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedWebhook) return
+    
+    setIsSubmitting(true)
+    
+    try {
+      await updateWebhookMutation.mutateAsync({
+        webhookId: selectedWebhook.id,
+        updateData: {
+          url: webhookData.url,
+          description: webhookData.description,
+          events: webhookData.events,
+          isActive: webhookData.isActive
+        }
+      })
+      
+      setIsEditDialogOpen(false)
+      setSelectedWebhook(null)
+      setWebhookData({ url: '', description: '', events: [], isActive: true })
+    } catch (error) {
+      console.error('Failed to update webhook:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteWebhook = async () => {
+    if (!selectedWebhook) return
+    
+    try {
+      await deleteWebhookMutation.mutateAsync(selectedWebhook.id)
+      setIsDeleteDialogOpen(false)
+      setSelectedWebhook(null)
+    } catch (error) {
+      console.error('Failed to delete webhook:', error)
+    }
+  }
+
+  const handleTestWebhook = async () => {
+    if (!selectedWebhook) return
+    
+    setIsSubmitting(true)
+    
+    try {
+      const result = await testWebhookMutation.mutateAsync({
+        webhookId: selectedWebhook.id,
+        eventType: 'test.webhook'
+      })
+      
+      setTestResult({
+        status: result.status || 200,
+        message: result.response || 'Test successful'
+      })
+    } catch (error: any) {
+      setTestResult({
+        status: error.status || 500,
+        message: error.message || 'Test failed'
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleRegenerateSecret = async (webhookId: string) => {
+    try {
+      await regenerateSecretMutation.mutateAsync(webhookId)
+    } catch (error) {
+      console.error('Failed to regenerate secret:', error)
+    }
+  }
+
+  const handleRetryEvent = async (eventId: string) => {
+    try {
+      await retryEventMutation.mutateAsync(eventId)
+    } catch (error) {
+      console.error('Failed to retry event:', error)
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -391,7 +430,46 @@ const WebhooksPage = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {webhookEndpoints.map((webhook) => (
+                    {isLoadingWebhooks ? (
+                      Array.from({ length: 3 }, (_, i) => (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <div className="space-y-2">
+                              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4"></div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-16"></div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-20"></div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-12"></div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-8"></div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : webhookEndpoints.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8">
+                          <div className="flex flex-col items-center space-y-2">
+                            <Webhook className="h-8 w-8 text-gray-400" />
+                            <p className="text-gray-500 dark:text-gray-400">No webhook endpoints configured</p>
+                            <Button 
+                              onClick={() => setShowAddWebhook(true)}
+                              className="bg-orange-600 hover:bg-orange-700 text-white"
+                            >
+                              Add Your First Webhook
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                    webhookEndpoints.map((webhook) => (
                       <TableRow key={webhook.id}>
                         <TableCell>
                           <div className="space-y-1">
@@ -434,7 +512,7 @@ const WebhooksPage = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {formatDateTime(webhook.lastDelivery)}
+                          {webhook.lastDelivery ? formatDateTime(webhook.lastDelivery) : 'Never'}
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
@@ -449,16 +527,7 @@ const WebhooksPage = () => {
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => {
-                                setSelectedWebhook(webhook)
-                                setWebhookData({
-                                  url: webhook.url,
-                                  description: webhook.description,
-                                  events: webhook.events,
-                                  isActive: webhook.status === 'active'
-                                })
-                                setIsEditDialogOpen(true)
-                              }}>
+                              <DropdownMenuItem onClick={() => handleEditWebhook(webhook)}>
                                 <Edit3 className="mr-2 h-4 w-4" />
                                 Edit Endpoint
                               </DropdownMenuItem>
@@ -488,7 +557,8 @@ const WebhooksPage = () => {
                           </DropdownMenu>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -520,7 +590,41 @@ const WebhooksPage = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {webhookEvents.map((event) => (
+                    {isLoadingEvents ? (
+                      Array.from({ length: 3 }, (_, i) => (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-32"></div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-16"></div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-24"></div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-12"></div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-16"></div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-20"></div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : webhookEvents.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          <div className="flex flex-col items-center space-y-2">
+                            <AlertCircle className="h-8 w-8 text-gray-400" />
+                            <p className="text-gray-500 dark:text-gray-400">No webhook events yet</p>
+                            <p className="text-sm text-gray-400">Events will appear here when webhooks are triggered</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                    webhookEvents.map((event) => (
                       <TableRow key={event.id}>
                         <TableCell className="font-medium">
                           {event.type}
@@ -561,7 +665,8 @@ const WebhooksPage = () => {
                           </Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -692,16 +797,17 @@ const WebhooksPage = () => {
               Cancel
             </Button>
             <Button 
-              onClick={() => {
-                // Handle webhook creation
-                setShowAddWebhook(false)
-                setWebhookData({ url: '', description: '', events: [], isActive: true })
-              }}
-              disabled={!webhookData.url || webhookData.events.length === 0}
+              onClick={handleAddWebhook}
+              disabled={!webhookData.url || webhookData.events.length === 0 || isSubmitting}
               className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
             >
-              <Plus className="mr-2 h-4 w-4" />
-              Create Endpoint
+              {isSubmitting && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Creating...' : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Endpoint
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -870,7 +976,10 @@ const WebhooksPage = () => {
             <Button variant="outline" onClick={() => setSelectedEvent(null)} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
               Close
             </Button>
-            <Button className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700">
+            <Button 
+              onClick={() => selectedEvent && handleRetryEvent(selectedEvent.id)}
+              className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
+            >
               <RefreshCw className="mr-2 h-4 w-4" />
               Retry Event
             </Button>
@@ -962,15 +1071,12 @@ const WebhooksPage = () => {
               Cancel
             </Button>
             <Button 
-              onClick={() => {
-                // Handle webhook update
-                setIsEditDialogOpen(false)
-                setSelectedWebhook(null)
-              }}
-              disabled={!webhookData.url || webhookData.events.length === 0}
+              onClick={handleUpdateWebhook}
+              disabled={!webhookData.url || webhookData.events.length === 0 || isSubmitting}
               className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
             >
-              Save Changes
+              {isSubmitting && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1056,16 +1162,7 @@ const WebhooksPage = () => {
               Cancel
             </Button>
             <Button 
-              onClick={async () => {
-                setIsSubmitting(true)
-                // Simulate test request
-                await new Promise(resolve => setTimeout(resolve, 1500))
-                setTestResult({
-                  status: Math.random() > 0.3 ? 200 : 500,
-                  message: Math.random() > 0.3 ? 'Webhook test successful' : 'Connection timeout'
-                })
-                setIsSubmitting(false)
-              }}
+              onClick={handleTestWebhook}
               disabled={isSubmitting}
               className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
             >
@@ -1115,11 +1212,7 @@ const WebhooksPage = () => {
               Cancel
             </Button>
             <Button 
-              onClick={() => {
-                // Handle webhook deletion
-                setIsDeleteDialogOpen(false)
-                setSelectedWebhook(null)
-              }}
+              onClick={handleDeleteWebhook}
               className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
             >
               Delete Endpoint

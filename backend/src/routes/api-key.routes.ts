@@ -109,6 +109,7 @@ router.post('/generate', asyncHandler(async (req: express.Request, res: express.
  */
 router.get('/', asyncHandler(async (req: express.Request, res: express.Response) => {
   const merchantId = req.merchant?.id;
+  const { page = 1, limit = 10 } = req.query;
 
   if (!merchantId) {
     res.status(401).json({
@@ -129,7 +130,7 @@ router.get('/', asyncHandler(async (req: express.Request, res: express.Response)
     }
 
     // Return API keys without sensitive data
-    const apiKeys = merchant.apiKeys
+    const allApiKeys = merchant.apiKeys
       .filter((key: any) => key.isActive)
       .map((key: any) => ({
         keyId: key.keyId,
@@ -137,18 +138,35 @@ router.get('/', asyncHandler(async (req: express.Request, res: express.Response)
         keyPreview: key.keyPreview,
         environment: key.environment,
         permissions: key.permissions,
-        ipRestrictions: key.ipRestrictions,
-        rateLimit: key.rateLimit,
-        createdAt: key.createdAt,
-        lastUsed: key.lastUsed,
-        expiresAt: key.expiresAt,
+        ipRestrictions: key.ipRestrictions || [],
+        rateLimit: key.rateLimit || 1000,
+        createdAt: key.createdAt?.toISOString(),
+        lastUsed: key.lastUsed?.toISOString(),
+        expiresAt: key.expiresAt?.toISOString(),
         isActive: key.isActive,
         requestCount: key.requestCount || 0
       }));
 
+    // Simple pagination
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const startIndex = (pageNum - 1) * limitNum;
+    const endIndex = startIndex + limitNum;
+    const paginatedKeys = allApiKeys.slice(startIndex, endIndex);
+
+    const response = {
+      apiKeys: paginatedKeys,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: allApiKeys.length,
+        totalPages: Math.ceil(allApiKeys.length / limitNum)
+      }
+    };
+
     res.json({
       success: true,
-      data: apiKeys
+      data: response
     });
   } catch (error: any) {
     logger.error('API key fetch error:', error);
@@ -284,6 +302,498 @@ router.put('/:keyId', asyncHandler(async (req: express.Request, res: express.Res
     res.status(500).json({
       success: false,
       error: 'Failed to update API key'
+    });
+  }
+}));
+
+/**
+ * Regenerate API key
+ */
+router.post('/:keyId/regenerate', asyncHandler(async (req: express.Request, res: express.Response) => {
+  const merchantId = req.merchant?.id;
+  const keyId = req.params.keyId;
+
+  if (!merchantId) {
+    res.status(401).json({
+      success: false,
+      error: 'Merchant authentication required'
+    });
+    return;
+  }
+
+  try {
+    const merchant = await Merchant.findById(merchantId);
+    if (!merchant) {
+      res.status(404).json({
+        success: false,
+        error: 'Merchant not found'
+      });
+      return;
+    }
+
+    // Find the API key
+    const apiKey = merchant.apiKeys.find((key: any) => key.keyId === keyId);
+    if (!apiKey) {
+      res.status(404).json({
+        success: false,
+        error: 'API key not found'
+      });
+      return;
+    }
+
+    // Generate new API key
+    const keySecret = crypto.randomBytes(32).toString('hex');
+    const newApiKey = `sk_${apiKey.environment}_${keySecret}`;
+    const newKeyHash = await bcrypt.hash(newApiKey, 10);
+    const newKeyPreview = `sk_${apiKey.environment}_****${keySecret.slice(-4)}`;
+
+    // Update the API key
+    apiKey.keyHash = newKeyHash;
+    apiKey.keyPreview = newKeyPreview;
+    apiKey.createdAt = new Date();
+
+    await merchant.save();
+
+    logger.info('API key regenerated', {
+      merchantId,
+      keyId,
+      environment: apiKey.environment
+    });
+
+    res.json({
+      success: true,
+      message: 'API key regenerated successfully',
+      data: {
+        key: newApiKey // Only returned once
+      }
+    });
+  } catch (error: any) {
+    logger.error('API key regeneration error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to regenerate API key'
+    });
+  }
+}));
+
+/**
+ * Activate API key
+ */
+router.post('/:keyId/activate', asyncHandler(async (req: express.Request, res: express.Response) => {
+  const merchantId = req.merchant?.id;
+  const keyId = req.params.keyId;
+
+  if (!merchantId) {
+    res.status(401).json({
+      success: false,
+      error: 'Merchant authentication required'
+    });
+    return;
+  }
+
+  try {
+    const merchant = await Merchant.findById(merchantId);
+    if (!merchant) {
+      res.status(404).json({
+        success: false,
+        error: 'Merchant not found'
+      });
+      return;
+    }
+
+    // Find and activate the API key
+    const apiKey = merchant.apiKeys.find((key: any) => key.keyId === keyId);
+    if (!apiKey) {
+      res.status(404).json({
+        success: false,
+        error: 'API key not found'
+      });
+      return;
+    }
+
+    apiKey.isActive = true;
+    await merchant.save();
+
+    logger.info('API key activated', {
+      merchantId,
+      keyId
+    });
+
+    res.json({
+      success: true,
+      message: 'API key activated successfully',
+      data: {
+        keyId: apiKey.keyId,
+        name: apiKey.name,
+        keyPreview: apiKey.keyPreview,
+        environment: apiKey.environment,
+        permissions: apiKey.permissions,
+        ipRestrictions: apiKey.ipRestrictions,
+        rateLimit: apiKey.rateLimit,
+        createdAt: apiKey.createdAt,
+        lastUsed: apiKey.lastUsed,
+        expiresAt: apiKey.expiresAt,
+        isActive: apiKey.isActive,
+        requestCount: apiKey.requestCount || 0
+      }
+    });
+  } catch (error: any) {
+    logger.error('API key activation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to activate API key'
+    });
+  }
+}));
+
+/**
+ * Deactivate API key
+ */
+router.post('/:keyId/deactivate', asyncHandler(async (req: express.Request, res: express.Response) => {
+  const merchantId = req.merchant?.id;
+  const keyId = req.params.keyId;
+
+  if (!merchantId) {
+    res.status(401).json({
+      success: false,
+      error: 'Merchant authentication required'
+    });
+    return;
+  }
+
+  try {
+    const merchant = await Merchant.findById(merchantId);
+    if (!merchant) {
+      res.status(404).json({
+        success: false,
+        error: 'Merchant not found'
+      });
+      return;
+    }
+
+    // Find and deactivate the API key
+    const apiKey = merchant.apiKeys.find((key: any) => key.keyId === keyId);
+    if (!apiKey) {
+      res.status(404).json({
+        success: false,
+        error: 'API key not found'
+      });
+      return;
+    }
+
+    apiKey.isActive = false;
+    await merchant.save();
+
+    logger.info('API key deactivated', {
+      merchantId,
+      keyId
+    });
+
+    res.json({
+      success: true,
+      message: 'API key deactivated successfully',
+      data: {
+        keyId: apiKey.keyId,
+        name: apiKey.name,
+        keyPreview: apiKey.keyPreview,
+        environment: apiKey.environment,
+        permissions: apiKey.permissions,
+        ipRestrictions: apiKey.ipRestrictions,
+        rateLimit: apiKey.rateLimit,
+        createdAt: apiKey.createdAt,
+        lastUsed: apiKey.lastUsed,
+        expiresAt: apiKey.expiresAt,
+        isActive: apiKey.isActive,
+        requestCount: apiKey.requestCount || 0
+      }
+    });
+  } catch (error: any) {
+    logger.error('API key deactivation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to deactivate API key'
+    });
+  }
+}));
+
+/**
+ * Get API key usage statistics
+ */
+router.get('/:keyId/usage', asyncHandler(async (req: express.Request, res: express.Response) => {
+  const merchantId = req.merchant?.id;
+  const keyId = req.params.keyId;
+  const { period } = req.query;
+
+  if (!merchantId) {
+    res.status(401).json({
+      success: false,
+      error: 'Merchant authentication required'
+    });
+    return;
+  }
+
+  try {
+    const merchant = await Merchant.findById(merchantId);
+    if (!merchant) {
+      res.status(404).json({
+        success: false,
+        error: 'Merchant not found'
+      });
+      return;
+    }
+
+    // Find the API key
+    const apiKey = merchant.apiKeys.find((key: any) => key.keyId === keyId);
+    if (!apiKey) {
+      res.status(404).json({
+        success: false,
+        error: 'API key not found'
+      });
+      return;
+    }
+
+    // Mock usage data for now - in a real implementation, this would come from analytics
+    const usageData = {
+      keyId: apiKey.keyId,
+      period: period || '30d',
+      totalRequests: apiKey.requestCount || 0,
+      successfulRequests: Math.floor((apiKey.requestCount || 0) * 0.95),
+      failedRequests: Math.floor((apiKey.requestCount || 0) * 0.05),
+      uniqueIPs: Math.floor((apiKey.requestCount || 0) / 10),
+      usageByEndpoint: [
+        {
+          endpoint: '/payments',
+          method: 'POST',
+          count: Math.floor((apiKey.requestCount || 0) * 0.7),
+          lastUsed: apiKey.lastUsed || apiKey.createdAt
+        },
+        {
+          endpoint: '/payments',
+          method: 'GET',
+          count: Math.floor((apiKey.requestCount || 0) * 0.3),
+          lastUsed: apiKey.lastUsed || apiKey.createdAt
+        }
+      ],
+      usageByDay: [] // Would be populated with real analytics data
+    };
+
+    res.json({
+      success: true,
+      data: usageData
+    });
+  } catch (error: any) {
+    logger.error('API key usage fetch error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch API key usage'
+    });
+  }
+}));
+
+/**
+ * Get API key statistics for all keys
+ */
+router.get('/stats', asyncHandler(async (req: express.Request, res: express.Response) => {
+  const merchantId = req.merchant?.id;
+
+  if (!merchantId) {
+    res.status(401).json({
+      success: false,
+      error: 'Merchant authentication required'
+    });
+    return;
+  }
+
+  try {
+    const merchant = await Merchant.findById(merchantId);
+    if (!merchant) {
+      res.status(404).json({
+        success: false,
+        error: 'Merchant not found'
+      });
+      return;
+    }
+
+    const activeKeys = merchant.apiKeys.filter((key: any) => key.isActive);
+    const testKeys = activeKeys.filter((key: any) => key.environment === 'test');
+    const liveKeys = activeKeys.filter((key: any) => key.environment === 'live');
+    const totalRequests = merchant.apiKeys.reduce((sum: number, key: any) => sum + (key.requestCount || 0), 0);
+    
+    const lastActivity = merchant.apiKeys
+      .filter((key: any) => key.lastUsed)
+      .sort((a: any, b: any) => new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime())[0]?.lastUsed;
+
+    const stats = {
+      totalKeys: merchant.apiKeys.length,
+      activeKeys: activeKeys.length,
+      testKeys: testKeys.length,
+      liveKeys: liveKeys.length,
+      totalRequests,
+      lastActivity
+    };
+
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error: any) {
+    logger.error('API key stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch API key statistics'
+    });
+  }
+}));
+
+/**
+ * Get available permissions
+ */
+router.get('/permissions', asyncHandler(async (req: express.Request, res: express.Response) => {
+  const merchantId = req.merchant?.id;
+
+  if (!merchantId) {
+    res.status(401).json({
+      success: false,
+      error: 'Merchant authentication required'
+    });
+    return;
+  }
+
+  const permissions = [
+    { id: 'payments.read', name: 'Read Payments', description: 'View payment data' },
+    { id: 'payments.write', name: 'Write Payments', description: 'Create and modify payments' },
+    { id: 'customers.read', name: 'Read Customers', description: 'View customer data' },
+    { id: 'customers.write', name: 'Write Customers', description: 'Create and modify customers' },
+    { id: 'webhooks.write', name: 'Manage Webhooks', description: 'Create and modify webhooks' },
+    { id: 'analytics.read', name: 'Read Analytics', description: 'View analytics data' }
+  ];
+
+  res.json({
+    success: true,
+    data: {
+      permissions
+    }
+  });
+}));
+
+/**
+ * Validate API key
+ */
+router.post('/validate', asyncHandler(async (req: express.Request, res: express.Response) => {
+  const merchantId = req.merchant?.id;
+  const { key } = req.body;
+
+  if (!merchantId) {
+    res.status(401).json({
+      success: false,
+      error: 'Merchant authentication required'
+    });
+    return;
+  }
+
+  if (!key) {
+    res.status(400).json({
+      success: false,
+      error: 'API key is required'
+    });
+    return;
+  }
+
+  try {
+    const merchant = await Merchant.findById(merchantId);
+    if (!merchant) {
+      res.status(404).json({
+        success: false,
+        error: 'Merchant not found'
+      });
+      return;
+    }
+
+    // Find the API key by comparing hashes
+    let foundKey = null;
+    for (const apiKey of merchant.apiKeys) {
+      const isMatch = await bcrypt.compare(key, apiKey.keyHash);
+      if (isMatch) {
+        foundKey = apiKey;
+        break;
+      }
+    }
+
+    const isValid = foundKey && foundKey.isActive;
+
+    res.json({
+      success: true,
+      data: {
+        valid: isValid,
+        keyId: foundKey?.keyId,
+        environment: foundKey?.environment,
+        permissions: foundKey?.permissions || []
+      }
+    });
+  } catch (error: any) {
+    logger.error('API key validation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to validate API key'
+    });
+  }
+}));
+
+/**
+ * Test API key
+ */
+router.post('/:keyId/test', asyncHandler(async (req: express.Request, res: express.Response) => {
+  const merchantId = req.merchant?.id;
+  const keyId = req.params.keyId;
+
+  if (!merchantId) {
+    res.status(401).json({
+      success: false,
+      error: 'Merchant authentication required'
+    });
+    return;
+  }
+
+  try {
+    const merchant = await Merchant.findById(merchantId);
+    if (!merchant) {
+      res.status(404).json({
+        success: false,
+        error: 'Merchant not found'
+      });
+      return;
+    }
+
+    // Find the API key
+    const apiKey = merchant.apiKeys.find((key: any) => key.keyId === keyId);
+    if (!apiKey) {
+      res.status(404).json({
+        success: false,
+        error: 'API key not found'
+      });
+      return;
+    }
+
+    // Simulate a test request
+    const startTime = Date.now();
+    const success = apiKey.isActive;
+    const responseTime = Date.now() - startTime;
+
+    res.json({
+      success: true,
+      data: {
+        success,
+        status: success ? 200 : 401,
+        responseTime,
+        message: success ? 'API key is working correctly' : 'API key is inactive',
+        error: success ? null : 'API key is not active'
+      }
+    });
+  } catch (error: any) {
+    logger.error('API key test error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to test API key'
     });
   }
 }));

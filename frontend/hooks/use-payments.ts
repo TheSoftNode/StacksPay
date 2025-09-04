@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { paymentApiClient, PaymentCreateRequest, PaymentLinkRequest, PaymentUpdateRequest } from '@/lib/api/payment-api';
 import { usePaymentStore } from '@/stores/payment-store';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 // Query keys
 export const paymentQueryKeys = {
@@ -96,8 +96,9 @@ export const usePaymentStatus = (paymentId: string | undefined) => {
       }
     },
     enabled: !!paymentId,
-    refetchInterval: (data, query) => {
+    refetchInterval: (query) => {
       // Auto-refresh every 5 seconds for pending payments
+      const data = query.state.data;
       if (data?.status === 'pending' || data?.status === 'processing') {
         return 5000;
       }
@@ -112,6 +113,7 @@ export const usePaymentStatus = (paymentId: string | undefined) => {
 export const useCreatePayment = () => {
   const queryClient = useQueryClient();
   const { addPayment, setLoading, setError } = usePaymentStore();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (paymentData: PaymentCreateRequest) => {
@@ -129,12 +131,20 @@ export const useCreatePayment = () => {
     onSuccess: (payment) => {
       addPayment(payment);
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.lists() });
-      toast.success('Payment created successfully');
+      toast({
+        title: "Success",
+        description: "Payment created successfully",
+        variant: "default",
+      });
     },
     onError: (error) => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create payment';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     },
     onSettled: () => {
       setLoading(false);
@@ -146,6 +156,7 @@ export const useCreatePayment = () => {
 export const useCreatePaymentLink = () => {
   const queryClient = useQueryClient();
   const { setGeneratedPaymentLink, setLoading, setError } = usePaymentStore();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (linkData: PaymentLinkRequest) => {
@@ -160,15 +171,23 @@ export const useCreatePaymentLink = () => {
         throw new Error(response.error || 'Failed to create payment link');
       }
     },
-    onSuccess: (linkData) => {
-      setGeneratedPaymentLink(linkData);
+    onSuccess: (paymentLink) => {
+      setGeneratedPaymentLink(paymentLink);
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.lists() });
-      toast.success('Payment link created successfully');
+      toast({
+        title: "Success",
+        description: "Payment link created successfully",
+        variant: "default",
+      });
     },
     onError: (error) => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create payment link';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     },
     onSettled: () => {
       setLoading(false);
@@ -180,6 +199,7 @@ export const useCreatePaymentLink = () => {
 export const useUpdatePayment = () => {
   const queryClient = useQueryClient();
   const { updatePayment, setLoading, setError } = usePaymentStore();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async ({ paymentId, updateData }: { 
@@ -201,12 +221,20 @@ export const useUpdatePayment = () => {
       updatePayment(paymentId, { status: updateData.status as any });
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.lists() });
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.detail(paymentId) });
-      toast.success('Payment updated successfully');
+      toast({
+        title: "Success",
+        description: "Payment updated successfully",
+        variant: "default",
+      });
     },
     onError: (error) => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update payment';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     },
     onSettled: () => {
       setLoading(false);
@@ -218,6 +246,7 @@ export const useUpdatePayment = () => {
 export const useCancelPayment = () => {
   const queryClient = useQueryClient();
   const { updatePayment, setLoading, setError } = usePaymentStore();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (paymentId: string) => {
@@ -233,15 +262,23 @@ export const useCancelPayment = () => {
       }
     },
     onSuccess: (paymentId) => {
-      updatePayment(paymentId, { status: 'cancelled' });
+      updatePayment(paymentId, { status: 'cancelled' as any });
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.lists() });
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.detail(paymentId) });
-      toast.success('Payment cancelled successfully');
+      toast({
+        title: "Success",
+        description: "Payment cancelled successfully",
+        variant: "default",
+      });
     },
     onError: (error) => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to cancel payment';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     },
     onSettled: () => {
       setLoading(false);
@@ -253,6 +290,7 @@ export const useCancelPayment = () => {
 export const useRefundPayment = () => {
   const queryClient = useQueryClient();
   const { updatePayment, setLoading, setError } = usePaymentStore();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async ({ 
@@ -286,12 +324,20 @@ export const useRefundPayment = () => {
       updatePayment(paymentId, { status: 'refunded' });
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.lists() });
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.detail(paymentId) });
-      toast.success('Refund processed successfully');
+      toast({
+        title: "Success",
+        description: "Refund processed successfully",
+        variant: "default",
+      });
     },
     onError: (error) => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to process refund';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     },
     onSettled: () => {
       setLoading(false);
@@ -303,6 +349,7 @@ export const useRefundPayment = () => {
 export const useVerifyPayment = () => {
   const queryClient = useQueryClient();
   const { updatePayment, setLoading, setError } = usePaymentStore();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async ({ 
@@ -344,12 +391,20 @@ export const useVerifyPayment = () => {
       });
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.lists() });
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.detail(paymentId) });
-      toast.success('Payment verified and confirmed');
+      toast({
+        title: "Success",
+        description: "Payment verified and confirmed",
+        variant: "default",
+      });
     },
     onError: (error) => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to verify payment';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     },
     onSettled: () => {
       setLoading(false);
@@ -401,6 +456,8 @@ export const usePaymentAnalytics = (query?: {
 
 // Hook for generating QR codes
 export const useGenerateQRCode = () => {
+  const { toast } = useToast();
+
   return useMutation({
     mutationFn: async ({ paymentId, size }: { paymentId: string; size?: number }) => {
       const response = await paymentApiClient.generateQRCode(paymentId, size);
@@ -413,7 +470,11 @@ export const useGenerateQRCode = () => {
     },
     onError: (error) => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate QR code';
-      toast.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     },
   });
 };
@@ -421,10 +482,15 @@ export const useGenerateQRCode = () => {
 // Utility function to refresh payment data
 export const useRefreshPayments = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   return () => {
     queryClient.invalidateQueries({ queryKey: paymentQueryKeys.lists() });
-    toast.success('Payment data refreshed');
+    toast({
+      title: "Success",
+      description: "Payment data refreshed",
+      variant: "default",
+    });
   };
 };
 
