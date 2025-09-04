@@ -1,5 +1,6 @@
 import { WebhookPayload, WebhookResponse } from "@/interfaces/webhook.interface";
 import { Webhook, IWebhook } from "@/models/Webhook";
+import { WebhookEvent, IWebhookEvent } from "@/models/WebhookEvent";
 import { createLogger } from "@/utils/logger";
 import * as crypto from 'crypto';
 
@@ -240,7 +241,7 @@ export class WebhookService {
   }
 
   /**
-   * Trigger webhook notification for all merchant webhooks
+   * Trigger webhook notification for all merchant webhooks - PRODUCTION VERSION
    */
   async triggerWebhook(payment: any, event: string): Promise<WebhookResponse> {
     try {
@@ -269,11 +270,23 @@ export class WebhookService {
         timestamp: new Date().toISOString(),
       };
 
-      // Send to all webhooks in parallel
+      // Create webhook events and process them
       const results = await Promise.allSettled(
-        webhooks.map(webhook => 
-          this.sendWebhookWithRetry(webhook.url, payload, 0, webhook.secret, webhook._id.toString())
-        )
+        webhooks.map(async (webhook) => {
+          // Create webhook event record
+          const webhookEvent = await this.createWebhookEvent(
+            webhook._id.toString(),
+            webhook.merchantId,
+            event,
+            webhook.url,
+            { payment: payload.payment }
+          );
+
+          // Process the webhook
+          await this.processWebhookEvent(webhookEvent, webhook);
+          
+          return { success: true };
+        })
       );
 
       // Check if any webhook succeeded
@@ -289,17 +302,27 @@ export class WebhookService {
   }
 
   /**
-   * Send webhook with retry logic
+   * Send webhook with retry logic - PRODUCTION VERSION
    */
   private async sendWebhookWithRetry(
     url: string, 
     payload: WebhookPayload, 
     attempt: number,
     secret?: string,
-    webhookId?: string
+    webhookId?: string,
+    eventId?: string
   ): Promise<WebhookResponse> {
     try {
       const response = await this.sendWebhookRequest(url, payload, secret);
+
+      // Update event record if provided
+      if (eventId) {
+        await this.updateWebhookEventResult(eventId, response.success, {
+          status: response.statusCode || 0,
+          body: response.success ? 'OK' : response.error,
+          error: response.error
+        });
+      }
 
       if (response.success && webhookId) {
         await this.updateWebhookStats(webhookId, 'success');
@@ -313,7 +336,7 @@ export class WebhookService {
       if (response.statusCode && response.statusCode >= 500 && attempt < this.MAX_RETRIES) {
         const delay = this.RETRY_DELAYS[attempt];
         await this.sleep(delay);
-        return await this.sendWebhookWithRetry(url, payload, attempt + 1, secret, webhookId);
+        return await this.sendWebhookWithRetry(url, payload, attempt + 1, secret, webhookId, eventId);
       }
 
       // Update failure stats
@@ -326,16 +349,23 @@ export class WebhookService {
     } catch (error) {
       logger.error(`Webhook attempt ${attempt + 1} failed:`, error);
 
-      // Update failure stats
+      // Update failure stats and event
       if (webhookId) {
         await this.updateWebhookStats(webhookId, 'failure', error instanceof Error ? error.message : 'Network error');
+      }
+
+      if (eventId) {
+        await this.updateWebhookEventResult(eventId, false, {
+          status: 0,
+          error: error instanceof Error ? error.message : 'Network error'
+        });
       }
 
       // Retry on network errors
       if (attempt < this.MAX_RETRIES) {
         const delay = this.RETRY_DELAYS[attempt];
         await this.sleep(delay);
-        return await this.sendWebhookWithRetry(url, payload, attempt + 1, secret, webhookId);
+        return await this.sendWebhookWithRetry(url, payload, attempt + 1, secret, webhookId, eventId);
       }
 
       return { 
@@ -454,16 +484,23 @@ export class WebhookService {
   }
 
   /**
-   * Get webhook events for documentation
+   * Get webhook event types for documentation
    */
-  getWebhookEvents() {
+  getWebhookEventTypes() {
     return {
       'payment.created': 'Triggered when a payment request is created',
       'payment.confirmed': 'Triggered when a payment is confirmed on the blockchain',
+      'payment.succeeded': 'Triggered when a payment is successfully completed (alias for payment.confirmed)',
       'payment.failed': 'Triggered when a payment fails',
       'payment.expired': 'Triggered when a payment expires',
       'payment.cancelled': 'Triggered when a payment is cancelled',
       'payment.refunded': 'Triggered when a payment is refunded',
+      'payment.disputed': 'Triggered when a payment is disputed',
+      'customer.created': 'Triggered when a new customer is created',
+      'customer.updated': 'Triggered when customer information is updated',
+      'subscription.created': 'Triggered when a new subscription is created',
+      'subscription.updated': 'Triggered when a subscription is updated',
+      'subscription.cancelled': 'Triggered when a subscription is cancelled',
       'webhook.test': 'Test event for webhook validation',
     };
   }
@@ -505,6 +542,456 @@ export class WebhookService {
    */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Process pending webhook retries - PRODUCTION BACKGROUND JOB
+   */
+  async processPendingRetries(): Promise<void> {
+    try {
+      const pendingEvents = await WebhookEvent.find({
+        status: 'retrying',
+        nextRetryAt: { $lte: new Date() },
+        attempts: { $lt: 3 } // Don't retry more than 3 times
+      }).limit(50); // Process in batches
+
+      logger.info(`Processing ${pendingEvents.length} pending webhook retries`);
+
+      for (const event of pendingEvents) {
+        try {
+          const webhook = await Webhook.findById(event.webhookId);
+          if (webhook && webhook.enabled) {
+            await this.processWebhookEvent(event, webhook);
+          } else {
+            // Mark as failed if webhook no longer exists or is disabled
+            await WebhookEvent.findByIdAndUpdate(event._id, {
+              $set: { status: 'failed' }
+            });
+          }
+        } catch (error) {
+          logger.error(`Error processing retry for event ${event._id}:`, error);
+        }
+      }
+    } catch (error) {
+      logger.error('Error processing pending retries:', error);
+    }
+  }
+
+  /**
+   * Cleanup old webhook events - PRODUCTION MAINTENANCE
+   */
+  async cleanupOldEvents(daysOld: number = 90): Promise<void> {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+      const result = await WebhookEvent.deleteMany({
+        createdAt: { $lt: cutoffDate }
+      });
+
+      logger.info(`Cleaned up ${result.deletedCount} old webhook events`);
+    } catch (error) {
+      logger.error('Error cleaning up old webhook events:', error);
+    }
+  }
+
+  /**
+   * Start background processing - PRODUCTION SCHEDULER
+   */
+  startBackgroundProcessing(): void {
+    // Process retries every 30 seconds
+    setInterval(() => {
+      this.processPendingRetries().catch(error => {
+        logger.error('Background retry processing failed:', error);
+      });
+    }, 30000);
+
+    // Cleanup old events daily at 2 AM
+    setInterval(() => {
+      const now = new Date();
+      if (now.getHours() === 2 && now.getMinutes() === 0) {
+        this.cleanupOldEvents().catch(error => {
+          logger.error('Background cleanup failed:', error);
+        });
+      }
+    }, 60000); // Check every minute
+
+    logger.info('Webhook background processing started');
+  }
+
+  /**
+   * Get webhook statistics for merchant - PRODUCTION VERSION
+   */
+  async getWebhookStats(merchantId: string, webhookId?: string): Promise<{
+    totalWebhooks: number;
+    activeWebhooks: number;
+    totalEvents: number;
+    successfulEvents: number;
+    failedEvents: number;
+    pendingEvents: number;
+    averageSuccessRate: number;
+    last24Hours: {
+      events: number;
+      successful: number;
+      failed: number;
+    };
+  }> {
+    try {
+      let webhookQuery: any = { merchantId };
+      if (webhookId) {
+        webhookQuery._id = webhookId;
+      }
+
+      // Get webhook counts
+      const [webhooks, totalWebhooks, activeWebhooks] = await Promise.all([
+        Webhook.find(webhookQuery),
+        Webhook.countDocuments({ merchantId }),
+        Webhook.countDocuments({ merchantId, enabled: true })
+      ]);
+
+      // Build events query
+      let eventsQuery: any = { merchantId };
+      if (webhookId) {
+        eventsQuery.webhookId = webhookId;
+      }
+
+      // Get event statistics
+      const [
+        totalEvents,
+        successfulEvents,
+        failedEvents,
+        pendingEvents,
+        last24HourEvents
+      ] = await Promise.all([
+        WebhookEvent.countDocuments(eventsQuery),
+        WebhookEvent.countDocuments({ ...eventsQuery, status: 'success' }),
+        WebhookEvent.countDocuments({ ...eventsQuery, status: 'failed' }),
+        WebhookEvent.countDocuments({ 
+          ...eventsQuery, 
+          status: { $in: ['pending', 'retrying'] } 
+        }),
+        WebhookEvent.find({
+          ...eventsQuery,
+          createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+        })
+      ]);
+
+      // Calculate last 24 hours stats
+      const last24Hours = {
+        events: last24HourEvents.length,
+        successful: last24HourEvents.filter(e => e.status === 'success').length,
+        failed: last24HourEvents.filter(e => e.status === 'failed').length
+      };
+
+      const averageSuccessRate = totalEvents > 0 
+        ? Math.round((successfulEvents / totalEvents) * 100) 
+        : 0;
+
+      return {
+        totalWebhooks: webhookId ? 1 : totalWebhooks,
+        activeWebhooks: webhookId ? (webhooks[0]?.enabled ? 1 : 0) : activeWebhooks,
+        totalEvents,
+        successfulEvents,
+        failedEvents,
+        pendingEvents,
+        averageSuccessRate,
+        last24Hours
+      };
+    } catch (error) {
+      logger.error('Error getting webhook stats:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get webhook events with pagination and filtering - PRODUCTION VERSION
+   */
+  async getWebhookEvents(merchantId: string, options: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    eventType?: string;
+    startDate?: string;
+    endDate?: string;
+    webhookId?: string;
+  } = {}): Promise<{
+    events: any[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
+    try {
+      const page = Math.max(1, options.page || 1);
+      const limit = Math.min(100, Math.max(1, options.limit || 20));
+      const skip = (page - 1) * limit;
+
+      // Build query
+      const query: any = { merchantId };
+
+      if (options.webhookId) {
+        query.webhookId = options.webhookId;
+      }
+
+      if (options.status) {
+        query.status = options.status;
+      }
+
+      if (options.eventType) {
+        query.eventType = options.eventType;
+      }
+
+      if (options.startDate || options.endDate) {
+        query.createdAt = {};
+        if (options.startDate) {
+          query.createdAt.$gte = new Date(options.startDate);
+        }
+        if (options.endDate) {
+          query.createdAt.$lte = new Date(options.endDate);
+        }
+      }
+
+      // Get total count and events in parallel
+      const [total, events] = await Promise.all([
+        WebhookEvent.countDocuments(query),
+        WebhookEvent.find(query)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean()
+      ]);
+
+      const totalPages = Math.ceil(total / limit);
+
+      // Transform events to match frontend interface
+      const transformedEvents = events.map((event: any) => ({
+        id: event._id.toString(),
+        webhookId: event.webhookId,
+        type: event.eventType,
+        status: event.status,
+        timestamp: event.createdAt.toISOString(),
+        endpoint: event.endpoint,
+        attempts: event.attempts,
+        maxAttempts: event.maxAttempts,
+        nextRetryAt: event.nextRetryAt?.toISOString(),
+        response: event.response || { status: 0 },
+        payload: event.payload,
+        error: event.response?.error
+      }));
+
+      return {
+        events: transformedEvents,
+        pagination: { page, limit, total, totalPages }
+      };
+    } catch (error) {
+      logger.error('Error getting webhook events:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get specific webhook event by ID - PRODUCTION VERSION
+   */
+  async getWebhookEvent(eventId: string, merchantId: string): Promise<any | null> {
+    try {
+      const event = await WebhookEvent.findOne({ 
+        _id: eventId, 
+        merchantId 
+      }).lean();
+
+      if (!event) {
+        return null;
+      }
+
+      return {
+        id: (event as any)._id.toString(),
+        webhookId: event.webhookId,
+        type: event.eventType,
+        status: event.status,
+        timestamp: event.createdAt.toISOString(),
+        endpoint: event.endpoint,
+        attempts: event.attempts,
+        maxAttempts: event.maxAttempts,
+        nextRetryAt: event.nextRetryAt?.toISOString(),
+        response: event.response || { status: 0 },
+        payload: event.payload,
+        error: event.response?.error
+      };
+    } catch (error) {
+      logger.error('Error getting webhook event:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create webhook event record - PRODUCTION VERSION
+   */
+  async createWebhookEvent(
+    webhookId: string,
+    merchantId: string,
+    eventType: string,
+    endpoint: string,
+    payload: Record<string, any>
+  ): Promise<IWebhookEvent> {
+    try {
+      const webhookEvent = new WebhookEvent({
+        webhookId,
+        merchantId,
+        eventType,
+        endpoint,
+        payload,
+        status: 'pending',
+        attempts: 0,
+        maxAttempts: 3,
+      });
+
+      await webhookEvent.save();
+      
+      logger.info('Webhook event created', {
+        eventId: webhookEvent._id,
+        webhookId,
+        eventType,
+        merchantId
+      });
+
+      return webhookEvent;
+    } catch (error) {
+      logger.error('Error creating webhook event:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update webhook event with delivery result - PRODUCTION VERSION
+   */
+  async updateWebhookEventResult(
+    eventId: string,
+    success: boolean,
+    response: {
+      status: number;
+      body?: string;
+      headers?: Record<string, string>;
+      error?: string;
+    }
+  ): Promise<void> {
+    try {
+      const updateData: any = {
+        $inc: { attempts: 1 },
+        $set: {
+          lastAttemptAt: new Date(),
+          response,
+          status: success ? 'success' : 'failed'
+        }
+      };
+
+      // If failed and haven't exceeded max attempts, set for retry
+      const event = await WebhookEvent.findById(eventId);
+      if (event && !success && event.attempts < event.maxAttempts - 1) {
+        const retryDelays = [1000, 5000, 15000]; // 1s, 5s, 15s
+        const nextDelay = retryDelays[Math.min(event.attempts, retryDelays.length - 1)];
+        updateData.$set.status = 'retrying';
+        updateData.$set.nextRetryAt = new Date(Date.now() + nextDelay);
+      }
+
+      await WebhookEvent.findByIdAndUpdate(eventId, updateData);
+
+      logger.info('Webhook event updated', {
+        eventId,
+        success,
+        attempts: event?.attempts || 0,
+        status: updateData.$set.status
+      });
+    } catch (error) {
+      logger.error('Error updating webhook event result:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retry specific webhook event - PRODUCTION VERSION
+   */
+  async retryWebhookEvent(eventId: string, merchantId: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    try {
+      const event = await WebhookEvent.findOne({ 
+        _id: eventId, 
+        merchantId 
+      });
+
+      if (!event) {
+        return {
+          success: false,
+          message: 'Webhook event not found'
+        };
+      }
+
+      if (event.status === 'success') {
+        return {
+          success: false,
+          message: 'Cannot retry successful webhook event'
+        };
+      }
+
+      // Reset for retry
+      await WebhookEvent.findByIdAndUpdate(eventId, {
+        $set: {
+          status: 'pending',
+          nextRetryAt: new Date()
+        }
+      });
+
+      // Trigger the actual webhook call
+      const webhook = await Webhook.findById(event.webhookId);
+      if (webhook) {
+        await this.processWebhookEvent(event, webhook);
+      }
+
+      return {
+        success: true,
+        message: 'Webhook event retry initiated'
+      };
+    } catch (error) {
+      logger.error('Error retrying webhook event:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Process individual webhook event - PRODUCTION VERSION
+   */
+  private async processWebhookEvent(event: IWebhookEvent, webhook: IWebhook): Promise<void> {
+    try {
+      const payload: WebhookPayload = {
+        event: event.eventType,
+        payment: event.payload.payment || {},
+        timestamp: event.createdAt.toISOString(),
+      };
+
+      const result = await this.sendWebhookRequest(webhook.url, payload, webhook.secret);
+      
+      await this.updateWebhookEventResult(event._id, result.success, {
+        status: result.statusCode || 0,
+        body: result.success ? 'OK' : result.error,
+        error: result.error
+      });
+
+      // Update webhook stats
+      await this.updateWebhookStats(webhook._id.toString(), result.success ? 'success' : 'failure', result.error);
+
+    } catch (error) {
+      logger.error('Error processing webhook event:', error);
+      await this.updateWebhookEventResult(event._id, false, {
+        status: 0,
+        error: error instanceof Error ? error.message : 'Processing error'
+      });
+    }
   }
 }
 

@@ -43,11 +43,18 @@ const webhookSchema = new Schema<IWebhook>({
     required: true,
     enum: [
       'payment.created',
-      'payment.confirmed', 
+      'payment.confirmed',
+      'payment.succeeded', // Alias for payment.confirmed
       'payment.failed',
       'payment.expired',
       'payment.cancelled',
       'payment.refunded',
+      'payment.disputed',
+      'customer.created',
+      'customer.updated',
+      'subscription.created',
+      'subscription.updated',
+      'subscription.cancelled',
       'webhook.test'
     ]
   }],

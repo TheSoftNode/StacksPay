@@ -10,6 +10,7 @@ import paymentRoutes from '@/routes/payment.routes';
 import paymentMerchantRoutes from '@/routes/payment-merchant.routes';
 import paymentPublicRoutes from '@/routes/payment-public.routes';
 import webhookRoutes from '@/routes/webhook.routes';
+import webhookEventsRoutes from '@/routes/webhook-events.routes';
 import apiKeyRoutes from '@/routes/api-key.routes';
 import notificationRoutes from '@/routes/notification.routes';
 import errorRoutes from '@/routes/error.routes';
@@ -17,6 +18,7 @@ import testRoutes from '@/routes/test.routes';
 import walletRoutes from '@/routes/wallet';
 import config from '@/config';
 import { createLogger } from '@/utils/logger';
+import { webhookService } from '@/services/webhook-service';
 import { 
   errorHandler, 
   notFoundHandler, 
@@ -128,7 +130,8 @@ class sBTCPaymentGatewayServer {
     this.app.use('/api/v1/payments', paymentRoutes); // API key auth for external developers
     this.app.use('/api/payments', paymentMerchantRoutes); // JWT auth for merchant dashboard
     this.app.use('/api/public/payments', paymentPublicRoutes); // No auth for customer checkout
-    this.app.use('/api/v1/webhooks', webhookRoutes);
+    this.app.use('/api/webhooks', webhookRoutes); // JWT auth for merchant dashboard
+    this.app.use('/api/webhook-events', webhookEventsRoutes); // JWT auth for merchant dashboard
     this.app.use('/api/api-keys', apiKeyRoutes); // JWT auth for API key management
     this.app.use('/api/notifications', notificationRoutes);
     this.app.use('/api/monitoring', errorRoutes);
@@ -164,6 +167,9 @@ class sBTCPaymentGatewayServer {
 
       // Setup API routes (after Swagger)
       this.setupApiRoutes();
+
+      // Start webhook background processing
+      webhookService.startBackgroundProcessing();
 
       // Start server
       logger.info(`🌐 Starting server on port ${config.port}...`);

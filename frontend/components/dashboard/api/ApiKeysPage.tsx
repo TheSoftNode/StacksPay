@@ -729,7 +729,7 @@ const ApiKeysPage = () => {
       {/* New API Key Created Dialog */}
       {createdKeyData && (
         <Dialog open={!!createdKeyData} onOpenChange={() => setCreatedKeyData(null)}>
-          <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogContent className="w-full max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <DialogHeader>
               <DialogTitle className="flex items-center">
                 <CheckCircle className="mr-2 h-5 w-5 text-green-600" />
@@ -744,14 +744,14 @@ const ApiKeysPage = () => {
               <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                 <Label className="text-sm font-medium mb-2 block">Your API Key</Label>
                 <div className="flex items-center space-x-2">
-                  <code className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-mono">
+                  <code className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-mono break-all overflow-wrap-anywhere">
                     {createdKeyData.apiKey}
                   </code>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => copyToClipboard(createdKeyData.apiKey)}
-                    className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+                    className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800 shrink-0"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>

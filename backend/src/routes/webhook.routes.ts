@@ -1,6 +1,6 @@
 import express from 'express';
 import { WebhookController } from '@/controllers/WebhookController';
-import { apiKeyMiddleware } from '@/middleware/auth.middleware';
+import { sessionMiddleware } from '@/middleware/auth.middleware';
 import { rateLimitMiddleware } from '@/middleware/rate-limit.middleware';
 import { asyncHandler } from '@/middleware/error.middleware';
 
@@ -8,23 +8,23 @@ const router = express.Router();
 const webhookController = new WebhookController();
 
 /**
- * Webhook routes for StacksPay API
- * All routes require API key authentication
+ * Webhook routes for StacksPay Merchant Dashboard
+ * All routes require JWT authentication
  */
 
-// Apply API key middleware and rate limiting to all webhook routes
-router.use(apiKeyMiddleware);
+// Apply JWT middleware and rate limiting to all webhook routes
+router.use(sessionMiddleware);
 router.use(rateLimitMiddleware);
 
 /**
  * @swagger
- * /api/v1/webhooks:
+ * /api/webhooks:
  *   post:
  *     tags: [Webhooks]
  *     summary: Create a webhook endpoint
  *     description: Register a webhook URL for receiving payment notifications
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -43,7 +43,7 @@ router.use(rateLimitMiddleware);
  *                 type: array
  *                 items:
  *                   type: string
- *                   enum: [payment.created, payment.confirmed, payment.failed, payment.expired]
+ *                   enum: [payment.created, payment.confirmed, payment.succeeded, payment.failed, payment.expired, payment.cancelled, payment.refunded, payment.disputed, customer.created, customer.updated, subscription.created, subscription.updated, subscription.cancelled, webhook.test]
  *               secret:
  *                 type: string
  *                 description: Optional webhook secret for signature verification
@@ -55,12 +55,12 @@ router.post('/', asyncHandler(webhookController.createWebhook.bind(webhookContro
 
 /**
  * @swagger
- * /api/v1/webhooks:
+ * /api/webhooks:
  *   get:
  *     tags: [Webhooks]
  *     summary: List webhook endpoints
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Webhooks retrieved successfully
@@ -69,12 +69,26 @@ router.get('/', asyncHandler(webhookController.listWebhooks.bind(webhookControll
 
 /**
  * @swagger
- * /api/v1/webhooks/{id}:
+ * /api/webhooks/stats:
+ *   get:
+ *     tags: [Webhooks]
+ *     summary: Get webhook statistics
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Webhook statistics retrieved successfully
+ */
+router.get('/stats', asyncHandler(webhookController.getWebhookStats.bind(webhookController)));
+
+/**
+ * @swagger
+ * /api/webhooks/{id}:
  *   get:
  *     tags: [Webhooks]
  *     summary: Get webhook details
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -89,12 +103,12 @@ router.get('/:id', asyncHandler(webhookController.getWebhook.bind(webhookControl
 
 /**
  * @swagger
- * /api/v1/webhooks/{id}:
+ * /api/webhooks/{id}:
  *   put:
  *     tags: [Webhooks]
  *     summary: Update webhook
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -125,12 +139,12 @@ router.put('/:id', asyncHandler(webhookController.updateWebhook.bind(webhookCont
 
 /**
  * @swagger
- * /api/v1/webhooks/{id}:
+ * /api/webhooks/{id}:
  *   delete:
  *     tags: [Webhooks]
  *     summary: Delete webhook
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -145,12 +159,12 @@ router.delete('/:id', asyncHandler(webhookController.deleteWebhook.bind(webhookC
 
 /**
  * @swagger
- * /api/v1/webhooks/{id}/test:
+ * /api/webhooks/{id}/test:
  *   post:
  *     tags: [Webhooks]
  *     summary: Test webhook endpoint
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -165,12 +179,32 @@ router.post('/:id/test', asyncHandler(webhookController.testWebhook.bind(webhook
 
 /**
  * @swagger
- * /api/v1/webhooks/{id}/retry:
+ * /api/webhooks/{id}/stats:
+ *   get:
+ *     tags: [Webhooks]
+ *     summary: Get specific webhook statistics
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Webhook statistics retrieved successfully
+ */
+router.get('/:id/stats', asyncHandler(webhookController.getWebhookStats.bind(webhookController)));
+
+/**
+ * @swagger
+ * /api/webhooks/{id}/retry:
  *   post:
  *     tags: [Webhooks]
  *     summary: Retry failed webhook deliveries
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
