@@ -32,7 +32,12 @@ import {
   PieChart as PieChartIcon,
   LineChart as LineChartIcon,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  FileText,
+  Calculator,
+  Receipt,
+  Building,
+  MapPin
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -115,6 +120,54 @@ const paymentMethodsData = [
 ]
 
 const COLORS = ['#ea580c', '#3b82f6', '#10b981', '#8b5cf6']
+
+// Mock tax data
+const taxDataByRegion = [
+  { region: 'United States', taxRate: 8.25, transactions: 450, taxCollected: 2547.32 },
+  { region: 'European Union', taxRate: 20.0, transactions: 280, taxCollected: 3421.18 },
+  { region: 'United Kingdom', taxRate: 20.0, transactions: 180, taxCollected: 1876.45 },
+  { region: 'Canada', taxRate: 13.0, transactions: 95, taxCollected: 847.21 },
+  { region: 'Australia', taxRate: 10.0, transactions: 62, taxCollected: 456.78 }
+]
+
+const monthlyTaxData = [
+  { month: 'Jan', taxCollected: 2845.32, transactions: 156 },
+  { month: 'Feb', taxCollected: 3123.45, transactions: 189 },
+  { month: 'Mar', taxCollected: 2987.21, transactions: 174 },
+  { month: 'Apr', taxCollected: 3456.78, transactions: 203 },
+  { month: 'May', taxCollected: 3721.45, transactions: 218 },
+  { month: 'Jun', taxCollected: 3987.32, transactions: 234 }
+]
+
+const taxReports = [
+  {
+    id: '1',
+    name: 'Q3 2024 Tax Summary',
+    type: 'Quarterly',
+    dateRange: 'Jul 1 - Sep 30, 2024',
+    status: 'completed',
+    totalTax: 12456.78,
+    fileSize: '2.3 MB'
+  },
+  {
+    id: '2',
+    name: 'August 2024 Detailed Report',
+    type: 'Monthly',
+    dateRange: 'Aug 1 - Aug 31, 2024',
+    status: 'completed',
+    totalTax: 4123.45,
+    fileSize: '1.8 MB'
+  },
+  {
+    id: '3',
+    name: 'EU VAT Report - Q3',
+    type: 'VAT',
+    dateRange: 'Jul 1 - Sep 30, 2024',
+    status: 'processing',
+    totalTax: 8765.43,
+    fileSize: '3.1 MB'
+  }
+]
 
 const AnalyticsPage = () => {
   const [analytics, setAnalytics] = useState<AnalyticsData>(mockAnalytics)
@@ -222,10 +275,10 @@ const AnalyticsPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Analytics
+            Analytics & Reports
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Deep insights into your sBTC payment performance
+            Deep insights, tax reporting, and performance analytics
           </p>
         </div>
         
@@ -264,7 +317,17 @@ const AnalyticsPage = () => {
         </div>
       </div>
 
-      {/* Key Metrics */}
+      {/* Analytics Tabs */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="tax-reporting">Tax Reporting</TabsTrigger>
+          <TabsTrigger value="advanced">Advanced</TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-8">
+          {/* Key Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard
           title="Total Revenue"
@@ -534,6 +597,243 @@ const AnalyticsPage = () => {
           </CardContent>
         </Card>
       </div>
+        </TabsContent>
+
+        {/* Tax Reporting Tab */}
+        <TabsContent value="tax-reporting" className="space-y-8">
+          {/* Tax Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Total Tax Collected
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      $9,148.94
+                    </p>
+                  </div>
+                  <Calculator className="h-8 w-8 text-green-600" />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">This quarter</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Tax Jurisdictions
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {taxDataByRegion.length}
+                    </p>
+                  </div>
+                  <MapPin className="h-8 w-8 text-blue-600" />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Active regions</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Pending Reports
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {taxReports.filter(r => r.status === 'processing').length}
+                    </p>
+                  </div>
+                  <FileText className="h-8 w-8 text-yellow-600" />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">In processing</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Compliance Status
+                    </p>
+                    <p className="text-2xl font-bold text-green-600">
+                      100%
+                    </p>
+                  </div>
+                  <Building className="h-8 w-8 text-green-600" />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">All regions compliant</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Tax Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Monthly Tax Collection */}
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <BarChart3 className="h-5 w-5 text-orange-600" />
+                  <span>Monthly Tax Collection</span>
+                </CardTitle>
+                <CardDescription>
+                  Tax collected over time by month
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyTaxData}>
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis 
+                        dataKey="month" 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: 'currentColor' }}
+                        className="text-gray-600 dark:text-gray-400"
+                      />
+                      <YAxis 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: 'currentColor' }}
+                        className="text-gray-600 dark:text-gray-400"
+                        tickFormatter={(value) => `$${value}`}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        }}
+                        formatter={(value: any) => [`$${value}`, 'Tax Collected']}
+                      />
+                      <Bar
+                        dataKey="taxCollected"
+                        fill="#ea580c"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tax by Region */}
+            <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <PieChartIcon className="h-5 w-5 text-orange-600" />
+                  <span>Tax by Region</span>
+                </CardTitle>
+                <CardDescription>
+                  Tax distribution across jurisdictions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {taxDataByRegion.map((region, index) => (
+                    <div key={region.region} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {region.region}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {region.transactions} transactions • {region.taxRate}% rate
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">${region.taxCollected.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Tax Reports */}
+          <Card className="bg-white dark:bg-gray-900 border shadow-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Receipt className="h-5 w-5 text-orange-600" />
+                    <span>Tax Reports</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Generate and download tax compliance reports
+                  </CardDescription>
+                </div>
+                <Button className="bg-orange-600 hover:bg-orange-700">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Report
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {taxReports.map((report) => (
+                  <div key={report.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+                        <FileText className="h-5 w-5 text-orange-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 dark:text-white">{report.name}</h4>
+                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                          <span>{report.dateRange}</span>
+                          <Badge variant={report.type === 'VAT' ? 'default' : 'outline'} className="text-xs">
+                            {report.type}
+                          </Badge>
+                          <span>{report.fileSize}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <p className="font-medium">${report.totalTax.toLocaleString()}</p>
+                        <Badge 
+                          variant={report.status === 'completed' ? 'default' : 'secondary'}
+                          className="text-xs"
+                        >
+                          {report.status}
+                        </Badge>
+                      </div>
+                      <Button variant="outline" size="sm" disabled={report.status === 'processing'}>
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Advanced Tab */}
+        <TabsContent value="advanced" className="space-y-8">
+          <div className="text-center py-12">
+            <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Advanced Analytics</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Custom reporting, A/B testing, and advanced metrics coming soon
+            </p>
+            <Badge variant="outline">Coming Soon</Badge>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

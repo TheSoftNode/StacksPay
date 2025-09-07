@@ -32,6 +32,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import PaymentWidget from '@/components/payment/payment-widget'
 import EmbeddablePaymentWidget from '@/components/widgets/EmbeddablePaymentWidget'
+import { PaymentButtonWidget, DonationWidget, CheckoutWidget } from '@/components/widgets/drop-in'
 
 interface CodeSnippet {
   id: string
@@ -296,9 +297,10 @@ function PaymentComponent() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="playground">Widget Playground</TabsTrigger>
+          <TabsTrigger value="gallery">Widget Gallery</TabsTrigger>
           <TabsTrigger value="examples">Code Examples</TabsTrigger>
           <TabsTrigger value="resources">Resources</TabsTrigger>
         </TabsList>
@@ -715,6 +717,181 @@ function PaymentComponent() {
               )}
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="gallery" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Puzzle className="w-5 h-5 text-orange-600" />
+                <span>Widget Gallery</span>
+              </CardTitle>
+              <CardDescription>Live preview of all available drop-in widgets</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              
+              {/* Payment Button Widget */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold">Payment Button Widget</h3>
+                  <p className="text-sm text-gray-600">Simple payment button for single transactions</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-medium mb-2">Default Style</h4>
+                    <PaymentButtonWidget
+                      apiKey="pk_test_demo"
+                      amount={0.001}
+                      currency="BTC"
+                      description="Premium Plan"
+                      merchantName="Demo Store"
+                      onSuccess={(payment) => console.log('Success:', payment)}
+                      onError={(error) => console.log('Error:', error)}
+                    />
+                  </div>
+                  
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-medium mb-2">Outline Style</h4>
+                    <PaymentButtonWidget
+                      apiKey="pk_test_demo"
+                      amount={0.005}
+                      currency="sBTC"
+                      description="Annual Subscription"
+                      buttonVariant="outline"
+                      buttonSize="lg"
+                      primaryColor="#8b5cf6"
+                      merchantName="Purple Co"
+                      onSuccess={(payment) => console.log('Success:', payment)}
+                    />
+                  </div>
+                  
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-medium mb-2">Custom Color</h4>
+                    <PaymentButtonWidget
+                      apiKey="pk_test_demo"
+                      amount={25}
+                      currency="USDC"
+                      description="Digital Product"
+                      primaryColor="#10b981"
+                      borderRadius={12}
+                      merchantName="Green Shop"
+                      merchantLogo="https://via.placeholder.com/32x32"
+                      onSuccess={(payment) => console.log('Success:', payment)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Donation Widget */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold">Donation Widget</h3>
+                  <p className="text-sm text-gray-600">Customizable donation forms with preset amounts</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-medium mb-3">Basic Donation</h4>
+                    <DonationWidget
+                      apiKey="pk_test_demo"
+                      organizationName="Save the Ocean"
+                      cause="Marine Conservation"
+                      currency="BTC"
+                      presetAmounts={[0.001, 0.005, 0.01, 0.05]}
+                      primaryColor="#0ea5e9"
+                      onDonation={(donation) => console.log('Donation:', donation)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium mb-3">With Progress Goal</h4>
+                    <DonationWidget
+                      apiKey="pk_test_demo"
+                      organizationName="Tech for Good"
+                      cause="Digital Education"
+                      currency="BTC"
+                      presetAmounts={[0.002, 0.01, 0.02, 0.1]}
+                      showProgress={true}
+                      goalAmount={1.0}
+                      currentAmount={0.35}
+                      donorCount={47}
+                      primaryColor="#f59e0b"
+                      onDonation={(donation) => console.log('Donation:', donation)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Checkout Widget */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold">Checkout Widget</h3>
+                  <p className="text-sm text-gray-600">Full e-commerce checkout with multiple items</p>
+                </div>
+                <div className="max-w-md">
+                  <CheckoutWidget
+                    apiKey="pk_test_demo"
+                    items={[
+                      {
+                        id: '1',
+                        name: 'Bitcoin T-Shirt',
+                        description: '100% organic cotton',
+                        price: 0.002,
+                        quantity: 1,
+                        image: 'https://via.placeholder.com/64x64'
+                      },
+                      {
+                        id: '2',
+                        name: 'Crypto Sticker Pack',
+                        description: 'Set of 10 vinyl stickers',
+                        price: 0.0005,
+                        quantity: 2,
+                        image: 'https://via.placeholder.com/64x64'
+                      }
+                    ]}
+                    currency="BTC"
+                    taxRate={0.08}
+                    shippingCost={0.0001}
+                    merchantName="Crypto Merch"
+                    collectShipping={true}
+                    collectEmail={true}
+                    allowQuantityEdit={true}
+                    onSuccess={(order) => console.log('Order:', order)}
+                  />
+                </div>
+              </div>
+
+              {/* Integration Instructions */}
+              <div className="bg-gray-50 rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">How to Use These Widgets</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start space-x-2">
+                    <span className="bg-orange-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">1</span>
+                    <p><strong>Copy the component:</strong> Use any of these widgets in your React app by importing them</p>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <span className="bg-orange-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2</span>
+                    <p><strong>Configure props:</strong> Customize colors, amounts, and behavior with props</p>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <span className="bg-orange-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">3</span>
+                    <p><strong>Handle callbacks:</strong> Use onSuccess, onError callbacks to handle payment results</p>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <span className="bg-orange-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">4</span>
+                    <p><strong>Test & deploy:</strong> Test in development, then use your live API keys for production</p>
+                  </div>
+                </div>
+                
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">💡 Pro Tip</h4>
+                  <p className="text-sm text-blue-800">
+                    All widgets are fully customizable and responsive. You can override styles, colors, and behavior to match your brand perfectly.
+                  </p>
+                </div>
+              </div>
+
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="examples" className="space-y-6">

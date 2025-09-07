@@ -45,6 +45,7 @@ import MetricCard from './MetricCard'
 import QuickActions from './QuickActions'
 import RecentPayments from './RecentPayments'
 import PaymentChart from './PaymentChart'
+import { PaymentButtonWidget } from '@/components/widgets/drop-in'
 
 interface DashboardStats {
   totalRevenue: number
@@ -438,6 +439,69 @@ const DashboardOverview = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Widget Preview Section */}
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Quick Widget Preview</span>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => router.push('/dashboard/developer?tab=gallery')}
+            >
+              View All Widgets
+            </Button>
+          </CardTitle>
+          <CardDescription>
+            Test the drop-in widgets you can embed on any website
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 border rounded-lg space-y-3">
+              <h4 className="font-medium">Payment Button</h4>
+              <p className="text-sm text-gray-600">Simple payment button for quick transactions</p>
+              <PaymentButtonWidget
+                apiKey="pk_test_demo"
+                amount={0.001}
+                currency="BTC"
+                description="Demo Payment"
+                merchantName="Your Store"
+                buttonSize="sm"
+                onSuccess={(payment) => console.log('Payment successful:', payment)}
+                onError={(error) => console.log('Payment error:', error)}
+              />
+            </div>
+            
+            <div className="p-4 border rounded-lg space-y-3">
+              <h4 className="font-medium">Developer Tools</h4>
+              <p className="text-sm text-gray-600">Explore all widgets and get code examples</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full"
+                onClick={() => router.push('/dashboard/developer')}
+              >
+                Open Developer Console
+              </Button>
+            </div>
+
+            <div className="p-4 border rounded-lg space-y-3">
+              <h4 className="font-medium">Widget Playground</h4>
+              <p className="text-sm text-gray-600">Customize and preview widgets live</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full"
+                onClick={() => router.push('/dashboard/developer?tab=playground')}
+              >
+                Try Widget Builder
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

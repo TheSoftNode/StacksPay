@@ -32,6 +32,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -125,6 +126,13 @@ const PaymentsPage = () => {
   const [activeTab, setActiveTab] = useState('all')
   const downloadRef = useRef<HTMLAnchorElement>(null)
   
+  // Advanced search state
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [dateRange, setDateRange] = useState({ from: '', to: '' })
+  const [amountRange, setAmountRange] = useState({ min: '', max: '' })
+  const [customerFilter, setCustomerFilter] = useState('')
+  const [transactionIdFilter, setTransactionIdFilter] = useState('')
+  
   // Modal states
   const [modalPayment, setModalPayment] = useState<Payment | null>(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
@@ -138,6 +146,7 @@ const PaymentsPage = () => {
   const [refundAmount, setRefundAmount] = useState('')
   const [refundReason, setRefundReason] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [paymentLinkTab, setPaymentLinkTab] = useState('basic')
   
   // Payment link form state
   const [paymentLinkData, setPaymentLinkData] = useState({
@@ -146,7 +155,23 @@ const PaymentsPage = () => {
     description: '',
     customerEmail: '',
     expiresIn: '24h', // hours
-    customId: ''
+    customId: '',
+    // Advanced features
+    allowCustomAmount: false,
+    minAmount: '',
+    maxAmount: '',
+    collectShipping: false,
+    collectCustomerInfo: false,
+    successUrl: '',
+    cancelUrl: '',
+    createSubscription: false,
+    subscriptionInterval: 'monthly',
+    trialDays: '14',
+    maxUses: '',
+    requireNote: false,
+    primaryColor: '#ea580c',
+    showLogo: true,
+    customMessage: ''
   })
 
   // Subscription conversion form state
@@ -316,7 +341,23 @@ const PaymentsPage = () => {
       description: '',
       customerEmail: '',
       expiresIn: '24h',
-      customId: ''
+      customId: '',
+      // Advanced features
+      allowCustomAmount: false,
+      minAmount: '',
+      maxAmount: '',
+      collectShipping: false,
+      collectCustomerInfo: false,
+      successUrl: '',
+      cancelUrl: '',
+      createSubscription: false,
+      subscriptionInterval: 'monthly',
+      trialDays: '14',
+      maxUses: '',
+      requireNote: false,
+      primaryColor: '#ea580c',
+      showLogo: true,
+      customMessage: ''
     });
     clearGeneratedPaymentLink();
   }
@@ -608,45 +649,159 @@ const PaymentsPage = () => {
             
             <div className="p-6">
               {/* Filters and Search */}
-              <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
-                {/* Search */}
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search payments, customers, or payment IDs..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-white dark:bg-gray-900 border hover:border-orange-300 dark:hover:border-orange-600"
-                  />
-                </div>
-                
-                {/* Status Filter */}
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[140px] bg-white dark:bg-gray-900 border hover:border-orange-300 dark:hover:border-orange-600">
+              <div className="space-y-4 mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                  {/* Search */}
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search payments, customers, or payment IDs..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 bg-white dark:bg-gray-900 border hover:border-orange-300 dark:hover:border-orange-600"
+                    />
+                  </div>
+                  
+                  {/* Status Filter */}
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[140px] bg-white dark:bg-gray-900 border hover:border-orange-300 dark:hover:border-orange-600">
+                      <Filter className="mr-2 h-4 w-4" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  {/* Sort Options */}
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-[140px] bg-white dark:bg-gray-900 border hover:border-orange-300 dark:hover:border-orange-600">
+                      <ArrowUpDown className="mr-2 h-4 w-4" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                      <SelectItem value="date">Sort by Date</SelectItem>
+                      <SelectItem value="amount">Sort by Amount</SelectItem>
+                      <SelectItem value="customer">Sort by Customer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  {/* Advanced Filters Toggle */}
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                    className="whitespace-nowrap"
+                  >
                     <Filter className="mr-2 h-4 w-4" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                {/* Sort Options */}
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-[140px] bg-white dark:bg-gray-900 border hover:border-orange-300 dark:hover:border-orange-600">
-                    <ArrowUpDown className="mr-2 h-4 w-4" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                    <SelectItem value="date">Sort by Date</SelectItem>
-                    <SelectItem value="amount">Sort by Amount</SelectItem>
-                    <SelectItem value="customer">Sort by Customer</SelectItem>
-                  </SelectContent>
-                </Select>
+                    Advanced Filters
+                  </Button>
+                </div>
+
+                {/* Advanced Filters */}
+                {showAdvancedFilters && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Date Range */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Date Range</Label>
+                        <div className="flex space-x-2">
+                          <Input
+                            type="date"
+                            placeholder="From"
+                            value={dateRange.from}
+                            onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                            className="text-sm"
+                          />
+                          <Input
+                            type="date"
+                            placeholder="To"
+                            value={dateRange.to}
+                            onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Amount Range */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Amount Range (sBTC)</Label>
+                        <div className="flex space-x-2">
+                          <Input
+                            type="number"
+                            placeholder="Min"
+                            value={amountRange.min}
+                            onChange={(e) => setAmountRange(prev => ({ ...prev, min: e.target.value }))}
+                            className="text-sm"
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Max"
+                            value={amountRange.max}
+                            onChange={(e) => setAmountRange(prev => ({ ...prev, max: e.target.value }))}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Payment Method */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Payment Method</Label>
+                        <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+                          <SelectTrigger className="text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Methods</SelectItem>
+                            <SelectItem value="leather">Leather Wallet</SelectItem>
+                            <SelectItem value="xverse">Xverse Wallet</SelectItem>
+                            <SelectItem value="hiro">Hiro Wallet</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Transaction ID */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Transaction ID</Label>
+                        <Input
+                          placeholder="Enter transaction ID"
+                          value={transactionIdFilter}
+                          onChange={(e) => setTransactionIdFilter(e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setDateRange({ from: '', to: '' })
+                          setAmountRange({ min: '', max: '' })
+                          setCustomerFilter('')
+                          setTransactionIdFilter('')
+                          setPaymentMethodFilter('all')
+                        }}
+                      >
+                        Clear All
+                      </Button>
+                      
+                      <div className="text-sm text-gray-500">
+                        Showing {filteredPayments.length} results
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
               </div>
             
               <TabsContent value="all" className="mt-0">
@@ -910,123 +1065,363 @@ const PaymentsPage = () => {
           </DialogHeader>
           
           {!generatedPaymentLink ? (
-            <div className="space-y-6">
-              {/* Basic Information */}
-              <div className="space-y-4">
-                <h3 className="font-medium text-gray-900 dark:text-gray-100">Payment Details</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
+            <Tabs value={paymentLinkTab} onValueChange={setPaymentLinkTab} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="basic">Basic</TabsTrigger>
+                <TabsTrigger value="advanced">Advanced</TabsTrigger>
+                <TabsTrigger value="subscription">Subscription</TabsTrigger>
+                <TabsTrigger value="customize">Customize</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="basic" className="space-y-4">
+                {/* Basic Payment Details */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="link-amount">Amount *</Label>
+                      <Input
+                        id="link-amount"
+                        type="number"
+                        step="0.000001"
+                        placeholder="0.001"
+                        value={paymentLinkData.amount}
+                        onChange={(e) => setPaymentLinkData(prev => ({ ...prev, amount: e.target.value }))}
+                        disabled={paymentLinkData.allowCustomAmount}
+                        className="bg-white dark:bg-gray-900 border"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="link-currency">Currency</Label>
+                      <Select 
+                        value={paymentLinkData.currency} 
+                        onValueChange={(value) => setPaymentLinkData(prev => ({ ...prev, currency: value }))}
+                      >
+                        <SelectTrigger className="bg-white dark:bg-gray-900 border">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                          <SelectItem value="sBTC">sBTC</SelectItem>
+                          <SelectItem value="BTC">BTC</SelectItem>
+                          <SelectItem value="STX">STX</SelectItem>
+                          <SelectItem value="USDC">USDC</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="link-amount">Amount *</Label>
+                    <Label htmlFor="link-description">Description *</Label>
                     <Input
-                      id="link-amount"
+                      id="link-description"
+                      placeholder="Premium subscription, Product purchase, etc."
+                      value={paymentLinkData.description}
+                      onChange={(e) => setPaymentLinkData(prev => ({ ...prev, description: e.target.value }))}
+                      className="bg-white dark:bg-gray-900 border"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="customer-email">Customer Email (Optional)</Label>
+                    <Input
+                      id="customer-email"
+                      type="email"
+                      placeholder="customer@example.com"
+                      value={paymentLinkData.customerEmail}
+                      onChange={(e) => setPaymentLinkData(prev => ({ ...prev, customerEmail: e.target.value }))}
+                      className="bg-white dark:bg-gray-900 border"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="expires-in">Expires In</Label>
+                      <Select 
+                        value={paymentLinkData.expiresIn} 
+                        onValueChange={(value) => setPaymentLinkData(prev => ({ ...prev, expiresIn: value }))}
+                      >
+                        <SelectTrigger className="bg-white dark:bg-gray-900 border">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                          <SelectItem value="1">1 hour</SelectItem>
+                          <SelectItem value="24">24 hours</SelectItem>
+                          <SelectItem value="168">7 days</SelectItem>
+                          <SelectItem value="720">30 days</SelectItem>
+                          <SelectItem value="never">Never</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-id">Custom ID (Optional)</Label>
+                      <Input
+                        id="custom-id"
+                        placeholder="order-123, inv-456"
+                        value={paymentLinkData.customId}
+                        onChange={(e) => setPaymentLinkData(prev => ({ ...prev, customId: e.target.value }))}
+                        className="bg-white dark:bg-gray-900 border"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="advanced" className="space-y-4">
+                {/* Advanced Options */}
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Allow Custom Amount</Label>
+                        <p className="text-sm text-gray-500">Let customers enter their own amount</p>
+                      </div>
+                      <Switch
+                        checked={paymentLinkData.allowCustomAmount}
+                        onCheckedChange={(checked) => setPaymentLinkData(prev => ({ ...prev, allowCustomAmount: checked }))}
+                      />
+                    </div>
+
+                    {paymentLinkData.allowCustomAmount && (
+                      <div className="grid grid-cols-2 gap-4 ml-6">
+                        <div className="space-y-2">
+                          <Label>Min Amount</Label>
+                          <Input
+                            type="number"
+                            step="0.000001"
+                            placeholder="0.001"
+                            value={paymentLinkData.minAmount}
+                            onChange={(e) => setPaymentLinkData(prev => ({ ...prev, minAmount: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Max Amount</Label>
+                          <Input
+                            type="number"
+                            step="0.000001"
+                            placeholder="1.0"
+                            value={paymentLinkData.maxAmount}
+                            onChange={(e) => setPaymentLinkData(prev => ({ ...prev, maxAmount: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Collect Shipping Info</Label>
+                        <p className="text-sm text-gray-500">Collect customer shipping address</p>
+                      </div>
+                      <Switch
+                        checked={paymentLinkData.collectShipping}
+                        onCheckedChange={(checked) => setPaymentLinkData(prev => ({ ...prev, collectShipping: checked }))}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Collect Customer Info</Label>
+                        <p className="text-sm text-gray-500">Require name and contact details</p>
+                      </div>
+                      <Switch
+                        checked={paymentLinkData.collectCustomerInfo}
+                        onCheckedChange={(checked) => setPaymentLinkData(prev => ({ ...prev, collectCustomerInfo: checked }))}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Require Note from Customer</Label>
+                        <p className="text-sm text-gray-500">Add a note/message field</p>
+                      </div>
+                      <Switch
+                        checked={paymentLinkData.requireNote}
+                        onCheckedChange={(checked) => setPaymentLinkData(prev => ({ ...prev, requireNote: checked }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Max Uses (Optional)</Label>
+                    <Input
                       type="number"
-                      step="0.000001"
-                      placeholder="0.001"
-                      value={paymentLinkData.amount}
-                      onChange={(e) => setPaymentLinkData(prev => ({ ...prev, amount: e.target.value }))}
-                      className="bg-white dark:bg-gray-900 border"
+                      placeholder="Unlimited"
+                      value={paymentLinkData.maxUses}
+                      onChange={(e) => setPaymentLinkData(prev => ({ ...prev, maxUses: e.target.value }))}
+                    />
+                    <p className="text-sm text-gray-500">Limit how many times this link can be used</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label>Success Redirect URL (Optional)</Label>
+                      <Input
+                        type="url"
+                        placeholder="https://yoursite.com/success"
+                        value={paymentLinkData.successUrl}
+                        onChange={(e) => setPaymentLinkData(prev => ({ ...prev, successUrl: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cancel Redirect URL (Optional)</Label>
+                      <Input
+                        type="url"
+                        placeholder="https://yoursite.com/cancel"
+                        value={paymentLinkData.cancelUrl}
+                        onChange={(e) => setPaymentLinkData(prev => ({ ...prev, cancelUrl: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="subscription" className="space-y-4">
+                {/* Subscription Options */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Create Subscription Plan</Label>
+                      <p className="text-sm text-gray-500">Convert this payment to a recurring subscription</p>
+                    </div>
+                    <Switch
+                      checked={paymentLinkData.createSubscription}
+                      onCheckedChange={(checked) => setPaymentLinkData(prev => ({ ...prev, createSubscription: checked }))}
                     />
                   </div>
-                  
+
+                  {paymentLinkData.createSubscription && (
+                    <div className="space-y-4 ml-6 p-4 border rounded-lg">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Billing Interval</Label>
+                          <Select 
+                            value={paymentLinkData.subscriptionInterval} 
+                            onValueChange={(value) => setPaymentLinkData(prev => ({ ...prev, subscriptionInterval: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="quarterly">Quarterly</SelectItem>
+                              <SelectItem value="yearly">Yearly</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Trial Days</Label>
+                          <Input
+                            type="number"
+                            value={paymentLinkData.trialDays}
+                            onChange={(e) => setPaymentLinkData(prev => ({ ...prev, trialDays: e.target.value }))}
+                            min="0"
+                            max="90"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm text-blue-800">
+                          <span className="font-medium">Subscription Preview:</span> Customer will be charged {paymentLinkData.amount || '0'} {paymentLinkData.currency} every {paymentLinkData.subscriptionInterval}
+                          {paymentLinkData.trialDays && parseInt(paymentLinkData.trialDays) > 0 ? ` after a ${paymentLinkData.trialDays}-day free trial` : ''}.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="customize" className="space-y-4">
+                {/* Customization Options */}
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="link-currency">Currency</Label>
-                    <Select 
-                      value={paymentLinkData.currency} 
-                      onValueChange={(value) => setPaymentLinkData(prev => ({ ...prev, currency: value }))}
-                    >
-                      <SelectTrigger className="bg-white dark:bg-gray-900 border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                        <SelectItem value="sBTC">sBTC</SelectItem>
-                        <SelectItem value="BTC">BTC</SelectItem>
-                        <SelectItem value="STX">STX</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="link-description">Description *</Label>
-                  <Input
-                    id="link-description"
-                    placeholder="Premium subscription, Product purchase, etc."
-                    value={paymentLinkData.description}
-                    onChange={(e) => setPaymentLinkData(prev => ({ ...prev, description: e.target.value }))}
-                    className="bg-white dark:bg-gray-900 border"
-                  />
-                </div>
-              </div>
-
-              {/* Customer Information */}
-              <div className="space-y-4">
-                <h3 className="font-medium text-gray-900 dark:text-gray-100">Customer Information (Optional)</h3>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="customer-email">Customer Email</Label>
-                  <Input
-                    id="customer-email"
-                    type="email"
-                    placeholder="customer@example.com"
-                    value={paymentLinkData.customerEmail}
-                    onChange={(e) => setPaymentLinkData(prev => ({ ...prev, customerEmail: e.target.value }))}
-                    className="bg-white dark:bg-gray-900 border"
-                  />
-                  <p className="text-xs text-gray-500">Receipt and updates will be sent to this email</p>
-                </div>
-              </div>
-
-              {/* Link Settings */}
-              <div className="space-y-4">
-                <h3 className="font-medium text-gray-900 dark:text-gray-100">Link Settings</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="expires-in">Expires In</Label>
-                    <Select 
-                      value={paymentLinkData.expiresIn} 
-                      onValueChange={(value) => setPaymentLinkData(prev => ({ ...prev, expiresIn: value }))}
-                    >
-                      <SelectTrigger className="bg-white dark:bg-gray-900 border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                        <SelectItem value="1">1 hour</SelectItem>
-                        <SelectItem value="24">24 hours</SelectItem>
-                        <SelectItem value="168">7 days</SelectItem>
-                        <SelectItem value="720">30 days</SelectItem>
-                        <SelectItem value="never">Never</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Primary Color</Label>
+                    <div className="flex space-x-2">
+                      <Input
+                        type="color"
+                        value={paymentLinkData.primaryColor}
+                        onChange={(e) => setPaymentLinkData(prev => ({ ...prev, primaryColor: e.target.value }))}
+                        className="w-20 h-10"
+                      />
+                      <Input
+                        type="text"
+                        value={paymentLinkData.primaryColor}
+                        onChange={(e) => setPaymentLinkData(prev => ({ ...prev, primaryColor: e.target.value }))}
+                        placeholder="#ea580c"
+                        className="flex-1"
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-id">Custom ID (Optional)</Label>
-                    <Input
-                      id="custom-id"
-                      placeholder="order-123, inv-456"
-                      value={paymentLinkData.customId}
-                      onChange={(e) => setPaymentLinkData(prev => ({ ...prev, customId: e.target.value }))}
-                      className="bg-white dark:bg-gray-900 border"
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Show StacksPay Logo</Label>
+                      <p className="text-sm text-gray-500">Display branding on payment page</p>
+                    </div>
+                    <Switch
+                      checked={paymentLinkData.showLogo}
+                      onCheckedChange={(checked) => setPaymentLinkData(prev => ({ ...prev, showLogo: checked }))}
                     />
                   </div>
-                </div>
-              </div>
 
-              {/* Preview */}
+                  <div className="space-y-2">
+                    <Label>Custom Message (Optional)</Label>
+                    <Textarea
+                      placeholder="Thank you for your purchase! Your support means everything to us."
+                      value={paymentLinkData.customMessage}
+                      onChange={(e) => setPaymentLinkData(prev => ({ ...prev, customMessage: e.target.value }))}
+                      rows={3}
+                    />
+                    <p className="text-sm text-gray-500">This message will appear on the payment page</p>
+                  </div>
+
+                  {/* Preview */}
+                  <div className="p-4 border rounded-lg" style={{ borderColor: paymentLinkData.primaryColor + '40' }}>
+                    <h4 className="font-medium mb-3" style={{ color: paymentLinkData.primaryColor }}>Payment Page Preview</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>Amount:</span>
+                        <span className="font-medium">{paymentLinkData.amount || '0'} {paymentLinkData.currency}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Description:</span>
+                        <span>{paymentLinkData.description || 'Payment description'}</span>
+                      </div>
+                      {paymentLinkData.customMessage && (
+                        <div className="pt-2 border-t">
+                          <p className="text-gray-600 italic">"{paymentLinkData.customMessage}"</p>
+                        </div>
+                      )}
+                      {paymentLinkData.showLogo && (
+                        <div className="text-xs text-gray-500 pt-2">🔒 Powered by StacksPay</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Overall Preview */}
               <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Preview</h4>
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Link Summary</h4>
                 <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                  <p><span className="font-medium">Amount:</span> {paymentLinkData.amount || '0'} {paymentLinkData.currency}</p>
+                  <p><span className="font-medium">Type:</span> {paymentLinkData.createSubscription ? 'Subscription' : 'One-time Payment'}</p>
+                  <p><span className="font-medium">Amount:</span> {paymentLinkData.allowCustomAmount ? 'Customer choice' : `${paymentLinkData.amount || '0'} ${paymentLinkData.currency}`}</p>
                   <p><span className="font-medium">Description:</span> {paymentLinkData.description || 'Payment description'}</p>
                   {paymentLinkData.customerEmail && (
                     <p><span className="font-medium">Customer:</span> {paymentLinkData.customerEmail}</p>
                   )}
                   <p><span className="font-medium">Expires:</span> {paymentLinkData.expiresIn === 'never' ? 'Never' : `In ${paymentLinkData.expiresIn} hours`}</p>
+                  {paymentLinkData.maxUses && (
+                    <p><span className="font-medium">Max Uses:</span> {paymentLinkData.maxUses}</p>
+                  )}
+                  {paymentLinkData.createSubscription && (
+                    <p><span className="font-medium">Billing:</span> Every {paymentLinkData.subscriptionInterval}</p>
+                  )}
                 </div>
               </div>
-            </div>
+            </Tabs>
           ) : (
             <div className="space-y-6">
               {/* Success State */}

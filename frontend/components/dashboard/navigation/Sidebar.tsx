@@ -25,7 +25,8 @@ import {
   User,
   RefreshCw,
   Building2,
-  FileText
+  FileText,
+  Store
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -64,6 +65,12 @@ const navigation: NavItem[] = [
     href: '/dashboard/payments',
     icon: CreditCard,
     badge: '12',
+  },
+  {
+    name: 'Disputes',
+    href: '/dashboard/disputes',
+    icon: Shield,
+    badge: '2',
   },
   {
     name: 'Subscriptions',
@@ -128,6 +135,12 @@ const navigation: NavItem[] = [
     name: 'Customers',
     href: '/dashboard/customers',
     icon: Users,
+  },
+  {
+    name: 'Marketplace',
+    href: '/dashboard/marketplace',
+    icon: Store,
+    isNew: true,
   },
 ]
 
