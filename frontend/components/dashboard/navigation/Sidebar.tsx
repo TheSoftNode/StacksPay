@@ -22,7 +22,10 @@ import {
   Globe,
   ArrowUpDown,
   Rocket,
-  User
+  User,
+  RefreshCw,
+  Building2,
+  FileText
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -61,6 +64,39 @@ const navigation: NavItem[] = [
     href: '/dashboard/payments',
     icon: CreditCard,
     badge: '12',
+  },
+  {
+    name: 'Subscriptions',
+    href: '/dashboard/subscriptions',
+    icon: RefreshCw,
+    isNew: true,
+  },
+  {
+    name: 'Enterprise',
+    href: '/dashboard/enterprise',
+    icon: Building2,
+    children: [
+      {
+        name: 'Overview',
+        href: '/dashboard/enterprise',
+        icon: LayoutDashboard,
+      },
+      {
+        name: 'Escrow',
+        href: '/dashboard/enterprise/escrow',
+        icon: Shield,
+      },
+      {
+        name: 'Multi-Signature',
+        href: '/dashboard/enterprise/multisig',
+        icon: Users,
+      },
+      {
+        name: 'Compliance',
+        href: '/dashboard/enterprise/compliance',
+        icon: FileText,
+      },
+    ],
   },
   {
     name: 'Balance & Conversion',

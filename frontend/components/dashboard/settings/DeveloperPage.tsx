@@ -16,11 +16,22 @@ import {
   Zap,
   Layers,
   Shield,
-  Cpu
+  Cpu,
+  Puzzle,
+  Eye,
+  Settings
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import PaymentWidget from '@/components/payment/payment-widget'
+import EmbeddablePaymentWidget from '@/components/widgets/EmbeddablePaymentWidget'
 
 interface CodeSnippet {
   id: string
@@ -178,11 +189,99 @@ const sdkLanguages = [
 export default function DeveloperPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const [activeLanguage, setActiveLanguage] = useState('javascript')
+  const [activeTab, setActiveTab] = useState('overview')
+  
+  // Widget playground state
+  const [widgetConfig, setWidgetConfig] = useState({
+    amount: 0.001,
+    currency: 'BTC' as const,
+    description: 'Test Payment',
+    merchantName: 'Demo Merchant',
+    theme: 'light' as const,
+    primaryColor: '#ea580c',
+    borderRadius: 12,
+    showLogo: true,
+    showQR: true,
+    showPaymentMethods: true,
+    embedded: false,
+    resizable: true,
+    closeable: true
+  })
+  
+  const [generatedCode, setGeneratedCode] = useState('')
 
   const copyToClipboard = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text)
     setCopiedCode(id)
     setTimeout(() => setCopiedCode(null), 2000)
+  }
+
+  const generateWidgetCode = () => {
+    const jsCode = `
+// HTML Embed Code
+<div id="stackspay-widget"></div>
+<script src="https://js.stackspay.com/v1/widget.js"></script>
+<script>
+  StacksPay.createWidget({
+    apiKey: 'your-api-key',
+    amount: ${widgetConfig.amount},
+    currency: '${widgetConfig.currency}',
+    description: '${widgetConfig.description}',
+    merchantName: '${widgetConfig.merchantName}',
+    theme: '${widgetConfig.theme}',
+    primaryColor: '${widgetConfig.primaryColor}',
+    borderRadius: ${widgetConfig.borderRadius},
+    showLogo: ${widgetConfig.showLogo},
+    showQR: ${widgetConfig.showQR},
+    showPaymentMethods: ${widgetConfig.showPaymentMethods},
+    embedded: ${widgetConfig.embedded},
+    resizable: ${widgetConfig.resizable},
+    closeable: ${widgetConfig.closeable},
+    containerId: 'stackspay-widget',
+    onPaymentSuccess: (payment) => {
+      console.log('Payment successful:', payment);
+    },
+    onPaymentError: (error) => {
+      console.error('Payment failed:', error);
+    }
+  });
+</script>
+
+// React Component
+import { EmbeddablePaymentWidget } from '@stackspay/react';
+
+function PaymentComponent() {
+  return (
+    <EmbeddablePaymentWidget
+      apiKey="your-api-key"
+      amount={${widgetConfig.amount}}
+      currency="${widgetConfig.currency}"
+      description="${widgetConfig.description}"
+      merchantName="${widgetConfig.merchantName}"
+      theme="${widgetConfig.theme}"
+      primaryColor="${widgetConfig.primaryColor}"
+      borderRadius={${widgetConfig.borderRadius}}
+      showLogo={${widgetConfig.showLogo}}
+      showQR={${widgetConfig.showQR}}
+      showPaymentMethods={${widgetConfig.showPaymentMethods}}
+      embedded={${widgetConfig.embedded}}
+      resizable={${widgetConfig.resizable}}
+      closeable={${widgetConfig.closeable}}
+      onPaymentSuccess={(payment) => {
+        console.log('Payment successful:', payment);
+      }}
+      onPaymentError={(error) => {
+        console.error('Payment failed:', error);
+      }}
+    />
+  );
+}`;
+    
+    setGeneratedCode(jsCode)
+  }
+
+  const updateWidgetConfig = (key: string, value: any) => {
+    setWidgetConfig(prev => ({ ...prev, [key]: value }))
   }
 
   return (
@@ -195,6 +294,16 @@ export default function DeveloperPage() {
           </p>
         </div>
       </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="playground">Widget Playground</TabsTrigger>
+          <TabsTrigger value="examples">Code Examples</TabsTrigger>
+          <TabsTrigger value="resources">Resources</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -374,7 +483,241 @@ export default function DeveloperPage() {
           </div>
         </motion.div>
       </div>
+        </TabsContent>
 
+        <TabsContent value="playground" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Widget Configuration */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Settings className="w-5 h-5 text-orange-600" />
+                  <span>Widget Configuration</span>
+                </CardTitle>
+                <CardDescription>Customize your payment widget settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="amount">Amount</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      step="0.001"
+                      value={widgetConfig.amount}
+                      onChange={(e) => updateWidgetConfig('amount', parseFloat(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="currency">Currency</Label>
+                    <Select 
+                      value={widgetConfig.currency}
+                      onValueChange={(value) => updateWidgetConfig('currency', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="BTC">Bitcoin (BTC)</SelectItem>
+                        <SelectItem value="sBTC">Synthetic Bitcoin (sBTC)</SelectItem>
+                        <SelectItem value="STX">Stacks (STX)</SelectItem>
+                        <SelectItem value="USDC">USD Coin (USDC)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Input
+                    id="description"
+                    value={widgetConfig.description}
+                    onChange={(e) => updateWidgetConfig('description', e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="merchantName">Merchant Name</Label>
+                  <Input
+                    id="merchantName"
+                    value={widgetConfig.merchantName}
+                    onChange={(e) => updateWidgetConfig('merchantName', e.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="theme">Theme</Label>
+                    <Select 
+                      value={widgetConfig.theme}
+                      onValueChange={(value) => updateWidgetConfig('theme', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="light">Light</SelectItem>
+                        <SelectItem value="dark">Dark</SelectItem>
+                        <SelectItem value="auto">Auto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="primaryColor">Primary Color</Label>
+                    <Input
+                      id="primaryColor"
+                      type="color"
+                      value={widgetConfig.primaryColor}
+                      onChange={(e) => updateWidgetConfig('primaryColor', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="borderRadius">Border Radius</Label>
+                  <Input
+                    id="borderRadius"
+                    type="range"
+                    min="0"
+                    max="24"
+                    value={widgetConfig.borderRadius}
+                    onChange={(e) => updateWidgetConfig('borderRadius', parseInt(e.target.value))}
+                  />
+                  <span className="text-sm text-gray-500">{widgetConfig.borderRadius}px</span>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="showLogo">Show Logo</Label>
+                    <Switch
+                      id="showLogo"
+                      checked={widgetConfig.showLogo}
+                      onCheckedChange={(checked) => updateWidgetConfig('showLogo', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="showQR">Show QR Code</Label>
+                    <Switch
+                      id="showQR"
+                      checked={widgetConfig.showQR}
+                      onCheckedChange={(checked) => updateWidgetConfig('showQR', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="showPaymentMethods">Show Payment Methods</Label>
+                    <Switch
+                      id="showPaymentMethods"
+                      checked={widgetConfig.showPaymentMethods}
+                      onCheckedChange={(checked) => updateWidgetConfig('showPaymentMethods', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="resizable">Resizable</Label>
+                    <Switch
+                      id="resizable"
+                      checked={widgetConfig.resizable}
+                      onCheckedChange={(checked) => updateWidgetConfig('resizable', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="closeable">Closeable</Label>
+                    <Switch
+                      id="closeable"
+                      checked={widgetConfig.closeable}
+                      onCheckedChange={(checked) => updateWidgetConfig('closeable', checked)}
+                    />
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={generateWidgetCode}
+                  className="w-full bg-orange-600 hover:bg-orange-700"
+                >
+                  <Code className="w-4 h-4 mr-2" />
+                  Generate Code
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Widget Preview */}
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Eye className="w-5 h-5 text-orange-600" />
+                    <span>Live Preview</span>
+                  </CardTitle>
+                  <CardDescription>Preview your widget configuration</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <div className="w-full max-w-md">
+                    <PaymentWidget
+                      amount={widgetConfig.amount}
+                      currency={widgetConfig.currency}
+                      description={widgetConfig.description}
+                      merchantName={widgetConfig.merchantName}
+                      showQR={widgetConfig.showQR}
+                      showPaymentMethods={widgetConfig.showPaymentMethods}
+                      customStyles={{
+                        borderRadius: `${widgetConfig.borderRadius}px`,
+                        borderColor: widgetConfig.primaryColor
+                      }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Generated Code */}
+              {generatedCode && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Puzzle className="w-5 h-5 text-orange-600" />
+                        <span>Generated Code</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(generatedCode, 'generated')}
+                      >
+                        {copiedCode === 'generated' ? (
+                          <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        ) : (
+                          <Copy className="h-4 w-4 mr-2" />
+                        )}
+                        {copiedCode === 'generated' ? 'Copied!' : 'Copy'}
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-gray-900 rounded-lg overflow-hidden border">
+                      <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        </div>
+                        <span className="text-xs text-gray-400">Widget Code</span>
+                      </div>
+                      <div className="p-4 overflow-x-auto">
+                        <pre className="text-sm text-gray-300 whitespace-pre-wrap">
+                          <code>{generatedCode}</code>
+                        </pre>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="examples" className="space-y-6">
       {/* Code Examples */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -489,6 +832,127 @@ export default function DeveloperPage() {
           </Tabs>
         </div>
       </motion.div>
+        </TabsContent>
+
+        <TabsContent value="resources" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* SDK Libraries */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm"
+            >
+              <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+                  <Layers className="h-5 w-5 text-orange-600" />
+                  <span>SDK Libraries</span>
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Official SDKs for popular programming languages</p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {sdkLanguages.map((sdk, index) => (
+                  <div key={sdk.name} className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 rounded-lg border shadow-sm">
+                    <div className="flex items-center space-x-3">
+                      <sdk.icon className="h-6 w-6 text-orange-600" />
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">{sdk.name}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{sdk.version}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge 
+                        className={sdk.status === 'available' 
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300' 
+                          : 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300'
+                        }
+                      >
+                        {sdk.status === 'available' ? 'Available' : 'Coming Soon'}
+                      </Badge>
+                      {sdk.installCommand && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(sdk.installCommand, `install-${index}`)}
+                        >
+                          {copiedCode === `install-${index}` ? (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Quick Links */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm"
+            >
+              <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+                  <Globe className="h-5 w-5 text-orange-600" />
+                  <span>Quick Links</span>
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Essential resources for developers</p>
+              </div>
+
+              <div className="p-6 space-y-3">
+                <Button variant="ghost" className="w-full justify-between p-4 h-auto">
+                  <div className="flex items-center space-x-3">
+                    <Book className="h-5 w-5" />
+                    <div className="text-left">
+                      <p className="font-medium">API Documentation</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Complete API reference</p>
+                    </div>
+                  </div>
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+
+                <Button variant="ghost" className="w-full justify-between p-4 h-auto">
+                  <div className="flex items-center space-x-3">
+                    <Globe className="h-5 w-5" />
+                    <div className="text-left">
+                      <p className="font-medium">sBTC Testnet</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Test your integration</p>
+                    </div>
+                  </div>
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+
+                <Button variant="ghost" className="w-full justify-between p-4 h-auto">
+                  <div className="flex items-center space-x-3">
+                    <Key className="h-5 w-5" />
+                    <div className="text-left">
+                      <p className="font-medium">Webhook Guide</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Handle real-time events</p>
+                    </div>
+                  </div>
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+
+                <Button variant="ghost" className="w-full justify-between p-4 h-auto">
+                  <div className="flex items-center space-x-3">
+                    <Download className="h-5 w-5" />
+                    <div className="text-left">
+                      <p className="font-medium">Postman Collection</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Test API endpoints</p>
+                    </div>
+                  </div>
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

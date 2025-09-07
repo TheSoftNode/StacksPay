@@ -132,6 +132,7 @@ const PaymentsPage = () => {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
   const [isRetryModalOpen, setIsRetryModalOpen] = useState(false)
   const [isPaymentLinkModalOpen, setIsPaymentLinkModalOpen] = useState(false)
+  const [isConvertToSubscriptionModalOpen, setIsConvertToSubscriptionModalOpen] = useState(false)
   
   // Form states
   const [refundAmount, setRefundAmount] = useState('')
@@ -146,6 +147,15 @@ const PaymentsPage = () => {
     customerEmail: '',
     expiresIn: '24h', // hours
     customId: ''
+  })
+
+  // Subscription conversion form state
+  const [subscriptionData, setSubscriptionData] = useState({
+    planName: '',
+    interval: 'monthly',
+    trialDays: '14',
+    setupFee: '',
+    features: []
   })
 
   const getStatusIcon = (status: string) => {
@@ -311,6 +321,60 @@ const PaymentsPage = () => {
     clearGeneratedPaymentLink();
   }
 
+  const openConvertToSubscriptionModal = (payment: Payment) => {
+    setModalPayment(payment);
+    // Pre-fill form with payment data
+    setSubscriptionData({
+      planName: `${payment.description} - Subscription`,
+      interval: 'monthly',
+      trialDays: '14',
+      setupFee: '',
+      features: []
+    });
+    setIsConvertToSubscriptionModalOpen(true);
+  }
+
+  const handleConvertToSubscription = async () => {
+    if (!modalPayment || !subscriptionData.planName) return;
+
+    setIsSubmitting(true);
+    try {
+      // Here you would make API call to create subscription plan
+      console.log('Converting payment to subscription:', {
+        paymentId: modalPayment.id,
+        originalAmount: modalPayment.amount,
+        planName: subscriptionData.planName,
+        interval: subscriptionData.interval,
+        trialDays: subscriptionData.trialDays,
+        setupFee: subscriptionData.setupFee
+      });
+
+      toast({
+        title: "Success",
+        description: "Payment converted to subscription plan successfully!",
+      });
+
+      setIsConvertToSubscriptionModalOpen(false);
+      setModalPayment(null);
+      // Reset form
+      setSubscriptionData({
+        planName: '',
+        interval: 'monthly',
+        trialDays: '14',
+        setupFee: '',
+        features: []
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to convert payment to subscription",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   const renderPaymentsTable = () => (
     <div className="overflow-x-auto">
       <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
@@ -422,10 +486,16 @@ const PaymentsPage = () => {
                     )}
                     <DropdownMenuSeparator />
                     {payment.status === 'confirmed' && (
-                      <DropdownMenuItem onClick={() => openRefundModal(payment)} className="text-orange-600">
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        Refund Payment
-                      </DropdownMenuItem>
+                      <>
+                        <DropdownMenuItem onClick={() => openConvertToSubscriptionModal(payment)} className="text-purple-600">
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Convert to Subscription
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openRefundModal(payment)} className="text-orange-600">
+                          <RotateCcw className="mr-2 h-4 w-4" />
+                          Refund Payment
+                        </DropdownMenuItem>
+                      </>
                     )}
                     {(payment.status === 'failed' || payment.status === 'expired') && (
                       <DropdownMenuItem onClick={() => openRetryModal(payment)} className="text-blue-600">
@@ -1053,6 +1123,132 @@ const PaymentsPage = () => {
                 Create Another
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Convert to Subscription Modal */}
+      <Dialog open={isConvertToSubscriptionModalOpen} onOpenChange={(open) => {
+        setIsConvertToSubscriptionModalOpen(open)
+        if (!open) {
+          setModalPayment(null)
+          setSubscriptionData({
+            planName: '',
+            interval: 'monthly',
+            trialDays: '14',
+            setupFee: '',
+            features: []
+          })
+        }
+      }}>
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <RefreshCw className="h-5 w-5 text-purple-600" />
+              <span>Convert to Subscription</span>
+            </DialogTitle>
+            <DialogDescription>
+              Create a recurring subscription plan based on this payment
+            </DialogDescription>
+          </DialogHeader>
+          
+          {modalPayment && (
+            <div className="space-y-4">
+              {/* Original Payment Info */}
+              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                <p className="text-sm text-purple-800 dark:text-purple-200">
+                  <span className="font-medium">Original Payment:</span> {modalPayment.amount} {modalPayment.currency}
+                </p>
+                <p className="text-sm text-purple-800 dark:text-purple-200">
+                  <span className="font-medium">Description:</span> {modalPayment.description}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="planName">Plan Name *</Label>
+                <Input 
+                  id="planName" 
+                  value={subscriptionData.planName}
+                  onChange={(e) => setSubscriptionData(prev => ({ ...prev, planName: e.target.value }))}
+                  placeholder="Premium Monthly Plan"
+                  className="bg-white dark:bg-gray-900 border"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="interval">Billing Interval</Label>
+                  <Select 
+                    value={subscriptionData.interval}
+                    onValueChange={(value) => setSubscriptionData(prev => ({ ...prev, interval: value }))}
+                  >
+                    <SelectTrigger className="bg-white dark:bg-gray-900 border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-900 border">
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="trialDays">Trial Days</Label>
+                  <Input 
+                    id="trialDays" 
+                    type="number"
+                    value={subscriptionData.trialDays}
+                    onChange={(e) => setSubscriptionData(prev => ({ ...prev, trialDays: e.target.value }))}
+                    min="0"
+                    max="90"
+                    className="bg-white dark:bg-gray-900 border"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="setupFee">Setup Fee (Optional)</Label>
+                <Input 
+                  id="setupFee" 
+                  type="number"
+                  step="0.000001"
+                  value={subscriptionData.setupFee}
+                  onChange={(e) => setSubscriptionData(prev => ({ ...prev, setupFee: e.target.value }))}
+                  placeholder="0.001"
+                  className="bg-white dark:bg-gray-900 border"
+                />
+              </div>
+
+              {/* Preview */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 text-sm">Preview</h4>
+                <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                  <p><span className="font-medium">Recurring Amount:</span> {modalPayment.amount} {modalPayment.currency}</p>
+                  <p><span className="font-medium">Billing:</span> Every {subscriptionData.interval}</p>
+                  {subscriptionData.trialDays && (
+                    <p><span className="font-medium">Trial:</span> {subscriptionData.trialDays} days free</p>
+                  )}
+                  {subscriptionData.setupFee && (
+                    <p><span className="font-medium">Setup Fee:</span> {subscriptionData.setupFee} {modalPayment.currency}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsConvertToSubscriptionModalOpen(false)} className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConvertToSubscription}
+              disabled={isSubmitting || !subscriptionData.planName}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              {isSubmitting && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Converting...' : 'Create Subscription Plan'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
