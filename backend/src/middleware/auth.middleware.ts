@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { authService } from '@/services/auth-service';
 import { createLogger } from '@/utils/logger';
+import { authService } from '@/services/auth/auth-service';
 
 const logger = createLogger('AuthMiddleware');
 

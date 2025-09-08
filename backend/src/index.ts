@@ -7,22 +7,18 @@ import session from 'express-session';
 import passport from 'passport';
 import { connectToDatabase } from '@/config/database';
 import { setupSwagger } from '@/config/swagger';
-import authRoutes from '@/routes/auth.routes';
-import oauthRoutes from '@/routes/oauth.routes';
-import paymentRoutes from '@/routes/payment.routes';
-import paymentMerchantRoutes from '@/routes/payment-merchant.routes';
-import paymentPublicRoutes from '@/routes/payment-public.routes';
-import paymentLinksRoutes from '@/routes/payment-links.routes';
-import webhookRoutes from '@/routes/webhook.routes';
-import webhookEventsRoutes from '@/routes/webhook-events.routes';
-import apiKeyRoutes from '@/routes/api-key.routes';
-import notificationRoutes from '@/routes/notification.routes';
-import errorRoutes from '@/routes/error.routes';
-import testRoutes from '@/routes/test.routes';
-import walletRoutes from '@/routes/wallet';
+import authRoutes from '@/routes/auth/auth.routes';
+import oauthRoutes from '@/routes/auth/oauth.routes';
+import webhookRoutes from '@/routes/webhook/webhook.routes';
+import webhookEventsRoutes from '@/routes/webhook/webhook-events.routes';
+import apiKeyRoutes from '@/routes/apikey/api-key.routes';
+import notificationRoutes from '@/routes/notification/notification.routes';
+import errorRoutes from '@/routes/error/error.routes';
+import testRoutes from '@/routes/test/test.routes';
+import walletRoutes from '@/routes/wallet/wallet';
 import config from '@/config';
 import { createLogger } from '@/utils/logger';
-import { webhookService } from '@/services/webhook-service';
+import { webhookService } from '@/services/webhook/webhook-service';
 import { 
   errorHandler, 
   notFoundHandler, 
@@ -93,7 +89,7 @@ class sBTCPaymentGatewayServer {
     this.app.use(passport.session());
 
     // Initialize OAuth service
-    import('@/services/oauth-service');
+    import('@/services/auth/oauth-service');
 
     // Compression
     this.app.use(compression());
@@ -150,10 +146,6 @@ class sBTCPaymentGatewayServer {
     // API routes
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/auth', oauthRoutes);
-    this.app.use('/api/v1/payments', paymentRoutes); // API key auth for external developers
-    this.app.use('/api/payments', paymentMerchantRoutes); // JWT auth for merchant dashboard
-    this.app.use('/api/payment-links', paymentLinksRoutes); // JWT auth for merchant dashboard
-    this.app.use('/api/public/payments', paymentPublicRoutes); // No auth for customer checkout
     this.app.use('/api/webhooks', webhookRoutes); // JWT auth for merchant dashboard
     this.app.use('/api/webhook-events', webhookEventsRoutes); // JWT auth for merchant dashboard
     this.app.use('/api/api-keys', apiKeyRoutes); // JWT auth for API key management

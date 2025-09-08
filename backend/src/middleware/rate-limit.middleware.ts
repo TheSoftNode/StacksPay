@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Merchant } from '@/models/Merchant';
+import { Merchant } from '@/models/merchant/Merchant';
 import { createLogger } from '@/utils/logger';
 
 const logger = createLogger('RateLimitMiddleware');
