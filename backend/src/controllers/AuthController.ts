@@ -776,7 +776,7 @@ export class AuthController {
   async logout(req: Request, res: Response): Promise<void> {
     try {
       const merchantId = req.merchant?.id;
-      const sessionId = req.session?.sessionId;
+      const sessionId = req.sessionData?.sessionId || (req.session as any)?.sessionId;
 
       if (!merchantId || !sessionId) {
         res.status(401).json({

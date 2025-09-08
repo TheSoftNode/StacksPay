@@ -21,7 +21,11 @@ export interface IMerchant extends Document {
   emailVerificationToken?: string;
   passwordResetToken?: string;
   passwordResetExpires?: Date;
-  authMethod: 'email' | 'wallet';
+  authMethod: 'email' | 'wallet' | 'google' | 'github';
+  googleId?: string;
+  githubId?: string;
+  avatar?: string;
+  loginMethod?: 'email' | 'wallet' | 'google' | 'github';
   stacksAddress?: string;
   bitcoinAddress?: string;
   paymentPreferences: {

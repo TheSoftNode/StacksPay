@@ -18,7 +18,7 @@ declare global {
         environment?: 'test' | 'live';
         keyId?: string;
       };
-      session?: {
+      sessionData?: {
         sessionId: string;
         merchantId: string;
       };
@@ -168,10 +168,16 @@ export const sessionMiddleware = async (
       emailVerified: authResult.merchant.emailVerified,
     };
 
-    req.session = {
+    req.sessionData = {
       sessionId: authResult.sessionId,
       merchantId: authResult.merchantId,
     };
+    
+    // Also store in the express session for OAuth compatibility
+    if (req.session) {
+      (req.session as any).sessionId = authResult.sessionId;
+      (req.session as any).merchantId = authResult.merchantId;
+    }
 
     logger.debug('Session authenticated', {
       merchantId: authResult.merchantId,

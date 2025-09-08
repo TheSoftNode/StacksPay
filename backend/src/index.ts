@@ -3,9 +3,12 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import session from 'express-session';
+import passport from 'passport';
 import { connectToDatabase } from '@/config/database';
 import { setupSwagger } from '@/config/swagger';
 import authRoutes from '@/routes/auth.routes';
+import oauthRoutes from '@/routes/oauth.routes';
 import paymentRoutes from '@/routes/payment.routes';
 import paymentMerchantRoutes from '@/routes/payment-merchant.routes';
 import paymentPublicRoutes from '@/routes/payment-public.routes';
@@ -74,6 +77,24 @@ class sBTCPaymentGatewayServer {
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
     }));
 
+    // Session middleware for OAuth
+    this.app.use(session({
+      secret: process.env.SESSION_SECRET || 'your-secret-key',
+      resave: false,
+      saveUninitialized: false,
+      cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      }
+    }));
+
+    // Initialize Passport
+    this.app.use(passport.initialize());
+    this.app.use(passport.session());
+
+    // Initialize OAuth service
+    import('@/services/oauth-service');
+
     // Compression
     this.app.use(compression());
 
@@ -128,6 +149,7 @@ class sBTCPaymentGatewayServer {
   private setupApiRoutes(): void {
     // API routes
     this.app.use('/api/auth', authRoutes);
+    this.app.use('/api/auth', oauthRoutes);
     this.app.use('/api/v1/payments', paymentRoutes); // API key auth for external developers
     this.app.use('/api/payments', paymentMerchantRoutes); // JWT auth for merchant dashboard
     this.app.use('/api/payment-links', paymentLinksRoutes); // JWT auth for merchant dashboard
