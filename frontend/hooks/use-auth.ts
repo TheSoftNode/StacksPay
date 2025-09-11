@@ -236,6 +236,53 @@ export const useAuth = () => {
     },
   });
 
+  // OAuth Session Exchange
+  const exchangeSessionMutation = useMutation({
+    mutationFn: (sessionId: string) => apiClient.exchangeSessionForTokens(sessionId),
+    onMutate: () => {
+      setLoading(true);
+      setError(null);
+    },
+    onSuccess: (response) => {
+      if (response.success && response.merchant) {
+        // Store tokens in localStorage
+        if (response.token) {
+          localStorage.setItem('authToken', response.token);
+        }
+        if (response.refreshToken) {
+          localStorage.setItem('refreshToken', response.refreshToken);
+        }
+
+        // Set user in auth store
+        setUser({
+          id: response.merchant.id,
+          name: response.merchant.name,
+          email: response.merchant.email,
+          stacksAddress: response.merchant.stacksAddress,
+          emailVerified: response.merchant.emailVerified,
+          verificationLevel: response.merchant.verificationLevel,
+          businessType: response.merchant.businessType,
+          authMethod: response.merchant.authMethod,
+          walletConnected: !!response.merchant.stacksAddress,
+        });
+        queryClient.invalidateQueries({ queryKey: ['auth'] });
+      } else {
+        const errorMessage = typeof response.error === 'string' 
+          ? response.error 
+          : (response.error as any)?.message || (response.error as any)?.userMessage || 'Failed to authenticate with OAuth provider';
+        setError(errorMessage);
+      }
+      setLoading(false);
+    },
+    onError: (error: any) => {
+      const errorMessage = typeof error === 'string' 
+        ? error 
+        : error?.message || 'An unexpected error occurred during authentication';
+      setError(errorMessage);
+      setLoading(false);
+    },
+  });
+
   return {
     // State
     user,
@@ -282,6 +329,11 @@ export const useAuth = () => {
     resendVerificationEmail: resendVerificationMutation.mutate,
     isResendingVerification: resendVerificationMutation.isPending,
     resendVerificationError: resendVerificationMutation.error,
+
+    // OAuth Session Exchange
+    exchangeSessionForTokens: exchangeSessionMutation.mutate,
+    isExchangingSession: exchangeSessionMutation.isPending,
+    exchangeSessionError: exchangeSessionMutation.error,
 
     // Utilities
     clearError: useAuthStore.getState().clearError,

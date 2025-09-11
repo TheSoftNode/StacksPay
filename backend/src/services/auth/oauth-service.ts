@@ -108,7 +108,7 @@ class OAuthService {
         // Update OAuth info for existing merchant
         const updateData: any = {
           lastLoginAt: new Date(),
-          authMethod: profile.provider,
+          loginMethod: profile.provider, // Track current login method
         };
         updateData[`${profile.provider}Id`] = profile.id;
         if (profile.avatar) {
@@ -131,33 +131,22 @@ class OAuthService {
           email: profile.email,
           businessType: 'other', // Default, merchant can update later
           emailVerified: true, // OAuth emails are verified
-          authMethod: profile.provider,
+          authMethod: profile.provider, // Set initial auth method to OAuth provider
+          loginMethod: profile.provider, // Set current login method to OAuth provider
           [`${profile.provider}Id`]: profile.id,
           avatar: profile.avatar,
-          acceptTerms: true, // Assumed when using OAuth
           // Set a random password since OAuth users don't need it
           passwordHash: await require('bcryptjs').hash(Math.random().toString(36).substring(2, 15), 12),
           paymentPreferences: {
             acceptBitcoin: true,
             acceptSTX: true,
             acceptsBTC: true,
-            autoConvertToBTC: false,
-            btcConversionRate: 1.0,
-          },
-          businessHours: {
-            timezone: 'UTC',
-            workingDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-            startTime: '09:00',
-            endTime: '17:00',
+            preferredCurrency: 'sbtc',
+            autoConvertToUSD: false,
+            usdConversionMethod: 'coinbase',
           },
           isActive: true,
           hasUpdatedPassword: false,
-          twoFactorAuth: {
-            enabled: false,
-            tempSecret: '',
-            backupCodes: [],
-            lastUsedAt: null,
-          },
         });
         
         const savedMerchant = await newMerchant.save();

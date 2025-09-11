@@ -186,8 +186,27 @@ const merchantSchema = new Schema<IMerchant>({
   // Track how user registered/authenticated
   authMethod: {
     type: String,
-    enum: ['email', 'wallet'],
+    enum: ['email', 'wallet', 'google', 'github'],
     default: 'email',
+  },
+  
+  // OAuth provider IDs for social authentication
+  googleId: {
+    type: String,
+    required: false,
+  },
+  githubId: {
+    type: String,
+    required: false,
+  },
+  avatar: {
+    type: String,
+    required: false,
+  },
+  loginMethod: {
+    type: String,
+    enum: ['email', 'wallet', 'google', 'github'],
+    required: false,
   },
 
   stacksAddress: {

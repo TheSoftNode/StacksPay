@@ -988,6 +988,70 @@ export class AuthService {
   private formatMerchantForAuth(merchant: any) {
     return merchantService.formatMerchantForAuth(merchant);
   }
+
+  /**
+   * Exchange session for JWT tokens
+   */
+  async exchangeSessionForTokens(sessionId: string): Promise<{
+    success: boolean;
+    token?: string;
+    refreshToken?: string;
+    merchant?: any;
+    error?: string;
+  }> {
+    try {
+      // Validate session
+      const sessionInfo = await sessionService.validateSession(sessionId);
+      
+      if (!sessionInfo) {
+        return {
+          success: false,
+          error: 'Invalid or expired session'
+        };
+      }
+
+      // Get merchant details from database directly
+      const merchant = await Merchant.findById(sessionInfo.merchantId);
+      
+      if (!merchant) {
+        return {
+          success: false,
+          error: 'Merchant not found'
+        };
+      }
+
+      // Create JWT tokens
+      const { token, refreshToken } = await this.createJWTTokens(
+        merchant,
+        sessionId,
+        false // rememberMe - using session settings
+      );
+
+      return {
+        success: true,
+        token,
+        refreshToken,
+        merchant: {
+          id: merchant._id.toString(),
+          name: merchant.name,
+          email: merchant.email,
+          stacksAddress: merchant.stacksAddress,
+          emailVerified: merchant.emailVerified,
+          verificationLevel: merchant.verificationLevel,
+          businessType: merchant.businessType,
+          authMethod: merchant.authMethod,
+          loginMethod: merchant.loginMethod,
+          avatar: merchant.avatar
+        }
+      };
+    } catch (error) {
+      console.error('Error exchanging session for tokens:', error);
+      return {
+        success: false,
+        error: 'Failed to exchange session for tokens'
+      };
+    }
+  }
 }
 
 export const authService = new AuthService();

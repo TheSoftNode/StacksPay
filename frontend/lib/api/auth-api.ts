@@ -360,6 +360,14 @@ class ApiClient {
   async getGeneratedPassword(): Promise<ApiResponse> {
     return this.makeRequest('/api/auth/generated-password');
   }
+
+  // OAuth Session Exchange
+  async exchangeSessionForTokens(sessionId: string): Promise<ApiResponse> {
+    return this.makeRequest('/api/auth/session-exchange', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId }),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();
