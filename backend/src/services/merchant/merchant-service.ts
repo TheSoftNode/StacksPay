@@ -76,6 +76,25 @@ export class MerchantService {
   }
 
   /**
+   * Get merchant by Stacks address
+   */
+  async getMerchantByStacksAddress(stacksAddress: string): Promise<MerchantData | null> {
+    await connectToDatabase();
+    
+    try {
+      const merchant = await Merchant.findOne({ stacksAddress });
+      if (!merchant) {
+        return null;
+      }
+
+      return this.formatMerchantData(merchant);
+    } catch (error) {
+      console.error('Error getting merchant by Stacks address:', error);
+      return null;
+    }
+  }
+
+  /**
    * Update merchant profile
    */
   async updateMerchant(merchantId: string, updates: Partial<MerchantData>): Promise<{ success: boolean; merchant?: MerchantData; error?: string }> {

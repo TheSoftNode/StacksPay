@@ -325,4 +325,60 @@ router.get('/generated-password', sessionMiddleware, authController.getGenerated
  */
 router.patch('/update-email', sessionMiddleware, authController.updateEmail.bind(authController));
 
+// Account Linking routes (require session authentication)
+/**
+ * @swagger
+ * /api/auth/accounts/suggest-links:
+ *   get:
+ *     summary: Get suggested account links for current user
+ *     tags: [Account Linking]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/accounts/suggest-links', sessionMiddleware, authController.getSuggestedLinks.bind(authController));
+
+/**
+ * @swagger
+ * /api/auth/accounts/initiate-link:
+ *   post:
+ *     summary: Initiate account linking process
+ *     tags: [Account Linking]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post('/accounts/initiate-link', sessionMiddleware, authController.initiateLinking.bind(authController));
+
+/**
+ * @swagger
+ * /api/auth/accounts/confirm-link:
+ *   post:
+ *     summary: Confirm account linking with token
+ *     tags: [Account Linking]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post('/accounts/confirm-link', sessionMiddleware, authController.confirmLinking.bind(authController));
+
+/**
+ * @swagger
+ * /api/auth/accounts/linked:
+ *   get:
+ *     summary: Get all linked accounts for current user
+ *     tags: [Account Linking]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/accounts/linked', sessionMiddleware, authController.getLinkedAccounts.bind(authController));
+
+/**
+ * @swagger
+ * /api/auth/accounts/unlink:
+ *   post:
+ *     summary: Unlink an account
+ *     tags: [Account Linking]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post('/accounts/unlink', sessionMiddleware, authController.unlinkAccount.bind(authController));
+
 export default router;

@@ -138,6 +138,29 @@ export interface IMerchant extends Document {
     totalVolume: number;
     lastPaymentAt?: Date;
   };
+  
+  // Account linking fields
+  linkedAccounts?: Array<{
+    accountId: string;
+    authMethod: string;
+    email?: string;
+    stacksAddress?: string;
+    googleId?: string;
+    githubId?: string;
+    linkedAt: Date;
+    isPrimary: boolean;
+  }>;
+  pendingLinkingRequests?: Array<{
+    primaryAccountId: string;
+    secondaryAccountId: string;
+    linkingToken: string;
+    expiresAt: Date;
+    confirmedAt?: Date;
+    status: 'pending' | 'confirmed' | 'expired' | 'rejected';
+  }>;
+  primaryAuthMethod?: string;
+  isLinkedAccount?: boolean;
+  linkedToPrimary?: string;
 }
 
 const merchantSchema = new Schema<IMerchant>({
@@ -467,6 +490,52 @@ const merchantSchema = new Schema<IMerchant>({
     },
     lastPaymentAt: Date,
   },
+
+  // Account linking fields
+  linkedAccounts: [
+    {
+      accountId: {
+        type: String,
+        required: true,
+      },
+      authMethod: {
+        type: String,
+        required: true,
+      },
+      email: String,
+      stacksAddress: String,
+      googleId: String,
+      githubId: String,
+      linkedAt: {
+        type: Date,
+        default: Date.now,
+      },
+      isPrimary: {
+        type: Boolean,
+        default: false,
+      },
+    },
+  ],
+  pendingLinkingRequests: [
+    {
+      primaryAccountId: String,
+      secondaryAccountId: String,
+      linkingToken: String,
+      expiresAt: Date,
+      confirmedAt: Date,
+      status: {
+        type: String,
+        enum: ['pending', 'confirmed', 'expired', 'rejected'],
+        default: 'pending',
+      },
+    },
+  ],
+  primaryAuthMethod: String,
+  isLinkedAccount: {
+    type: Boolean,
+    default: false,
+  },
+  linkedToPrimary: String,
 }, {
   timestamps: true,
   collection: 'merchants'
@@ -487,5 +556,10 @@ merchantSchema.index({ stacksAddress: 1 });
 merchantSchema.index({ isActive: 1 });
 merchantSchema.index({ 'apiKeys.keyId': 1 });
 merchantSchema.index({ 'sessions.sessionId': 1 });
+merchantSchema.index({ 'linkedAccounts.accountId': 1 });
+merchantSchema.index({ 'pendingLinkingRequests.linkingToken': 1 });
+merchantSchema.index({ linkedToPrimary: 1 });
+merchantSchema.index({ googleId: 1 });
+merchantSchema.index({ githubId: 1 });
 
 export const Merchant = models?.Merchant || model<IMerchant>('Merchant', merchantSchema);

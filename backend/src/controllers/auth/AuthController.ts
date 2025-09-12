@@ -12,6 +12,7 @@ import {
 import { WalletAuthRequest } from '@/interfaces/wallet/wallet.interface';
 import { authService } from '@/services/auth/auth-service';
 import { walletAuthService } from '@/services/wallet/wallet-auth-service';
+import { accountLinkingService } from '@/services/auth/account-linking-service';
 
 const logger = createLogger('AuthController');
 
@@ -2258,22 +2259,6 @@ export class AuthController {
 
       console.log('Email format validation passed');
 
-      // Check if email is already in use by another merchant
-      console.log('Checking if email exists for another merchant...');
-      const existingMerchant = await merchantService.getMerchantByEmail(email);
-      console.log('Existing merchant check result:', existingMerchant ? 'Found existing merchant' : 'No existing merchant');
-      
-      if (existingMerchant && existingMerchant.id !== merchantId) {
-        console.log('UpdateEmail: Email already in use by another merchant');
-        res.status(400).json({
-          success: false,
-          error: 'Email is already in use by another account'
-        });
-        return;
-      }
-
-      console.log('Email availability check passed');
-
       // Get current merchant
       console.log('Getting current merchant...');
       const merchant = await merchantService.getMerchant(merchantId);
@@ -2287,6 +2272,52 @@ export class AuthController {
         });
         return;
       }
+
+      // Check if email is already in use by another merchant
+      console.log('Checking if email exists for another merchant...');
+      const existingMerchant = await merchantService.getMerchantByEmail(email);
+      console.log('Existing merchant check result:', existingMerchant ? 'Found existing merchant' : 'No existing merchant');
+      
+      if (existingMerchant && existingMerchant.id !== merchantId) {
+        console.log('UpdateEmail: Email already in use by another merchant');
+        
+        // Detect if this could be a linking opportunity
+        const linkingSuggestions = await accountLinkingService.detectLinkableAccounts(
+          merchantId,
+          email,
+          merchant.stacksAddress,
+          merchant.name
+        );
+        
+        const highConfidenceMatch = linkingSuggestions.find(
+          suggestion => suggestion.id === existingMerchant.id && suggestion.confidence === 'high'
+        );
+        
+        if (highConfidenceMatch) {
+          res.status(400).json({
+            success: false,
+            error: 'Email is already in use by another account',
+            linkingSuggestion: {
+              canLink: true,
+              targetAccount: {
+                id: existingMerchant.id,
+                name: existingMerchant.name,
+                authMethod: highConfidenceMatch.authMethod,
+                email: existingMerchant.email
+              },
+              message: 'This email belongs to another account. Would you like to link these accounts together?'
+            }
+          });
+        } else {
+          res.status(400).json({
+            success: false,
+            error: 'Email is already in use by another account'
+          });
+        }
+        return;
+      }
+
+      console.log('Email availability check passed');
 
       console.log('Current merchant email:', merchant.email);
 
@@ -2377,6 +2408,341 @@ export class AuthController {
       res.status(500).json({
         success: false,
         error: 'Failed to update email'
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/auth/accounts/suggest-links:
+   *   get:
+   *     summary: Get suggested account links for current user
+   *     tags: [Account Linking]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Suggested account links retrieved
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 suggestions:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       id:
+   *                         type: string
+   *                       email:
+   *                         type: string
+   *                       authMethod:
+   *                         type: string
+   *                       name:
+   *                         type: string
+   *                       confidence:
+   *                         type: string
+   *                         enum: [high, medium, low]
+   *                       matchingFields:
+   *                         type: array
+   *                         items:
+   *                           type: string
+   */
+  async getSuggestedLinks(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      const merchant = await merchantService.getMerchant(merchantId);
+      if (!merchant) {
+        res.status(404).json({
+          success: false,
+          error: 'Merchant not found'
+        });
+        return;
+      }
+
+      const suggestions = await accountLinkingService.detectLinkableAccounts(
+        merchantId,
+        merchant.email,
+        merchant.stacksAddress,
+        merchant.name
+      );
+
+      res.json({
+        success: true,
+        suggestions
+      });
+
+    } catch (error) {
+      logger.error('Get suggested links error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get suggested links'
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/auth/accounts/initiate-link:
+   *   post:
+   *     summary: Initiate account linking process
+   *     tags: [Account Linking]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               targetAccountId:
+   *                 type: string
+   *                 description: ID of account to link with
+   *             required:
+   *               - targetAccountId
+   *     responses:
+   *       200:
+   *         description: Account linking initiated
+   */
+  async initiateLinking(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      const { targetAccountId } = req.body;
+
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      if (!targetAccountId) {
+        res.status(400).json({
+          success: false,
+          error: 'Target account ID is required'
+        });
+        return;
+      }
+
+      const result = await accountLinkingService.initiateLinking(
+        merchantId,
+        targetAccountId,
+        'primary'
+      );
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: 'Account linking initiated. Please check your email for confirmation.',
+          linkingToken: result.linkingToken,
+          expiresAt: result.expiresAt
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+
+    } catch (error) {
+      logger.error('Initiate linking error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to initiate account linking'
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/auth/accounts/confirm-link:
+   *   post:
+   *     summary: Confirm account linking with token
+   *     tags: [Account Linking]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               linkingToken:
+   *                 type: string
+   *                 description: Token received via email
+   *             required:
+   *               - linkingToken
+   *     responses:
+   *       200:
+   *         description: Account linking confirmed
+   */
+  async confirmLinking(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      const { linkingToken } = req.body;
+
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      if (!linkingToken) {
+        res.status(400).json({
+          success: false,
+          error: 'Linking token is required'
+        });
+        return;
+      }
+
+      const result = await accountLinkingService.confirmLinking(
+        linkingToken,
+        merchantId
+      );
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: 'Accounts successfully linked',
+          linkedAccount: result.linkedAccount
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+
+    } catch (error) {
+      logger.error('Confirm linking error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to confirm account linking'
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/auth/accounts/linked:
+   *   get:
+   *     summary: Get all linked accounts for current user
+   *     tags: [Account Linking]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Linked accounts retrieved
+   */
+  async getLinkedAccounts(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      const linkedAccounts = await accountLinkingService.getLinkedAccounts(merchantId);
+
+      res.json({
+        success: true,
+        linkedAccounts
+      });
+
+    } catch (error) {
+      logger.error('Get linked accounts error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get linked accounts'
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/auth/accounts/unlink:
+   *   post:
+   *     summary: Unlink an account
+   *     tags: [Account Linking]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               accountToUnlink:
+   *                 type: string
+   *             required:
+   *               - accountToUnlink
+   *     responses:
+   *       200:
+   *         description: Account unlinked successfully
+   */
+  async unlinkAccount(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      const { accountToUnlink } = req.body;
+
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      if (!accountToUnlink) {
+        res.status(400).json({
+          success: false,
+          error: 'Account to unlink is required'
+        });
+        return;
+      }
+
+      const result = await accountLinkingService.unlinkAccounts(
+        merchantId,
+        accountToUnlink
+      );
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: 'Account unlinked successfully'
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+
+    } catch (error) {
+      logger.error('Unlink account error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to unlink account'
       });
     }
   }

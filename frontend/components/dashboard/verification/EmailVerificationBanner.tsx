@@ -6,6 +6,8 @@ import { Mail, X, AlertTriangle, Plus, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/use-auth';
+import { useAccountLinking } from '@/hooks/use-account-linking';
+import { AccountLinkingSuggestionCard } from '@/components/dashboard/account-linking/AccountLinkingSuggestionCard';
 
 interface EmailVerificationBannerProps {
   user: {
@@ -27,10 +29,16 @@ export default function EmailVerificationBanner({ user }: EmailVerificationBanne
     resendVerificationEmail, 
     isResendingVerification, 
     resendVerificationError,
+  } = useAuth();
+
+  const {
     updateEmail,
     isUpdatingEmail,
-    updateEmailError
-  } = useAuth();
+    linkingSuggestion,
+    initiateLinking,
+    isInitiatingLinking,
+    clearLinkingSuggestion
+  } = useAccountLinking();
 
   // Check if this is a placeholder email (GitHub/wallet user without email)
   const isPlaceholderEmail = user.email.includes('@github.local') || 
@@ -53,35 +61,11 @@ export default function EmailVerificationBanner({ user }: EmailVerificationBanne
   const handleAddEmail = () => {
     if (!newEmail.trim()) return;
     
-    updateEmail(newEmail, {
-      onSuccess: (response) => {
-        if (response.success) {
-          setEmailUpdated(true);
-          setShowEmailInput(false);
-          setNewEmail('');
-          setTimeout(() => setEmailUpdated(false), 5000);
-        } else {
-          // Handle API errors
-          const errorMessage = response.error || 'Failed to update email';
-          
-          if (errorMessage.includes('already in use') || errorMessage.includes('already exists')) {
-            // Account linking scenario
-            setErrorMessage(`This email is already associated with another account. Would you like to link your accounts instead?`);
-          } else if (errorMessage.includes('Invalid email format')) {
-            setErrorMessage('Please enter a valid email address.');
-          } else {
-            setErrorMessage(errorMessage);
-          }
-          
-          setTimeout(() => setErrorMessage(''), 5000);
-        }
-      },
-      onError: (error) => {
-        console.error('Email update error:', error);
-        setErrorMessage('Failed to update email. Please try again.');
-        setTimeout(() => setErrorMessage(''), 5000);
-      }
-    });
+    updateEmail(newEmail);
+    setEmailUpdated(true);
+    setShowEmailInput(false);
+    setNewEmail('');
+    setTimeout(() => setEmailUpdated(false), 5000);
   };
 
   const handleEmailInputKeyPress = (e: React.KeyboardEvent) => {
@@ -92,13 +76,14 @@ export default function EmailVerificationBanner({ user }: EmailVerificationBanne
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ height: 0, opacity: 0 }}
-        animate={{ height: 'auto', opacity: 1 }}
-        exit={{ height: 0, opacity: 0 }}
-        transition={{ duration: 0.3 }}
-        className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 dark:border-amber-500"
-      >
+      <div className="space-y-4">
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 dark:border-amber-500"
+        >
         <div className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-3">
@@ -158,9 +143,9 @@ export default function EmailVerificationBanner({ user }: EmailVerificationBanne
                     </motion.p>
                   )}
 
-                  {(resendVerificationError || updateEmailError) && (
+                  {resendVerificationError && (
                     <p className="mt-2 text-red-700 dark:text-red-300 font-medium">
-                      {resendVerificationError?.message || updateEmailError?.message || 'An error occurred'}
+                      {resendVerificationError?.message || 'An error occurred'}
                     </p>
                   )}
                 </div>
@@ -239,7 +224,18 @@ export default function EmailVerificationBanner({ user }: EmailVerificationBanne
             </div>
           </div>
         </div>
-      </motion.div>
+        </motion.div>
+
+        {/* Account Linking Suggestion */}
+        {linkingSuggestion && (
+          <AccountLinkingSuggestionCard
+            suggestion={linkingSuggestion}
+            onAccept={() => initiateLinking(linkingSuggestion.targetAccount.id)}
+            onDecline={clearLinkingSuggestion}
+            isLoading={isInitiatingLinking}
+          />
+        )}
+      </div>
     </AnimatePresence>
   );
 }
