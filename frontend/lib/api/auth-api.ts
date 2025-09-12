@@ -368,6 +368,18 @@ class ApiClient {
       body: JSON.stringify({ sessionId }),
     });
   }
+
+  // Email Management
+  async updateEmail(email: string): Promise<ApiResponse> {
+    console.log('updateEmail called with:', email);
+    console.log('Auth token available:', !!this.getStoredToken());
+    console.log('Auth headers:', this.getAuthHeaders());
+    
+    return this.makeRequest('/api/auth/update-email', {
+      method: 'PATCH',
+      body: JSON.stringify({ email }),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

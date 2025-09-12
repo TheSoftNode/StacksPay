@@ -57,6 +57,25 @@ export class MerchantService {
   }
 
   /**
+   * Get merchant by GitHub ID
+   */
+  async getMerchantByGitHubId(githubId: string): Promise<MerchantData | null> {
+    await connectToDatabase();
+    
+    try {
+      const merchant = await Merchant.findOne({ githubId });
+      if (!merchant) {
+        return null;
+      }
+
+      return this.formatMerchantData(merchant);
+    } catch (error) {
+      console.error('Error getting merchant by GitHub ID:', error);
+      return null;
+    }
+  }
+
+  /**
    * Update merchant profile
    */
   async updateMerchant(merchantId: string, updates: Partial<MerchantData>): Promise<{ success: boolean; merchant?: MerchantData; error?: string }> {

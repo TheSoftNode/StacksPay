@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
+import crypto from 'crypto';
 import { sessionService } from '@/services/auth/session-service';
 import { emailService } from '@/services/email/email-service';
+import { merchantService } from '@/services/merchant/merchant-service';
 import { createLogger } from '@/utils/logger';
 import { getClientIpAddress} from '@/utils/request';
 import { 
@@ -2171,6 +2173,211 @@ export class AuthController {
       });
     } catch (error) {
       logger.error('Failed to send password change notification:', error);
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/auth/update-email:
+   *   patch:
+   *     summary: Update email for GitHub/wallet users
+   *     tags: [Authentication]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               email:
+   *                 type: string
+   *                 format: email
+   *             required:
+   *               - email
+   *     responses:
+   *       200:
+   *         description: Email updated successfully and verification sent
+   *       400:
+   *         description: Invalid email or email already exists
+   *       401:
+   *         description: Unauthorized
+   */
+  async updateEmail(req: Request, res: Response): Promise<void> {
+    try {
+      console.log('UpdateEmail endpoint hit');
+      const merchantId = req.merchant?.id;
+      const { email } = req.body;
+
+      console.log('UpdateEmail request received:', { 
+        merchantId, 
+        email, 
+        hasReqMerchant: !!req.merchant,
+        reqBody: req.body,
+        headers: req.headers.authorization ? 'Authorization header present' : 'No auth header'
+      });
+
+      logger.info('UpdateEmail request received', { 
+        merchantId, 
+        email, 
+        hasReqMerchant: !!req.merchant,
+        reqBody: req.body 
+      });
+
+      if (!merchantId) {
+        console.log('UpdateEmail: No merchant ID found');
+        logger.warn('UpdateEmail: No merchant ID found');
+        res.status(401).json({
+          success: false,
+          error: 'Unauthorized'
+        });
+        return;
+      }
+
+      if (!email || typeof email !== 'string') {
+        console.log('UpdateEmail: Invalid email provided:', email);
+        logger.warn('UpdateEmail: Invalid email provided', { email });
+        res.status(400).json({
+          success: false,
+          error: 'Valid email is required'
+        });
+        return;
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        console.log('UpdateEmail: Invalid email format:', email);
+        res.status(400).json({
+          success: false,
+          error: 'Invalid email format'
+        });
+        return;
+      }
+
+      console.log('Email format validation passed');
+
+      // Check if email is already in use by another merchant
+      console.log('Checking if email exists for another merchant...');
+      const existingMerchant = await merchantService.getMerchantByEmail(email);
+      console.log('Existing merchant check result:', existingMerchant ? 'Found existing merchant' : 'No existing merchant');
+      
+      if (existingMerchant && existingMerchant.id !== merchantId) {
+        console.log('UpdateEmail: Email already in use by another merchant');
+        res.status(400).json({
+          success: false,
+          error: 'Email is already in use by another account'
+        });
+        return;
+      }
+
+      console.log('Email availability check passed');
+
+      // Get current merchant
+      console.log('Getting current merchant...');
+      const merchant = await merchantService.getMerchant(merchantId);
+      console.log('Current merchant found:', merchant ? 'Yes' : 'No');
+      
+      if (!merchant) {
+        console.log('UpdateEmail: Merchant not found');
+        res.status(404).json({
+          success: false,
+          error: 'Merchant not found'
+        });
+        return;
+      }
+
+      console.log('Current merchant email:', merchant.email);
+
+      console.log('Current merchant email:', merchant.email);
+
+      // Check if this is a placeholder email (GitHub/wallet user)
+      const isPlaceholderEmail = merchant.email.includes('@github.local') || 
+                                merchant.email.includes('@wallet.local') ||
+                                !merchant.email;
+
+      console.log('Is placeholder email:', isPlaceholderEmail);
+
+      if (!isPlaceholderEmail && merchant.email === email) {
+        console.log('UpdateEmail: Same email as current');
+        res.status(400).json({
+          success: false,
+          error: 'This email is already associated with your account'
+        });
+        return;
+      }
+
+      console.log('Email duplication check passed');
+
+      // Generate email verification token
+      const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+      console.log('Generated verification token');
+
+      // Update merchant email and set as unverified
+      console.log('Updating merchant with new email...');
+      const updateResult = await merchantService.updateMerchant(merchantId, {
+        email: email,
+        emailVerified: false,
+        emailVerificationToken: emailVerificationToken,
+        requiresEmailVerification: false, // No longer needs email addition
+        lastLoginAt: new Date()
+      } as any);
+
+      console.log('Update result:', updateResult.success ? 'Success' : 'Failed');
+
+      if (!updateResult.success || !updateResult.merchant) {
+        console.log('UpdateEmail: Update failed or no merchant returned');
+        res.status(500).json({
+          success: false,
+          error: 'Failed to update email'
+        });
+        return;
+      }
+
+      console.log('Attempting to send verification email...');
+
+      // Send verification email using emailService directly
+      try {
+        await emailService.sendEmailVerificationEmail(email, {
+          merchantName: updateResult.merchant.name,
+          verificationToken: emailVerificationToken
+        });
+        console.log('Verification email sent successfully');
+        logger.info('Email updated and verification sent', {
+          merchantId,
+          newEmail: email,
+          previousEmail: merchant.email
+        });
+      } catch (emailError) {
+        console.log('Error sending verification email:', emailError);
+        logger.error('Failed to send verification email after update:', emailError);
+        // Don't fail the whole request if email sending fails
+      }
+
+      console.log('Sending successful response...');
+      res.json({
+        success: true,
+        message: 'Email updated successfully. Please check your inbox for verification.',
+        data: {
+          email: email,
+          emailVerified: false
+        }
+      });
+
+      console.log('UpdateEmail: Completed successfully');
+
+    } catch (error) {
+      console.log('UpdateEmail: Caught error in main try/catch:', error);
+      logger.error('Update email error:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        merchantId: req.merchant?.id
+      });
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update email'
+      });
     }
   }
 }

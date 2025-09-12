@@ -294,4 +294,35 @@ router.put('/password', sessionMiddleware, authController.updatePassword.bind(au
  */
 router.get('/generated-password', sessionMiddleware, authController.getGeneratedPassword.bind(authController));
 
+// Email Management routes (require session authentication)
+/**
+ * @swagger
+ * /api/auth/update-email:
+ *   patch:
+ *     summary: Update email for GitHub/wallet users
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *             required:
+ *               - email
+ *     responses:
+ *       200:
+ *         description: Email updated successfully and verification sent
+ *       400:
+ *         description: Invalid email or email already exists
+ *       401:
+ *         description: Unauthorized
+ */
+router.patch('/update-email', sessionMiddleware, authController.updateEmail.bind(authController));
+
 export default router;

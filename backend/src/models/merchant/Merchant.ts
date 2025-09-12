@@ -24,8 +24,10 @@ export interface IMerchant extends Document {
   authMethod: 'email' | 'wallet' | 'google' | 'github';
   googleId?: string;
   githubId?: string;
+  githubUsername?: string;
   avatar?: string;
   loginMethod?: 'email' | 'wallet' | 'google' | 'github';
+  requiresEmailVerification?: boolean;
   stacksAddress?: string;
   bitcoinAddress?: string;
   paymentPreferences: {
@@ -199,6 +201,10 @@ const merchantSchema = new Schema<IMerchant>({
     type: String,
     required: false,
   },
+  githubUsername: {
+    type: String,
+    required: false,
+  },
   avatar: {
     type: String,
     required: false,
@@ -207,6 +213,10 @@ const merchantSchema = new Schema<IMerchant>({
     type: String,
     enum: ['email', 'wallet', 'google', 'github'],
     required: false,
+  },
+  requiresEmailVerification: {
+    type: Boolean,
+    default: false,
   },
 
   stacksAddress: {

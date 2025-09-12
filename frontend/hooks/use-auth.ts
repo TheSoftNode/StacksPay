@@ -283,6 +283,40 @@ export const useAuth = () => {
     },
   });
 
+  // Email Update Mutation
+  const updateEmailMutation = useMutation({
+    mutationFn: (email: string) => apiClient.updateEmail(email),
+    onMutate: () => {
+      setLoading(true);
+      setError(null);
+    },
+    onSuccess: (response) => {
+      if (response.success && user) {
+        // Update user email in store and set as unverified
+        const updatedUser = { 
+          ...user, 
+          email: response.data?.email,
+          emailVerified: false 
+        };
+        setUser(updatedUser);
+        queryClient.invalidateQueries({ queryKey: ['auth'] });
+      } else {
+        const errorMessage = typeof response.error === 'string' 
+          ? response.error 
+          : (response.error as any)?.message || (response.error as any)?.userMessage || 'Failed to update email';
+        setError(errorMessage);
+      }
+      setLoading(false);
+    },
+    onError: (error: any) => {
+      const errorMessage = typeof error === 'string' 
+        ? error 
+        : error?.message || 'Failed to update email';
+      setError(errorMessage);
+      setLoading(false);
+    },
+  });
+
   return {
     // State
     user,
@@ -334,6 +368,11 @@ export const useAuth = () => {
     exchangeSessionForTokens: exchangeSessionMutation.mutate,
     isExchangingSession: exchangeSessionMutation.isPending,
     exchangeSessionError: exchangeSessionMutation.error,
+
+    // Email Management
+    updateEmail: updateEmailMutation.mutate,
+    isUpdatingEmail: updateEmailMutation.isPending,
+    updateEmailError: updateEmailMutation.error,
 
     // Utilities
     clearError: useAuthStore.getState().clearError,

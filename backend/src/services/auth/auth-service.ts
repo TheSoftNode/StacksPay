@@ -96,7 +96,8 @@ export class AuthService {
       const passwordHash = await bcrypt.hash(data.password, 14);
       
       // Generate email verification token only if email is provided
-      const emailVerificationToken = data.email && data.email.trim() ? 
+      const hasRealEmail = data.email && data.email.trim() && !data.email.includes('@wallet.local');
+      const emailVerificationToken = hasRealEmail ? 
         crypto.randomBytes(32).toString('hex') : 
         undefined;
 
@@ -108,13 +109,14 @@ export class AuthService {
         stacksAddress: data.stacksAddress,
         website: data.website,
         emailVerificationToken,
-        emailVerified: isWalletRegistration ? true : false, // Wallet users are considered verified
+        emailVerified: hasRealEmail ? false : false, // All emails need verification, placeholders are false
         authMethod: isWalletRegistration ? 'wallet' : 'email', // Track registration method
         twoFactorEnabled: false,
         loginAttempts: 0,
         isActive: true,
         verificationLevel: isWalletRegistration ? 'basic' : 'none', // Wallet signature = basic verification
         hasUpdatedPassword: false, // Track if user has updated from generated password
+        requiresEmailVerification: !hasRealEmail, // Flag for users who need to add email
         stats: {
           totalPayments: 0,
           totalVolume: 0,
