@@ -2289,12 +2289,18 @@ export class AuthController {
           merchant.name
         );
         
+        console.log('Linking suggestions found:', linkingSuggestions.length);
+        console.log('Existing merchant ID:', existingMerchant.id);
+        
         const highConfidenceMatch = linkingSuggestions.find(
           suggestion => suggestion.id === existingMerchant.id && suggestion.confidence === 'high'
         );
         
+        console.log('High confidence match found:', !!highConfidenceMatch);
+        
         if (highConfidenceMatch) {
-          res.status(400).json({
+          console.log('Returning linking suggestion response');
+          const response = {
             success: false,
             error: 'Email is already in use by another account',
             linkingSuggestion: {
@@ -2307,12 +2313,17 @@ export class AuthController {
               },
               message: 'This email belongs to another account. Would you like to link these accounts together?'
             }
-          });
+          };
+          console.log('Response data:', JSON.stringify(response, null, 2));
+          res.status(400).json(response);
+          return;
         } else {
+          console.log('Returning simple error response');
           res.status(400).json({
             success: false,
             error: 'Email is already in use by another account'
           });
+          return;
         }
         return;
       }

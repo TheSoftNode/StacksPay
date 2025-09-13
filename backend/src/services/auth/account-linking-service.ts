@@ -148,6 +148,7 @@ export class AccountLinkingService {
   ): Promise<AccountLinkingResult> {
     try {
       const { Merchant } = await import('@/models/merchant/Merchant');
+      const { emailService } = await import('@/services/email/email-service');
 
       // Validate both accounts exist
       const [primaryAccount, secondaryAccount] = await Promise.all([
@@ -191,6 +192,46 @@ export class AccountLinkingService {
           $push: { pendingLinkingRequests: linkingRequest }
         })
       ]);
+
+      // Send account linking confirmation email to the appropriate account
+      const targetAccount = requestedBy === 'primary' ? primaryAccount : secondaryAccount;
+      const targetEmail = targetAccount.email;
+
+      if (targetEmail) {
+        try {
+          const emailData = {
+            merchantName: targetAccount.name || targetAccount.email || 'Merchant',
+            primaryAccount: {
+              businessName: primaryAccount.name || primaryAccount.email || 'Primary Account',
+              email: primaryAccount.email || ''
+            },
+            secondaryAccount: {
+              businessName: secondaryAccount.name || secondaryAccount.email || 'Secondary Account',
+              email: secondaryAccount.email || ''
+            },
+            linkingMethod: requestedBy === 'primary' ? primaryAccount.authMethod || 'email' : secondaryAccount.authMethod || 'email',
+            confirmationToken: linkingToken,
+            email: targetEmail, // Add for template compatibility
+            recipientEmail: targetEmail // Add for base template
+          };
+
+          logger.info('Sending account linking email with data:', {
+            targetEmail,
+            fullEmailData: JSON.stringify(emailData, null, 2)
+          });
+
+          await emailService.sendAccountLinkingEmail(targetEmail, emailData);
+
+          logger.info('Account linking email sent', {
+            to: targetEmail,
+            primaryAccountId,
+            secondaryAccountId
+          });
+        } catch (emailError) {
+          logger.error('Failed to send account linking email:', emailError);
+          // Don't fail the linking process if email fails
+        }
+      }
 
       logger.info('Account linking initiated', {
         primaryAccountId,

@@ -128,7 +128,7 @@ export function useAccountLinking() {
         // Invalidate auth queries to refresh user data
         queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
       } else if (data.linkingSuggestion) {
-        // Handle linking suggestion
+        // Handle linking suggestion - don't show success message
         setLinkingSuggestion(data.linkingSuggestion);
         toast({
           title: 'Account Found',

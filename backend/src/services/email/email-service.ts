@@ -22,7 +22,24 @@ export class EmailService {
   private templatesPath: string;
 
   constructor() {
-    this.templatesPath = path.join(__dirname, '../templates/emails');
+    // Handle both development (ts-node) and production (compiled) environments
+    const isDevelopment = __dirname.includes('src');
+    if (isDevelopment) {
+      // Running from source with ts-node
+      this.templatesPath = path.join(__dirname, '../templates/emails');
+    } else {
+      // Running from compiled dist - need to go back to project root then to src
+      this.templatesPath = path.join(__dirname, '../../../src/templates/emails');
+    }
+    
+    logger.info('Email service constructor:', {
+      __dirname,
+      isDevelopment,
+      templatesPath: this.templatesPath,
+      templateExists: fs.existsSync(this.templatesPath),
+      accountLinkingExists: fs.existsSync(path.join(this.templatesPath, 'account-linking.ejs'))
+    });
+    
     this.initializeTransporter().catch(error => {
       logger.error('Failed to initialize email transporter:', error);
     });
@@ -125,16 +142,33 @@ export class EmailService {
       const templatePath = path.join(this.templatesPath, `${templateName}.ejs`);
       const basePath = path.join(this.templatesPath, 'base.ejs');
 
+      logger.info('Rendering template:', {
+        templateName,
+        templatePath,
+        basePath,
+        templateExists: fs.existsSync(templatePath),
+        baseExists: fs.existsSync(basePath),
+        dataKeys: Object.keys(data)
+      });
+
       // Check if template exists
       if (!fs.existsSync(templatePath)) {
-        throw new Error(`Email template not found: ${templateName}`);
+        throw new Error(`Email template not found: ${templateName} at ${templatePath}`);
       }
+
+      if (!fs.existsSync(basePath)) {
+        throw new Error(`Base template not found at ${basePath}`);
+      }
+
+      logger.info('Templates exist, rendering content...');
 
       // Render the specific template content
       const content = await ejs.renderFile(templatePath, {
         ...data,
         baseUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
       });
+
+      logger.info('Content template rendered successfully, rendering full HTML...');
 
       // Render the full email using base template
       const html = await ejs.renderFile(basePath, {
@@ -144,11 +178,15 @@ export class EmailService {
         recipientEmail: data.recipientEmail || data.email,
       });
 
+      logger.info('Full HTML template rendered successfully');
       return html;
     } catch (error: any) {
       logger.error('Template rendering failed:', {
         template: templateName,
         error: error.message,
+        stack: error.stack,
+        templatesPath: this.templatesPath,
+        data: JSON.stringify(data, null, 2)
       });
       throw error;
     }
@@ -194,6 +232,7 @@ export class EmailService {
         to: options.to,
         subject: options.template.subject,
         error: error.message,
+        stack: error.stack
       });
 
       return {
@@ -359,6 +398,34 @@ export class EmailService {
         email,
         timestamp: new Date(),
         dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard`,
+      },
+    });
+  }
+
+  async sendAccountLinkingEmail(email: string, data: {
+    merchantName: string;
+    primaryAccount: {
+      businessName: string;
+      email: string;
+    };
+    secondaryAccount: {
+      businessName: string;
+      email: string;
+    };
+    linkingMethod: string;
+    confirmationToken: string;
+  }): Promise<{ success: boolean; messageId?: string; previewUrl?: string; error?: string }> {
+    return this.sendEmail({
+      to: email,
+      template: {
+        subject: 'Account Linking Request - sBTC Payment Gateway',
+        template: 'account-linking',
+      },
+      data: {
+        ...data,
+        email,
+        recipientEmail: email, // Add this for base template compatibility
+        confirmationUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/link-accounts?token=${data.confirmationToken}`,
       },
     });
   }

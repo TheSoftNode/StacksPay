@@ -59,16 +59,7 @@ class AccountLinkingAPI {
 
     const responseData = await response.json().catch(() => ({}));
 
-    if (!response.ok) {
-      // For account linking, we want to return 400 responses with linking suggestions
-      // instead of throwing errors, so the mutation can handle them
-      if (response.status === 400 && responseData.linkingSuggestion) {
-        return responseData;
-      }
-      
-      throw new Error(responseData.error || `HTTP ${response.status}`);
-    }
-
+    // Always return the response data so mutations can handle both success and error cases
     return responseData;
   }
 
