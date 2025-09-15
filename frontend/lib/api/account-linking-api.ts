@@ -73,10 +73,10 @@ class AccountLinkingAPI {
   /**
    * Initiate account linking process
    */
-  async initiateLinking(targetAccountId: string): Promise<AccountLinkingResponse> {
+  async initiateLinking(targetAccountId: string, targetEmail?: string): Promise<AccountLinkingResponse> {
     return this.makeRequest('/auth/accounts/initiate-link', {
       method: 'POST',
-      body: JSON.stringify({ targetAccountId })
+      body: JSON.stringify({ targetAccountId, targetEmail })
     });
   }
 

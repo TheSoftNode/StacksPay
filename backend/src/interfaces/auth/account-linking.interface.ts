@@ -15,6 +15,7 @@ export interface LinkingRequest {
   expiresAt: Date;
   confirmedAt?: Date;
   status: 'pending' | 'confirmed' | 'expired' | 'rejected';
+  targetEmail?: string; // The email that the user wants to update to
 }
 
 export interface LinkedAccount {

@@ -5,6 +5,7 @@ import { useToast } from './use-toast';
 
 export function useAccountLinking() {
   const [linkingSuggestion, setLinkingSuggestion] = useState<LinkingSuggestion | null>(null);
+  const [intendedEmail, setIntendedEmail] = useState<string | null>(null); // Store the email user wants to update to
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -33,7 +34,8 @@ export function useAccountLinking() {
 
   // Initiate linking mutation
   const initiateLinkingMutation = useMutation({
-    mutationFn: (targetAccountId: string) => accountLinkingApi.initiateLinking(targetAccountId),
+    mutationFn: (params: { targetAccountId: string; targetEmail?: string }) => 
+      accountLinkingApi.initiateLinking(params.targetAccountId, params.targetEmail),
     onSuccess: (data) => {
       if (data.success) {
         toast({
@@ -118,7 +120,10 @@ export function useAccountLinking() {
 
   // Enhanced update email mutation that handles linking suggestions
   const updateEmailMutation = useMutation({
-    mutationFn: (email: string) => accountLinkingApi.updateEmail(email),
+    mutationFn: (email: string) => {
+      setIntendedEmail(email); // Store the email user wants to update to
+      return accountLinkingApi.updateEmail(email);
+    },
     onSuccess: (data) => {
       if (data.success) {
         toast({
@@ -168,11 +173,15 @@ export function useAccountLinking() {
     // Actions
     loadSuggestions: refetchSuggestions,
     refreshLinkedAccounts: refetchLinkedAccounts,
-    initiateLinking: initiateLinkingMutation.mutate,
+    initiateLinking: (targetAccountId: string) => 
+      initiateLinkingMutation.mutate({ targetAccountId, targetEmail: intendedEmail || undefined }),
     confirmLinking: confirmLinkingMutation.mutate,
     unlinkAccount: unlinkAccountMutation.mutate,
     updateEmail: updateEmailMutation.mutate,
-    clearLinkingSuggestion: () => setLinkingSuggestion(null),
+    clearLinkingSuggestion: () => {
+      setLinkingSuggestion(null);
+      setIntendedEmail(null);
+    },
     
     // Computed values
     hasLinkedAccounts: (linkedAccounts || []).length > 0,

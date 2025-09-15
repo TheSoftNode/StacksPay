@@ -26,7 +26,9 @@ export class EmailService {
     const isDevelopment = __dirname.includes('src');
     if (isDevelopment) {
       // Running from source with ts-node
-      this.templatesPath = path.join(__dirname, '../templates/emails');
+      // __dirname is: /backend/src/services/email/
+      // Need to go up to: /backend/src/templates/emails/
+      this.templatesPath = path.join(__dirname, '../../templates/emails');
     } else {
       // Running from compiled dist - need to go back to project root then to src
       this.templatesPath = path.join(__dirname, '../../../src/templates/emails');
@@ -184,10 +186,10 @@ export class EmailService {
       logger.error('Template rendering failed:', {
         template: templateName,
         error: error.message,
-        stack: error.stack,
         templatesPath: this.templatesPath,
-        data: JSON.stringify(data, null, 2)
+        __dirname: __dirname
       });
+      logger.error('Full error details:', error);
       throw error;
     }
   }

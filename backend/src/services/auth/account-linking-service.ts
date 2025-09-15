@@ -144,7 +144,8 @@ export class AccountLinkingService {
   async initiateLinking(
     primaryAccountId: string,
     secondaryAccountId: string,
-    requestedBy: 'primary' | 'secondary' = 'primary'
+    requestedBy: 'primary' | 'secondary' = 'primary',
+    targetEmail?: string // Optional target email to use for confirmation
   ): Promise<AccountLinkingResult> {
     try {
       const { Merchant } = await import('@/models/merchant/Merchant');
@@ -181,7 +182,8 @@ export class AccountLinkingService {
         secondaryAccountId,
         linkingToken,
         expiresAt,
-        status: 'pending'
+        status: 'pending',
+        targetEmail: targetEmail // Store the intended email
       };
 
       await Promise.all([
@@ -195,15 +197,15 @@ export class AccountLinkingService {
 
       // Send account linking confirmation email to the appropriate account
       const targetAccount = requestedBy === 'primary' ? primaryAccount : secondaryAccount;
-      const targetEmail = targetAccount.email;
+      const emailAddress = targetEmail || targetAccount.email; // Use provided targetEmail or fallback to account email
 
-      if (targetEmail) {
+      if (emailAddress) {
         try {
           const emailData = {
             merchantName: targetAccount.name || targetAccount.email || 'Merchant',
             primaryAccount: {
               businessName: primaryAccount.name || primaryAccount.email || 'Primary Account',
-              email: primaryAccount.email || ''
+              email: targetEmail || primaryAccount.email || '' // Use target email for primary account if provided
             },
             secondaryAccount: {
               businessName: secondaryAccount.name || secondaryAccount.email || 'Secondary Account',
@@ -211,24 +213,30 @@ export class AccountLinkingService {
             },
             linkingMethod: requestedBy === 'primary' ? primaryAccount.authMethod || 'email' : secondaryAccount.authMethod || 'email',
             confirmationToken: linkingToken,
-            email: targetEmail, // Add for template compatibility
-            recipientEmail: targetEmail // Add for base template
+            email: emailAddress, // Add for template compatibility
+            recipientEmail: emailAddress // Add for base template
           };
 
           logger.info('Sending account linking email with data:', {
-            targetEmail,
+            targetEmail: emailAddress,
             fullEmailData: JSON.stringify(emailData, null, 2)
           });
 
-          await emailService.sendAccountLinkingEmail(targetEmail, emailData);
+          await emailService.sendAccountLinkingEmail(emailAddress, emailData);
 
           logger.info('Account linking email sent', {
-            to: targetEmail,
+            to: emailAddress,
             primaryAccountId,
             secondaryAccountId
           });
         } catch (emailError) {
-          logger.error('Failed to send account linking email:', emailError);
+          logger.error('Failed to send account linking email:', {
+            error: emailError instanceof Error ? emailError.message : String(emailError),
+            stack: emailError instanceof Error ? emailError.stack : undefined,
+            targetEmail: emailAddress,
+            primaryAccountId,
+            secondaryAccountId
+          });
           // Don't fail the linking process if email fails
         }
       }
@@ -300,7 +308,8 @@ export class AccountLinkingService {
       // Perform the linking
       const linkingResult = await this.linkAccounts(
         linkingRequest.primaryAccountId,
-        linkingRequest.secondaryAccountId
+        linkingRequest.secondaryAccountId,
+        linkingRequest.targetEmail // Pass the target email
       );
 
       if (!linkingResult.success) {
@@ -339,7 +348,8 @@ export class AccountLinkingService {
    */
   private async linkAccounts(
     primaryAccountId: string,
-    secondaryAccountId: string
+    secondaryAccountId: string,
+    targetEmail?: string // The email to update the primary account to
   ): Promise<AccountLinkingResult> {
     try {
       const { Merchant } = await import('@/models/merchant/Merchant');
@@ -378,13 +388,22 @@ export class AccountLinkingService {
       };
 
       // Update both accounts with linking information
+      const primaryUpdate: any = {
+        linkedAccounts: [secondaryLinkedAccount],
+        primaryAuthMethod: primaryAccount.authMethod,
+        isLinkedAccount: false
+      };
+
+      // If target email is provided, update the primary account's email
+      if (targetEmail) {
+        primaryUpdate.email = targetEmail;
+        primaryUpdate.emailVerified = true; // Mark as verified since they confirmed via email
+        primaryUpdate.requiresEmailVerification = false; // No longer needs email addition
+      }
+
       await Promise.all([
         Merchant.findByIdAndUpdate(primaryAccountId, {
-          $set: {
-            linkedAccounts: [secondaryLinkedAccount],
-            primaryAuthMethod: primaryAccount.authMethod,
-            isLinkedAccount: false
-          }
+          $set: primaryUpdate
         }),
         Merchant.findByIdAndUpdate(secondaryAccountId, {
           $set: {
@@ -524,6 +543,170 @@ export class AccountLinkingService {
     } catch (error) {
       logger.error('Error checking auth method availability:', error);
       return { canUse: false };
+    }
+  }
+
+  /**
+   * Consolidate email for linked accounts
+   * This method handles the MongoDB unique constraint by ensuring only the primary account has the real email
+   */
+  async consolidateEmailForLinkedAccounts(
+    currentAccountId: string,
+    targetEmail: string
+  ): Promise<{ success: boolean; error?: string; emailUpdated?: boolean }> {
+    try {
+      const { Merchant } = await import('@/models/merchant/Merchant');
+      const { emailService } = await import('@/services/email/email-service');
+      const crypto = require('crypto');
+
+      // Get current account
+      const currentAccount = await Merchant.findById(currentAccountId);
+      if (!currentAccount) {
+        return { success: false, error: 'Account not found' };
+      }
+
+      // Check if this account is part of a linked set
+      let primaryAccountId: string;
+      let secondaryAccountIds: string[] = [];
+
+      if (currentAccount.isLinkedAccount && currentAccount.linkedToPrimary) {
+        // Current account is secondary, find the primary
+        primaryAccountId = currentAccount.linkedToPrimary.toString();
+        const primaryAccount = await Merchant.findById(primaryAccountId);
+        if (!primaryAccount) {
+          return { success: false, error: 'Primary account not found' };
+        }
+        secondaryAccountIds = primaryAccount.linkedAccounts?.map(la => la.accountId.toString()) || [];
+      } else if (currentAccount.linkedAccounts && currentAccount.linkedAccounts.length > 0) {
+        // Current account is primary
+        primaryAccountId = currentAccountId;
+        secondaryAccountIds = currentAccount.linkedAccounts.map(la => la.accountId.toString());
+      } else {
+        // Account is not linked, return false to indicate normal flow should be used
+        return { success: false, error: 'Account is not linked' };
+      }
+
+      logger.info('Consolidating email for linked accounts', {
+        primaryAccountId,
+        secondaryAccountIds,
+        targetEmail,
+        currentAccountId
+      });
+
+      // Check if target email already exists in another non-linked account
+      const existingMerchant = await Merchant.findOne({
+        email: targetEmail,
+        _id: { 
+          $nin: [primaryAccountId, ...secondaryAccountIds].map(id => id.toString())
+        }
+      });
+
+      if (existingMerchant) {
+        return { 
+          success: false, 
+          error: 'Email is already in use by another account that is not linked to yours' 
+        };
+      }
+
+      // Generate verification token
+      const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+
+      // Use MongoDB session for transaction
+      const session = await Merchant.startSession();
+      
+      try {
+        await session.withTransaction(async () => {
+          // Step 1: Clear email from any secondary accounts that might have it
+          await Merchant.updateMany(
+            { 
+              _id: { $in: secondaryAccountIds },
+              email: targetEmail
+            },
+            {
+              $set: { 
+                email: `linked_${Date.now()}_${Math.random().toString(36).substr(2, 9)}@linked.local`
+              }
+            },
+            { session }
+          );
+
+          // Step 2: Update primary account with the target email
+          await Merchant.findByIdAndUpdate(
+            primaryAccountId,
+            {
+              $set: {
+                email: targetEmail,
+                emailVerified: false,
+                emailVerificationToken: emailVerificationToken,
+                requiresEmailVerification: false,
+                lastLoginAt: new Date()
+              }
+            },
+            { session, new: true }
+          );
+
+          // Step 3: Ensure all secondary accounts have placeholder emails
+          for (const secondaryId of secondaryAccountIds) {
+            await Merchant.findByIdAndUpdate(
+              secondaryId,
+              {
+                $set: {
+                  email: `linked_${secondaryId}_${Date.now()}@linked.local`,
+                  emailVerified: false,
+                  requiresEmailVerification: false
+                }
+              },
+              { session }
+            );
+          }
+        });
+
+        logger.info('Email consolidation transaction completed successfully', {
+          primaryAccountId,
+          targetEmail
+        });
+
+        // Send verification email (outside transaction)
+        try {
+          const primaryAccount = await Merchant.findById(primaryAccountId);
+          await emailService.sendEmailVerificationEmail(targetEmail, {
+            merchantName: primaryAccount?.name || 'User',
+            verificationToken: emailVerificationToken
+          });
+          logger.info('Verification email sent for consolidated account', { targetEmail });
+        } catch (emailError) {
+          logger.warn('Failed to send verification email after consolidation', { 
+            error: emailError,
+            targetEmail 
+          });
+          // Don't fail the whole operation if email sending fails
+        }
+
+        return { 
+          success: true, 
+          emailUpdated: true 
+        };
+
+      } catch (transactionError) {
+        logger.error('Email consolidation transaction failed', {
+          error: transactionError,
+          primaryAccountId,
+          targetEmail
+        });
+        return { 
+          success: false, 
+          error: 'Failed to consolidate email for linked accounts' 
+        };
+      } finally {
+        await session.endSession();
+      }
+
+    } catch (error) {
+      logger.error('Error consolidating email for linked accounts:', error);
+      return {
+        success: false,
+        error: 'Email consolidation failed. Please try again.'
+      };
     }
   }
 }
