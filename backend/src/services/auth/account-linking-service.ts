@@ -576,11 +576,11 @@ export class AccountLinkingService {
         if (!primaryAccount) {
           return { success: false, error: 'Primary account not found' };
         }
-        secondaryAccountIds = primaryAccount.linkedAccounts?.map(la => la.accountId.toString()) || [];
+        secondaryAccountIds = primaryAccount.linkedAccounts?.map((la: LinkedAccount) => la.accountId.toString()) || [];
       } else if (currentAccount.linkedAccounts && currentAccount.linkedAccounts.length > 0) {
         // Current account is primary
         primaryAccountId = currentAccountId;
-        secondaryAccountIds = currentAccount.linkedAccounts.map(la => la.accountId.toString());
+        secondaryAccountIds = currentAccount.linkedAccounts.map((la: LinkedAccount) => la.accountId.toString());
       } else {
         // Account is not linked, return false to indicate normal flow should be used
         return { success: false, error: 'Account is not linked' };
