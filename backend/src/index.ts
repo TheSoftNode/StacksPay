@@ -16,6 +16,7 @@ import notificationRoutes from '@/routes/notification/notification.routes';
 import errorRoutes from '@/routes/error/error.routes';
 import testRoutes from '@/routes/test/test.routes';
 import walletRoutes from '@/routes/wallet/wallet';
+import stxPaymentRoutes from '@/routes/payment/stx-payment.routes';
 import config from '@/config';
 import { createLogger } from '@/utils/logger';
 import { webhookService } from '@/services/webhook/webhook-service';
@@ -153,6 +154,8 @@ class sBTCPaymentGatewayServer {
     this.app.use('/api/monitoring', errorRoutes);
     this.app.use('/api/test', testRoutes);
     this.app.use('/api/wallet', walletRoutes);
+    this.app.use('/api/payments', stxPaymentRoutes); // STX payment routes
+    this.app.use('/api', stxPaymentRoutes); // STX webhook and public routes
 
     // 404 handler for unmatched routes (must be before error handler)
     this.app.use('*', notFoundHandler);

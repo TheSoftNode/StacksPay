@@ -31,6 +31,7 @@ export class SBTCGateway {
 export * from './types';
 export * from './webhook-api';
 export * from './api-key';
+export * from './utils';
 export { SBTCGatewayError } from './base';
 export { WebhookUtils } from './webhooks';
 

@@ -98,45 +98,77 @@ const mockAnalytics: AnalyticsData = {
   }
 }
 
-// Mock data for charts
+// Currency-specific analytics data
+const currencyAnalytics = {
+  stx: {
+    revenue: 4234.56, // USD equivalent
+    revenueInCurrency: 8469.12, // Actual STX amount
+    transactions: 487,
+    successRate: 97.9,
+    avgTransaction: 17.4 // STX
+  },
+  sbtc: {
+    revenue: 6789.23,
+    revenueInCurrency: 0.1508, // BTC amount
+    transactions: 654,
+    successRate: 99.1,
+    avgTransaction: 0.000231 // BTC
+  },
+  btc: {
+    revenue: 1823.53,
+    revenueInCurrency: 0.0405, // BTC amount
+    transactions: 312,
+    successRate: 98.4,
+    avgTransaction: 0.0001298 // BTC
+  }
+}
+
+// Mock data for charts - now includes currency breakdown
 const revenueData = [
-  { date: 'Aug 1', revenue: 850, transactions: 45 },
-  { date: 'Aug 3', revenue: 920, transactions: 52 },
-  { date: 'Aug 5', revenue: 1100, transactions: 48 },
-  { date: 'Aug 7', revenue: 980, transactions: 41 },
-  { date: 'Aug 9', revenue: 1250, transactions: 55 },
-  { date: 'Aug 11', revenue: 1180, transactions: 49 },
-  { date: 'Aug 13', revenue: 1320, transactions: 62 },
-  { date: 'Aug 15', revenue: 1450, transactions: 58 },
-  { date: 'Aug 17', revenue: 1280, transactions: 53 },
-  { date: 'Aug 18', revenue: 1380, transactions: 61 }
+  { date: 'Aug 1', revenue: 850, stx: 340, sbtc: 380, btc: 130, transactions: 45 },
+  { date: 'Aug 3', revenue: 920, stx: 368, sbtc: 414, btc: 138, transactions: 52 },
+  { date: 'Aug 5', revenue: 1100, stx: 440, sbtc: 495, btc: 165, transactions: 48 },
+  { date: 'Aug 7', revenue: 980, stx: 392, sbtc: 441, btc: 147, transactions: 41 },
+  { date: 'Aug 9', revenue: 1250, stx: 500, sbtc: 563, btc: 187, transactions: 55 },
+  { date: 'Aug 11', revenue: 1180, stx: 472, sbtc: 531, btc: 177, transactions: 49 },
+  { date: 'Aug 13', revenue: 1320, stx: 528, sbtc: 594, btc: 198, transactions: 62 },
+  { date: 'Aug 15', revenue: 1450, stx: 580, sbtc: 653, btc: 217, transactions: 58 },
+  { date: 'Aug 17', revenue: 1280, stx: 512, sbtc: 576, btc: 192, transactions: 53 },
+  { date: 'Aug 18', revenue: 1380, stx: 552, sbtc: 621, btc: 207, transactions: 61 }
+]
+
+// Currency distribution data for pie chart
+const currencyDistributionData = [
+  { name: 'STX', value: 33, amount: 4234.56, transactions: 487, color: '#8b5cf6' },
+  { name: 'sBTC', value: 53, amount: 6789.23, transactions: 654, color: '#ea580c' },
+  { name: 'BTC', value: 14, amount: 1823.53, transactions: 312, color: '#f59e0b' }
 ]
 
 const paymentMethodsData = [
-  { name: 'Leather Wallet', value: 45, count: 652 },
-  { name: 'Xverse Wallet', value: 32, count: 465 },
-  { name: 'Hiro Wallet', value: 18, count: 261 },
-  { name: 'Other', value: 5, count: 75 }
+  { name: 'Leather Wallet', value: 45, count: 652, stxCount: 198, sbtcCount: 312, btcCount: 142 },
+  { name: 'Xverse Wallet', value: 32, count: 465, stxCount: 156, sbtcCount: 201, btcCount: 108 },
+  { name: 'Hiro Wallet', value: 18, count: 261, stxCount: 89, sbtcCount: 124, btcCount: 48 },
+  { name: 'Other', value: 5, count: 75, stxCount: 44, sbtcCount: 17, btcCount: 14 }
 ]
 
 const COLORS = ['#ea580c', '#3b82f6', '#10b981', '#8b5cf6']
 
-// Mock tax data
+// Mock tax data - now includes STX transactions
 const taxDataByRegion = [
-  { region: 'United States', taxRate: 8.25, transactions: 450, taxCollected: 2547.32 },
-  { region: 'European Union', taxRate: 20.0, transactions: 280, taxCollected: 3421.18 },
-  { region: 'United Kingdom', taxRate: 20.0, transactions: 180, taxCollected: 1876.45 },
-  { region: 'Canada', taxRate: 13.0, transactions: 95, taxCollected: 847.21 },
-  { region: 'Australia', taxRate: 10.0, transactions: 62, taxCollected: 456.78 }
+  { region: 'United States', taxRate: 8.25, transactions: 450, taxCollected: 2547.32, stxTransactions: 148, sbtcTransactions: 201, btcTransactions: 101 },
+  { region: 'European Union', taxRate: 20.0, transactions: 280, taxCollected: 3421.18, stxTransactions: 95, sbtcTransactions: 123, btcTransactions: 62 },
+  { region: 'United Kingdom', taxRate: 20.0, transactions: 180, taxCollected: 1876.45, stxTransactions: 61, sbtcTransactions: 79, btcTransactions: 40 },
+  { region: 'Canada', taxRate: 13.0, transactions: 95, taxCollected: 847.21, stxTransactions: 32, sbtcTransactions: 41, btcTransactions: 22 },
+  { region: 'Australia', taxRate: 10.0, transactions: 62, taxCollected: 456.78, stxTransactions: 21, sbtcTransactions: 27, btcTransactions: 14 }
 ]
 
 const monthlyTaxData = [
-  { month: 'Jan', taxCollected: 2845.32, transactions: 156 },
-  { month: 'Feb', taxCollected: 3123.45, transactions: 189 },
-  { month: 'Mar', taxCollected: 2987.21, transactions: 174 },
-  { month: 'Apr', taxCollected: 3456.78, transactions: 203 },
-  { month: 'May', taxCollected: 3721.45, transactions: 218 },
-  { month: 'Jun', taxCollected: 3987.32, transactions: 234 }
+  { month: 'Jan', taxCollected: 2845.32, transactions: 156, stxTax: 948.44, sbtcTax: 1421.66, btcTax: 475.22 },
+  { month: 'Feb', taxCollected: 3123.45, transactions: 189, stxTax: 1041.15, sbtcTax: 1561.73, btcTax: 520.57 },
+  { month: 'Mar', taxCollected: 2987.21, transactions: 174, stxTax: 995.74, sbtcTax: 1493.61, btcTax: 497.86 },
+  { month: 'Apr', taxCollected: 3456.78, transactions: 203, stxTax: 1150.76, sbtcTax: 1728.39, btcTax: 577.63 },
+  { month: 'May', taxCollected: 3721.45, transactions: 218, stxTax: 1240.48, sbtcTax: 1860.73, btcTax: 620.24 },
+  { month: 'Jun', taxCollected: 3987.32, transactions: 234, stxTax: 1329.11, sbtcTax: 1993.66, btcTax: 664.55 }
 ]
 
 const taxReports = [
@@ -364,17 +396,77 @@ const AnalyticsPage = () => {
         />
       </div>
 
+      {/* Currency Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {Object.entries(currencyAnalytics).map(([currency, data]) => (
+          <Card key={currency} className="bg-white dark:bg-gray-900 border shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 uppercase">
+                    {currency}
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {currency === 'stx' ? 'Stacks' : currency === 'sbtc' ? 'Synthetic Bitcoin' : 'Bitcoin'}
+                  </p>
+                </div>
+                <div 
+                  className="w-3 h-3 rounded-full"
+                  style={{ 
+                    backgroundColor: currency === 'stx' ? '#8b5cf6' : currency === 'sbtc' ? '#ea580c' : '#f59e0b' 
+                  }}
+                />
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    ${data.revenue.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {currency === 'stx' 
+                      ? `${data.revenueInCurrency.toLocaleString()} STX`
+                      : `${data.revenueInCurrency.toFixed(6)} ${currency.toUpperCase()}`
+                    }
+                  </p>
+                </div>
+                
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Transactions</span>
+                  <span className="font-medium">{data.transactions}</span>
+                </div>
+                
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Success Rate</span>
+                  <span className="font-medium text-green-600">{data.successRate}%</span>
+                </div>
+                
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Avg Transaction</span>
+                  <span className="font-medium">
+                    {currency === 'stx' 
+                      ? `${data.avgTransaction} STX`
+                      : `${data.avgTransaction.toFixed(6)} ${currency.toUpperCase()}`
+                    }
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Revenue Trend */}
+        {/* Revenue Trend by Currency */}
         <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <BarChart3 className="h-5 w-5 text-orange-600" />
-              <span>Revenue Trend</span>
+              <span>Revenue by Currency</span>
             </CardTitle>
             <CardDescription>
-              sBTC revenue over time
+              Revenue breakdown by STX, sBTC, and BTC over time
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -382,9 +474,17 @@ const AnalyticsPage = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={revenueData}>
                   <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorSTX" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorSBTC" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#ea580c" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="#ea580c" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorBTC" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
@@ -409,31 +509,66 @@ const AnalyticsPage = () => {
                       borderRadius: '8px',
                       boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                     }}
-                    formatter={(value: any) => [`$${value}`, 'Revenue']}
+                    formatter={(value: any, name: string) => [`$${value}`, name.toUpperCase()]}
                   />
                   <Area
                     type="monotone"
-                    dataKey="revenue"
+                    dataKey="stx"
+                    stackId="1"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorSTX)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="sbtc"
+                    stackId="1"
                     stroke="#ea580c"
                     strokeWidth={2}
                     fillOpacity={1}
-                    fill="url(#colorRevenue)"
+                    fill="url(#colorSBTC)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="btc"
+                    stackId="1"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorBTC)"
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
+            
+            {/* Legend */}
+            <div className="flex justify-center space-x-6 mt-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 rounded-full bg-purple-500" />
+                <span className="text-sm">STX</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 rounded-full bg-orange-600" />
+                <span className="text-sm">sBTC</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 rounded-full bg-amber-500" />
+                <span className="text-sm">BTC</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Payment Methods */}
+        {/* Currency Distribution */}
         <Card className="bg-white dark:bg-gray-900 border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <PieChartIcon className="h-5 w-5 text-orange-600" />
-              <span>Payment Methods</span>
+              <span>Revenue by Currency</span>
             </CardTitle>
             <CardDescription>
-              Distribution by wallet type
+              Payment distribution by currency type
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -441,7 +576,7 @@ const AnalyticsPage = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={paymentMethodsData}
+                    data={currencyDistributionData}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -449,8 +584,8 @@ const AnalyticsPage = () => {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {paymentMethodsData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    {currencyDistributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                   <Tooltip 
@@ -461,7 +596,7 @@ const AnalyticsPage = () => {
                       boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                     }}
                     formatter={(value: any, name: any, props: any) => [
-                      `${value}% (${props.payload.count} payments)`,
+                      `${value}% ($${props.payload.amount.toLocaleString()})`,
                       props.payload.name
                     ]}
                   />
@@ -471,18 +606,20 @@ const AnalyticsPage = () => {
             
             {/* Legend */}
             <div className="space-y-2 mt-4">
-              {paymentMethodsData.map((entry, index) => (
+              {currencyDistributionData.map((entry) => (
                 <div key={entry.name} className="flex items-center justify-between text-sm">
                   <div className="flex items-center space-x-2">
                     <div 
                       className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      style={{ backgroundColor: entry.color }}
                     />
                     <span>{entry.name}</span>
                   </div>
                   <div className="text-right">
                     <span className="font-medium">{entry.value}%</span>
-                    <p className="text-xs text-gray-500">{entry.count} payments</p>
+                    <p className="text-xs text-gray-500">
+                      ${entry.amount.toLocaleString()} • {entry.transactions} payments
+                    </p>
                   </div>
                 </div>
               ))}
@@ -506,22 +643,29 @@ const AnalyticsPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {[
-              { name: 'Alice Johnson', amount: 2.5, transactions: 28 },
-              { name: 'Bob Wilson', amount: 1.8, transactions: 15 },
-              { name: 'Carol Smith', amount: 1.2, transactions: 22 },
+              { name: 'Alice Johnson', totalUSD: 1847.50, stx: 425.0, sbtc: 0.0412, btc: 0.0089, transactions: 28 },
+              { name: 'Bob Wilson', totalUSD: 1234.80, stx: 298.5, sbtc: 0.0234, btc: 0.0067, transactions: 15 },
+              { name: 'Carol Smith', totalUSD: 987.25, stx: 189.2, sbtc: 0.0189, btc: 0.0045, transactions: 22 },
             ].map((customer, index) => (
               <div key={index} className="flex items-center justify-between">
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {customer.name}
                   </p>
                   <p className="text-xs text-gray-500">
                     {customer.transactions} transactions
                   </p>
+                  <div className="flex space-x-2 text-xs text-gray-500 mt-1">
+                    <span>{customer.stx} STX</span>
+                    <span>•</span>
+                    <span>{customer.sbtc} sBTC</span>
+                    <span>•</span>
+                    <span>{customer.btc} BTC</span>
+                  </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium">
-                    {customer.amount} sBTC
+                    ${customer.totalUSD.toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -750,6 +894,9 @@ const AnalyticsPage = () => {
                           </p>
                           <p className="text-xs text-gray-500">
                             {region.transactions} transactions • {region.taxRate}% rate
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {region.stxTransactions} STX • {region.sbtcTransactions} sBTC • {region.btcTransactions} BTC
                           </p>
                         </div>
                       </div>

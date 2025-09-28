@@ -18,7 +18,8 @@ import {
   CreditCard,
   Sun,
   Moon,
-  Home
+  Home,
+  Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -64,6 +65,8 @@ export default function CheckoutPage() {
   const [copied, setCopied] = useState(false)
   const [walletConnected, setWalletConnected] = useState(false)
   const [transactionSent, setTransactionSent] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null)
+  const [qrCodeLoading, setQrCodeLoading] = useState(false)
 
   // Use real-time payment status polling
   const { data: statusData, isLoading: statusLoading } = usePaymentStatus(paymentId)
@@ -78,7 +81,14 @@ export default function CheckoutPage() {
         setError(null)
 
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-        const response = await fetch(`${apiUrl}/api/public/payments/${paymentId}/status`)
+        
+        // Try STX payment endpoint first, then fallback to general payments
+        let response = await fetch(`${apiUrl}/api/public/stx/${paymentId}/status`);
+        
+        if (!response.ok && response.status === 404) {
+          // If not found in STX, try general payments endpoint
+          response = await fetch(`${apiUrl}/api/public/payments/${paymentId}/status`);
+        }
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`)
@@ -91,6 +101,11 @@ export default function CheckoutPage() {
         }
 
         setPaymentData(result.data)
+        
+        // Generate QR code for payment
+        if (result.data && result.data.paymentAddress) {
+          generateQRCode(result.data);
+        }
       } catch (err) {
         console.error('Error fetching payment:', err)
         setError(err instanceof Error ? err.message : 'Failed to load payment')
@@ -102,6 +117,35 @@ export default function CheckoutPage() {
     fetchPaymentData()
   }, [paymentId])
 
+  // Generate QR code for payment
+  const generateQRCode = async (payment: PaymentData) => {
+    try {
+      setQrCodeLoading(true)
+      
+      // Import QR code utility
+      const { generatePaymentQR } = await import('@/lib/utils/qr-code')
+      
+      const amount = payment.paymentMethod === 'stx' 
+        ? Math.floor(payment.amount * 1000000) // Convert STX to microSTX
+        : payment.amount;
+      
+      const qrUrl = await generatePaymentQR(
+        payment.paymentMethod,
+        payment.paymentAddress,
+        amount,
+        payment.description,
+        { size: 256, margin: 2 }
+      )
+      
+      setQrCodeUrl(qrUrl)
+    } catch (error) {
+      console.error('Failed to generate QR code:', error)
+      // QR code generation failure shouldn't block the payment flow
+    } finally {
+      setQrCodeLoading(false)
+    }
+  }
+
   // Real-time payment monitoring
   useEffect(() => {
     if (!paymentData || paymentData.status === 'confirmed') return;
@@ -109,7 +153,14 @@ export default function CheckoutPage() {
     const pollInterval = setInterval(async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-        const response = await fetch(`${apiUrl}/api/public/payments/${paymentId}/status`);
+        
+        // Try STX payment endpoint first, then fallback to general payments
+        let response = await fetch(`${apiUrl}/api/public/stx/${paymentId}/status`);
+        
+        if (!response.ok && response.status === 404) {
+          // If not found in STX, try general payments endpoint
+          response = await fetch(`${apiUrl}/api/public/payments/${paymentId}/status`);
+        }
         
         if (response.ok) {
           const result = await response.json();
@@ -210,37 +261,70 @@ export default function CheckoutPage() {
         throw new Error('Wallet not connected')
       }
 
-      // Generate a mock transaction ID for demo purposes
-      // In a real implementation, this would be the actual blockchain transaction ID
-      const mockTxId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      let txId: string;
 
-      // Call the backend to process the payment
+      // Handle different payment methods
+      if (paymentData.paymentMethod === 'stx') {
+        // Import STX transaction service for STX payments
+        const { stxTransactionService } = await import('@/lib/services/stx-transaction-service')
+        
+        // Execute STX payment using the transaction service
+        const result = await stxTransactionService.executeSTXPayment({
+          paymentId: paymentData.id,
+          recipient: paymentData.paymentAddress,
+          amount: Math.floor(paymentData.amount * 1000000), // Convert STX to microSTX
+          memo: `Payment for ${paymentData.description}`
+        });
+
+        if (!result.success) {
+          throw new Error(result.error || 'STX payment failed')
+        }
+
+        txId = result.txId!;
+        
+        toast({
+          title: "STX Payment Sent!",
+          description: `Transaction ID: ${txId.slice(0, 8)}...${txId.slice(-8)}`,
+        })
+      } else {
+        // Handle other payment methods (sBTC, BTC, etc.)
+        // Generate a mock transaction ID for demo purposes
+        txId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+        
+        toast({
+          title: "Payment Sent!",
+          description: "Your payment is being processed. You'll see confirmation shortly.",
+        })
+      }
+
+      // Call the backend to notify about the payment
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const response = await fetch(`${apiUrl}/api/public/payments/${paymentId}/process`, {
+      const endpoint = paymentData.paymentMethod === 'stx' 
+        ? `/api/public/stx/${paymentId}/process`
+        : `/api/public/payments/${paymentId}/process`;
+      
+      const response = await fetch(`${apiUrl}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           walletAddress: walletData.address,
-          transactionId: mockTxId,
+          transactionId: txId,
           paymentMethod: paymentData.paymentMethod,
-          signature: 'mock_signature_for_demo', // In real implementation, this would be a wallet signature
+          signature: 'mock_signature_for_demo',
         })
       })
 
       const result = await response.json()
       
       if (result.success) {
-        toast({
-          title: "Payment Sent!",
-          description: "Your payment is being processed. You'll see confirmation shortly.",
-        })
-        
         // Update payment data to reflect the new status
         setPaymentData(prev => prev ? { ...prev, status: 'processing' } : null)
       } else {
-        throw new Error(result.error || 'Payment processing failed')
+        console.warn('Backend notification failed:', result.error)
+        // Don't fail the payment if backend notification fails
+        // The Chainhook will detect the payment anyway
       }
     } catch (err) {
       console.error('Payment failed:', err)
@@ -557,7 +641,17 @@ export default function CheckoutPage() {
                   </CardHeader>
                   <CardContent className="text-center space-y-4">
                     <div className="inline-block p-4 bg-white rounded-lg border">
-                      {paymentData.qrCode ? (
+                      {qrCodeLoading ? (
+                        <div className="w-48 h-48 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                          <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+                        </div>
+                      ) : qrCodeUrl ? (
+                        <img
+                          src={qrCodeUrl}
+                          alt="Payment QR Code"
+                          className="w-48 h-48 mx-auto"
+                        />
+                      ) : paymentData.qrCode ? (
                         <img
                           src={paymentData.qrCode}
                           alt="Payment QR Code"

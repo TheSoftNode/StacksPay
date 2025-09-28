@@ -21,8 +21,8 @@ async function main() {
     
     // Create a payment
     const payment = await client.payments.create({
-      amount: 50000, // 0.0005 BTC in satoshis
-      currency: 'sbtc',
+      amount: 50000000, // 50 STX in microSTX (for STX payments) or 0.0005 BTC in satoshis (for BTC/sBTC)
+      currency: 'stx', // Supports 'stx', 'sbtc', or 'btc'
       description: 'Premium subscription',
       customer: {
         email: 'customer@example.com',

@@ -104,6 +104,7 @@ export default function CheckoutWidget({
   const formatCurrency = (amount: number, currency: string) => {
     if (currency === 'USDC') return `$${amount.toFixed(2)}`
     if (currency === 'BTC' || currency === 'sBTC') return `₿${amount.toFixed(6)}`
+    if (currency === 'STX') return `${amount.toFixed(6)} STX`
     return `${amount} ${currency}`
   }
 

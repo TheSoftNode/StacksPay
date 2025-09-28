@@ -192,7 +192,7 @@ export class STXPaymentController {
       }
 
       // Generate unique payment ID
-      const paymentId = `stx_pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const paymentId = `stx_pay_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
       // Generate unique address for this payment
       const addressResult = await stxContractService.generateUniqueSTXAddress(paymentId);

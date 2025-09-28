@@ -276,6 +276,12 @@ export default function PaymentLinkWidget({
     if (currency === 'USDC') {
       return `${symbol}${amount.toFixed(2)}`
     }
+    if (currency === 'STX') {
+      return `${amount.toFixed(6)} ${symbol}`
+    }
+    if (currency === 'BTC' || currency === 'sBTC') {
+      return `${symbol}${amount.toFixed(6)}`
+    }
     return `${amount} ${currency}`
   }
 

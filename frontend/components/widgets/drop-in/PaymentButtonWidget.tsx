@@ -71,6 +71,7 @@ export default function PaymentButtonWidget({
   const formatCurrency = (amount: number, currency: string) => {
     if (currency === 'USDC') return `$${amount.toFixed(2)}`
     if (currency === 'BTC' || currency === 'sBTC') return `₿${amount.toFixed(6)}`
+    if (currency === 'STX') return `${amount.toFixed(6)} STX`
     return `${amount} ${currency}`
   }
 
@@ -79,22 +80,64 @@ export default function PaymentButtonWidget({
     setPaymentStatus('processing')
     
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      const mockPayment = {
-        id: `pay_${Date.now()}`,
-        amount,
-        currency,
-        description,
-        status: 'completed',
-        transactionId: `tx_${Math.random().toString(36).substring(7)}`,
-        timestamp: new Date().toISOString()
+      // Create actual payment via API
+      const paymentAmount = currency === 'STX' 
+        ? Math.floor(amount * 1000000) // Convert STX to microSTX
+        : amount;
+
+      // Import STX transaction service for STX payments
+      if (currency === 'STX') {
+        const { stxTransactionService } = await import('@/lib/services/stx-transaction-service')
+        
+        // Create STX payment via backend API
+        const createResult = await stxTransactionService.createSTXPayment({
+          expectedAmount: paymentAmount,
+          usdAmount: currency === 'USDC' ? amount : undefined,
+          metadata: description,
+          expiresInMinutes: 15
+        });
+
+        if (!createResult.success) {
+          throw new Error(createResult.error || 'Failed to create STX payment');
+        }
+
+        // Redirect to checkout page for payment
+        const checkoutUrl = `${window.location.origin}/checkout/${createResult.payment!.paymentId}`;
+        window.open(checkoutUrl, '_blank');
+
+        // For widget, we'll mark as processing and wait for webhook
+        const mockPayment = {
+          id: createResult.payment!.paymentId,
+          amount,
+          currency,
+          description,
+          status: 'processing',
+          transactionId: '',
+          timestamp: new Date().toISOString(),
+          checkoutUrl
+        }
+        
+        setPaymentResult(mockPayment)
+        setPaymentStatus('success')
+        onSuccess?.(mockPayment)
+      } else {
+        // For other currencies, simulate payment processing
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        const mockPayment = {
+          id: `pay_${Date.now()}`,
+          amount,
+          currency,
+          description,
+          status: 'completed',
+          transactionId: `tx_${Math.random().toString(36).substring(7)}`,
+          timestamp: new Date().toISOString()
+        }
+        
+        setPaymentResult(mockPayment)
+        setPaymentStatus('success')
+        onSuccess?.(mockPayment)
       }
-      
-      setPaymentResult(mockPayment)
-      setPaymentStatus('success')
-      onSuccess?.(mockPayment)
       
       if (autoClose) {
         setTimeout(() => {

@@ -1,6 +1,6 @@
 // Types for the sBTC Gateway SDK
 export interface PaymentRequest {
-  amount: number; // Amount in satoshis
+  amount: number; // Amount in smallest unit: satoshis for BTC/sBTC, microSTX for STX
   currency: 'sbtc' | 'btc' | 'stx';
   description: string;
   customer?: {
@@ -104,3 +104,52 @@ export interface MerchantResponse {
   success: boolean;
   merchant: Merchant;
 }
+
+// Currency-specific types and utilities
+export type SupportedCurrency = 'sbtc' | 'btc' | 'stx';
+
+export interface CurrencyInfo {
+  name: string;
+  symbol: string;
+  decimals: number;
+  minAmount: number;
+  network: string;
+}
+
+export const CURRENCY_CONFIG: Record<SupportedCurrency, CurrencyInfo> = {
+  btc: {
+    name: 'Bitcoin',
+    symbol: 'BTC',
+    decimals: 8,
+    minAmount: 546, // 546 satoshis (dust limit)
+    network: 'bitcoin'
+  },
+  sbtc: {
+    name: 'Synthetic Bitcoin',
+    symbol: 'sBTC',
+    decimals: 8,
+    minAmount: 1, // 1 satoshi
+    network: 'stacks'
+  },
+  stx: {
+    name: 'Stacks',
+    symbol: 'STX',
+    decimals: 6,
+    minAmount: 1, // 1 microSTX
+    network: 'stacks'
+  }
+};
+
+// STX-specific types
+export interface STXPaymentRequest extends Omit<PaymentRequest, 'currency' | 'amount'> {
+  currency: 'stx';
+  amount: number; // Amount in microSTX (1 STX = 1,000,000 microSTX)
+}
+
+export interface STXPayment extends Omit<Payment, 'currency'> {
+  currency: 'stx';
+  stx_amount?: number; // Convenience field for STX amount (calculated from amount)
+}
+
+// Utility type for STX addresses
+export type STXAddress = string; // SP... or ST... format
