@@ -1,7 +1,7 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { stxPaymentController } from '@/controllers/payment/STXPaymentController';
 import { stxWebhookController } from '@/controllers/webhook/STXWebhookController';
-import { authMiddleware } from '@/middleware/auth.middleware';
+import { apiKeyMiddleware } from '@/middleware/auth.middleware';
 import { asyncHandler } from '@/middleware/error.middleware';
 
 const router = Router();
@@ -44,7 +44,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/STXPaymentResponse'
  */
-router.post('/stx', authMiddleware, asyncHandler(stxPaymentController.createPayment.bind(stxPaymentController)));
+router.post('/stx', apiKeyMiddleware, asyncHandler(stxPaymentController.createPayment.bind(stxPaymentController)));
 
 /**
  * @swagger
@@ -64,7 +64,7 @@ router.post('/stx', authMiddleware, asyncHandler(stxPaymentController.createPaym
  *       200:
  *         description: Payment status retrieved successfully
  */
-router.get('/stx/:paymentId', authMiddleware, asyncHandler(stxPaymentController.getPaymentStatus.bind(stxPaymentController)));
+router.get('/stx/:paymentId', apiKeyMiddleware, asyncHandler(stxPaymentController.getPaymentStatus.bind(stxPaymentController)));
 
 /**
  * @swagger
@@ -94,7 +94,7 @@ router.get('/stx/:paymentId', authMiddleware, asyncHandler(stxPaymentController.
  *       200:
  *         description: Payments retrieved successfully
  */
-router.get('/stx', authMiddleware, asyncHandler(stxPaymentController.listPayments.bind(stxPaymentController)));
+router.get('/stx', apiKeyMiddleware, asyncHandler(stxPaymentController.listPayments.bind(stxPaymentController)));
 
 /**
  * @swagger
@@ -114,7 +114,7 @@ router.get('/stx', authMiddleware, asyncHandler(stxPaymentController.listPayment
  *       200:
  *         description: Payment cancelled successfully
  */
-router.post('/stx/:paymentId/cancel', authMiddleware, asyncHandler(stxPaymentController.cancelPayment.bind(stxPaymentController)));
+router.post('/stx/:paymentId/cancel', apiKeyMiddleware, asyncHandler(stxPaymentController.cancelPayment.bind(stxPaymentController)));
 
 /**
  * @swagger
@@ -139,7 +139,7 @@ router.post('/stx/:paymentId/cancel', authMiddleware, asyncHandler(stxPaymentCon
  *       200:
  *         description: Analytics retrieved successfully
  */
-router.get('/stx/analytics', authMiddleware, asyncHandler(stxPaymentController.getAnalytics.bind(stxPaymentController)));
+router.get('/stx/analytics', apiKeyMiddleware, asyncHandler(stxPaymentController.getAnalytics.bind(stxPaymentController)));
 
 // ===== STX CHAINHOOK WEBHOOK ROUTES (Public - Webhook Signature Auth) =====
 
@@ -207,7 +207,7 @@ router.get('/chainhook/stx/health', asyncHandler(stxWebhookController.healthChec
  *       200:
  *         description: Chainhook configuration retrieved successfully
  */
-router.get('/chainhook/stx/config', authMiddleware, asyncHandler(stxWebhookController.getChainhookConfig.bind(stxWebhookController)));
+router.get('/chainhook/stx/config', apiKeyMiddleware, asyncHandler(stxWebhookController.getChainhookConfig.bind(stxWebhookController)));
 
 /**
  * @swagger
@@ -233,7 +233,7 @@ router.get('/chainhook/stx/config', authMiddleware, asyncHandler(stxWebhookContr
  *       200:
  *         description: Test webhook processed successfully
  */
-router.post('/chainhook/stx/test', authMiddleware, asyncHandler(stxWebhookController.testWebhook.bind(stxWebhookController)));
+router.post('/chainhook/stx/test', apiKeyMiddleware, asyncHandler(stxWebhookController.testWebhook.bind(stxWebhookController)));
 
 // ===== PUBLIC STX PAYMENT STATUS ROUTES (For Customer Checkout) =====
 
@@ -253,7 +253,7 @@ router.post('/chainhook/stx/test', authMiddleware, asyncHandler(stxWebhookContro
  *       200:
  *         description: Payment status retrieved successfully
  */
-router.get('/public/stx/:paymentId/status', asyncHandler(async (req, res) => {
+router.get('/public/stx/:paymentId/status', asyncHandler(async (req: Request, res: Response) => {
   // Public endpoint for checkout page - no auth required
   const { paymentId } = req.params;
   
@@ -357,7 +357,7 @@ router.get('/public/stx/:paymentId/status', asyncHandler(async (req, res) => {
  *       200:
  *         description: Payment processing initiated
  */
-router.post('/public/stx/:paymentId/process', asyncHandler(async (req, res) => {
+router.post('/public/stx/:paymentId/process', asyncHandler(async (req: Request, res: Response) => {
   // Public endpoint for checkout page - no auth required
   const { paymentId } = req.params;
   const { walletAddress, transactionId, paymentMethod, signature } = req.body;

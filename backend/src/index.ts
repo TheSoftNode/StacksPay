@@ -9,6 +9,7 @@ import { connectToDatabase } from '@/config/database';
 import { setupSwagger } from '@/config/swagger';
 import authRoutes from '@/routes/auth/auth.routes';
 import oauthRoutes from '@/routes/auth/oauth.routes';
+import authPaymentRoutes from '@/routes/auth/payments.routes';
 import webhookRoutes from '@/routes/webhook/webhook.routes';
 import webhookEventsRoutes from '@/routes/webhook/webhook-events.routes';
 import apiKeyRoutes from '@/routes/apikey/api-key.routes';
@@ -147,6 +148,7 @@ class sBTCPaymentGatewayServer {
     // API routes
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/auth', oauthRoutes);
+    this.app.use('/api/auth/payments', authPaymentRoutes); // Session-based payment management for dashboard
     this.app.use('/api/webhooks', webhookRoutes); // JWT auth for merchant dashboard
     this.app.use('/api/webhook-events', webhookEventsRoutes); // JWT auth for merchant dashboard
     this.app.use('/api/api-keys', apiKeyRoutes); // JWT auth for API key management

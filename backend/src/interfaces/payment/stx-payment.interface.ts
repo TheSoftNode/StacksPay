@@ -266,4 +266,3 @@ export interface STXPaymentConfig {
 export type STXPaymentDocument = ISTXPayment;
 export type STXPaymentCreateRequest = CreateSTXPaymentRequest;
 export type STXPaymentCreateResponse = CreateSTXPaymentResponse;
-export type STXPaymentStatus = STXPaymentStatus;

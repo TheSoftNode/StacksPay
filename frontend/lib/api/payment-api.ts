@@ -95,6 +95,8 @@ class PaymentApiClient {
   }
 
   private getAuthHeaders(): Record<string, string> {
+    // ALWAYS use session token for all payment API operations
+    // API key authentication should be handled separately for widget operations only
     const token = this.getStoredToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
@@ -103,6 +105,8 @@ class PaymentApiClient {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('authToken');
   }
+
+  // Removed getStoredApiKey - not needed for payment API client
 
   private async makeRequest<T = any>(
     endpoint: string,
@@ -126,8 +130,8 @@ class PaymentApiClient {
       // Handle authentication errors
       if (response.status === 401) {
         // Token might be expired, redirect to login
-        if (typeof window !== 'undefined' && window.location.pathname !== '/auth/login') {
-          window.location.href = '/auth/login';
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.href = '/login';
         }
       }
 
@@ -144,23 +148,20 @@ class PaymentApiClient {
     }
   }
 
-  // Payment Management - Using merchant auth (not API keys)
+  // Payment Management - For merchant dashboard (uses session authentication)
   async createPaymentForMerchant(paymentData: PaymentCreateRequest): Promise<ApiResponse<Payment>> {
-    return this.makeRequest('/api/payments', {
-      method: 'POST',
-      body: JSON.stringify(paymentData),
-    });
+    // Payment creation should still use API key routes via widget API client
+    // This method will be deprecated in favor of widget API client
+    throw new Error('Use paymentWidgetApiClient.createPayment() for payment creation operations');
   }
 
   async getPaymentForMerchant(paymentId: string): Promise<ApiResponse<Payment>> {
-    return this.makeRequest(`/api/payments/${paymentId}`);
+    return this.makeRequest(`/api/auth/payments/stx/${paymentId}`); // Dashboard session-based route
   }
 
   async updatePaymentForMerchant(paymentId: string, updateData: PaymentUpdateRequest): Promise<ApiResponse> {
-    return this.makeRequest(`/api/payments/${paymentId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updateData),
-    });
+    // Update operations not implemented in backend yet
+    throw new Error('Payment update operations not yet implemented');
   }
 
   async listPaymentsForMerchant(query?: {
@@ -180,14 +181,15 @@ class PaymentApiClient {
       });
     }
 
-    const endpoint = `/api/payments${params.toString() ? `?${params.toString()}` : ''}`;
-    return this.makeRequest(endpoint);
+    // Use session-based dashboard route for STX payments
+    const endpoint = `/api/auth/payments/stx${params.toString() ? `?${params.toString()}` : ''}`;
+    return this.makeRequest(endpoint); // Dashboard session-based route
   }
 
   async cancelPaymentForMerchant(paymentId: string): Promise<ApiResponse> {
-    return this.makeRequest(`/api/payments/${paymentId}/cancel`, {
+    return this.makeRequest(`/api/auth/payments/stx/${paymentId}/cancel`, {
       method: 'POST',
-    });
+    }); // Dashboard session-based route
   }
 
   async refundPaymentForMerchant(
@@ -203,10 +205,8 @@ class PaymentApiClient {
       };
     }
   ): Promise<ApiResponse> {
-    return this.makeRequest(`/api/payments/${paymentId}/refund`, {
-      method: 'POST',
-      body: JSON.stringify(refundData),
-    });
+    // Refund operations not implemented in backend yet
+    throw new Error('Payment refund operations not yet implemented');
   }
 
   async verifyPaymentForMerchant(
@@ -223,23 +223,31 @@ class PaymentApiClient {
       customerWalletAddress?: string;
     }
   ): Promise<ApiResponse> {
-    return this.makeRequest(`/api/payments/${paymentId}/verify`, {
-      method: 'POST',
-      body: JSON.stringify(verificationData),
-    });
+    // Verify operations not implemented in backend yet
+    throw new Error('Payment verification operations not yet implemented');
   }
 
-  // Payment Links - For merchant dashboard
+  // Payment Links - For merchant dashboard (deprecated - use paymentWidgetApiClient)
   async createPaymentLinkForMerchant(linkData: PaymentLinkRequest): Promise<ApiResponse<{ 
     id: string; 
     url: string; 
     qrCode: string; 
     expiresAt?: string; 
   }>> {
-    return this.makeRequest('/api/payment-links', {
-      method: 'POST',
-      body: JSON.stringify(linkData),
-    });
+    // Payment link creation should use widget API client for proper API key authentication
+    throw new Error('Use paymentWidgetApiClient.createPaymentLink() for payment link creation operations');
+  }
+
+  private parseExpiryToMinutes(expiry: string): number {
+    const unit = expiry.slice(-1);
+    const value = parseInt(expiry.slice(0, -1));
+    
+    switch(unit) {
+      case 'h': return value * 60;
+      case 'd': return value * 24 * 60;
+      case 'w': return value * 7 * 24 * 60;
+      default: return 24 * 60; // Default 24 hours
+    }
   }
 
   // Public endpoints (no auth required) - For customer payments
@@ -317,7 +325,8 @@ class PaymentApiClient {
     sbtcToUsd: number;
     timestamp: string;
   }>> {
-    return this.makeRequest('/api/exchange-rates');
+    // Exchange rates not implemented in session routes yet
+    throw new Error('Exchange rates not yet implemented for dashboard');
   }
 
   // QR Code generation
@@ -325,8 +334,8 @@ class PaymentApiClient {
     qrCodeDataUrl: string;
     paymentUrl: string;
   }>> {
-    const params = size ? `?size=${size}` : '';
-    return this.makeRequest(`/api/payments/${paymentId}/qr${params}`);
+    // QR code generation not implemented in session routes yet
+    throw new Error('QR code generation not yet implemented for dashboard');
   }
 
   // Payment analytics for merchant dashboard
@@ -352,8 +361,8 @@ class PaymentApiClient {
       });
     }
 
-    const endpoint = `/api/analytics/payments${params.toString() ? `?${params.toString()}` : ''}`;
-    return this.makeRequest(endpoint);
+    const endpoint = `/api/auth/payments/analytics${params.toString() ? `?${params.toString()}` : ''}`;
+    return this.makeRequest(endpoint); // Dashboard session-based route
   }
 }
 

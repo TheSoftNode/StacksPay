@@ -142,9 +142,20 @@ class MerchantApiClient {
       }
 
       const result = await response.json()
+      const settings = result.data || result.settings || result
+      
+      // Store settings in localStorage for payment client to access API keys
+      if (settings && typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('merchantSettings', JSON.stringify(settings))
+        } catch (error) {
+          console.warn('⚠️ Failed to store settings in localStorage:', error)
+        }
+      }
+      
       return {
         success: true,
-        data: result.data || result.settings || result
+        data: settings
       }
     } catch (error) {
       console.error('❌ Error fetching merchant settings:', error)
@@ -302,7 +313,19 @@ class MerchantApiClient {
         }
       }
 
-      return await this.updateSettings(settingsData)
+      const result = await this.updateSettings(settingsData)
+      
+      // Store API keys in localStorage for payment client to use
+      if (result.success && typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('merchantSettings', JSON.stringify(settingsData))
+          console.log('✅ API keys stored in localStorage for payment operations')
+        } catch (error) {
+          console.warn('⚠️ Failed to store API keys in localStorage:', error)
+        }
+      }
+
+      return result
     } catch (error) {
       console.error('❌ Error saving API keys:', error)
       return {

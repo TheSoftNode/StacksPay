@@ -13,22 +13,19 @@ const stxPaymentSchema = new Schema<ISTXPayment>({
   paymentId: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   merchantId: {
     type: Schema.Types.ObjectId,
     ref: 'Merchant',
-    required: true,
-    index: true
+    required: true
   },
   
   // Unique address data (Option 2 implementation)
   uniqueAddress: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   encryptedPrivateKey: {
     type: String,
@@ -59,8 +56,7 @@ const stxPaymentSchema = new Schema<ISTXPayment>({
     type: String,
     enum: ['pending', 'confirmed', 'settled', 'refunded', 'expired', 'failed'],
     default: 'pending',
-    required: true,
-    index: true
+    required: true
   },
   metadata: {
     type: String,
@@ -71,8 +67,7 @@ const stxPaymentSchema = new Schema<ISTXPayment>({
   // Timestamps
   expiresAt: {
     type: Date,
-    required: true,
-    index: true
+    required: true
   },
   confirmedAt: {
     type: Date

@@ -98,8 +98,8 @@ class ApiClient {
       if (response.status === 401) {
         this.removeStoredToken();
         // Redirect to login if needed
-        if (typeof window !== 'undefined' && window.location.pathname !== '/auth/login') {
-          window.location.href = '/auth/login';
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.href = '/login';
         }
       }
 

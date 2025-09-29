@@ -169,8 +169,8 @@ class ApiKeyApiClient {
 
       // Handle authentication errors
       if (response.status === 401) {
-        if (typeof window !== 'undefined' && window.location.pathname !== '/auth/login') {
-          window.location.href = '/auth/login';
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.href = '/login';
         }
       }
 

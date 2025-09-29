@@ -855,6 +855,72 @@ router.post('/validate', asyncHandler(async (req: express.Request, res: express.
 }));
 
 /**
+ * Get active API keys for payment operations
+ * Returns actual API keys (not previews) for authenticated merchants
+ */
+router.get('/for-payments', asyncHandler(async (req: express.Request, res: express.Response) => {
+  const merchantId = req.merchant?.id;
+
+  if (!merchantId) {
+    res.status(401).json({
+      success: false,
+      error: 'Merchant authentication required'
+    });
+    return;
+  }
+
+  try {
+    const merchant = await Merchant.findById(merchantId);
+    if (!merchant) {
+      res.status(404).json({
+        success: false,
+        error: 'Merchant not found'
+      });
+      return;
+    }
+
+    // Find active API keys with payment permissions
+    const paymentKeys = merchant.apiKeys
+      .filter((key: any) => 
+        key.isActive && 
+        (!key.expiresAt || key.expiresAt > new Date()) &&
+        key.permissions.some((perm: string) => perm.includes('payments') || perm.includes('write'))
+      )
+      .reduce((acc: any, key: any) => {
+        // For payment operations, we need the actual key, not the hash
+        // We'll need to regenerate or store keys differently for this to work
+        // For now, return key info without the actual key value
+        acc[key.environment] = {
+          keyId: key.keyId,
+          environment: key.environment,
+          permissions: key.permissions,
+          rateLimit: key.rateLimit || (key.environment === 'test' ? 100 : 1000),
+          keyPreview: key.keyPreview,
+          // Note: We cannot retrieve the actual key from hash
+          // This endpoint should be used with a different approach
+        };
+        return acc;
+      }, {});
+
+    res.json({
+      success: true,
+      data: {
+        test: paymentKeys.test || null,
+        live: paymentKeys.live || null,
+        hasActiveKeys: Object.keys(paymentKeys).length > 0
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error retrieving payment API keys:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve payment API keys'
+    });
+  }
+}));
+
+/**
  * Test API key
  */
 router.post('/:keyId/test', asyncHandler(async (req: express.Request, res: express.Response) => {

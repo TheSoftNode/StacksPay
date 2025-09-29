@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { paymentApiClient, PaymentCreateRequest, PaymentLinkRequest, PaymentUpdateRequest } from '@/lib/api/payment-api';
+import { paymentWidgetApiClient } from '@/lib/api/payment-widget-api';
 import { usePaymentStore } from '@/stores/payment-store';
 import { useToast } from '@/hooks/use-toast';
 
@@ -163,12 +164,12 @@ export const useCreatePaymentLink = () => {
       setLoading(true);
       setError(null);
       
-      const response = await paymentApiClient.createPaymentLinkForMerchant(linkData);
+      const response = await paymentWidgetApiClient.createPaymentLink(linkData);
       
       if (response.success && response.data) {
         return response.data;
       } else {
-        throw new Error(response.error || 'Failed to create payment link');
+        throw new Error(response.error || response.message || 'Failed to create payment link');
       }
     },
     onSuccess: (paymentLink) => {

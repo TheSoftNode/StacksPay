@@ -78,6 +78,7 @@ import {
 import { Payment } from '@/lib/api/payment-api'
 import { usePaymentStore, useFilteredPayments } from '@/stores/payment-store'
 import { useToast } from '@/hooks/use-toast'
+import QRCode from '@/components/payment/qr-code'
 
 const PaymentsPage = () => {
   const { toast } = useToast()
@@ -1053,7 +1054,7 @@ const PaymentsPage = () => {
           resetPaymentLinkForm()
         }
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <Link className="h-5 w-5 text-orange-600" />
@@ -1423,100 +1424,193 @@ const PaymentsPage = () => {
               </div>
             </Tabs>
           ) : (
-            <div className="space-y-6">
-              {/* Success State */}
+            <div className="space-y-8">
+              {/* Success Header */}
               <div className="text-center space-y-4">
-                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", duration: 0.5 }}
+                  className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto"
+                >
+                  <CheckCircle className="h-10 w-10 text-green-600" />
+                </motion.div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     Payment Link Created!
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">
                     Share this link with your customer to collect payment
                   </p>
                 </div>
               </div>
 
-              {/* Generated Link */}
-              <div className="space-y-3">
-                <Label>Payment Link</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    value={generatedPaymentLink?.url || ''}
-                    readOnly
-                    className="font-mono text-sm bg-gray-50 dark:bg-gray-800"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(generatedPaymentLink?.url || '')}
-                    className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* QR Code */}
-              <div className="text-center space-y-3">
-                <Label>QR Code</Label>
-                <div className="w-48 h-48 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto">
-                  <div className="text-center space-y-2">
-                    <QrCode className="h-12 w-12 text-gray-400 mx-auto" />
-                    <p className="text-sm text-gray-500">QR Code Preview</p>
+              {/* Main Content Grid */}
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Left Column - QR Code */}
+                <div className="text-center space-y-4">
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                    Scan to Pay
+                  </h4>
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border mx-auto w-fit">
+                    {generatedPaymentLink?.qrCode ? (
+                      <QRCode
+                        value={generatedPaymentLink.url}
+                        size={200}
+                        showCopy={false}
+                        showDownload={false}
+                      />
+                    ) : (
+                      <div className="w-[200px] h-[200px] flex items-center justify-center">
+                        <div className="text-center space-y-2">
+                          <QrCode className="h-12 w-12 text-gray-400 mx-auto" />
+                          <p className="text-sm text-gray-500">Generating QR Code...</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                  <p className="text-sm text-gray-500">
+                    Customer can scan with any wallet or QR scanner
+                  </p>
                 </div>
-              </div>
 
-              {/* Share Options */}
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => navigator.share?.({ url: generatedPaymentLink?.url || '', title: 'Payment Link' })}
-                  className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  <Share className="mr-2 h-4 w-4" />
-                  Share Link
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => window.open(`mailto:${paymentLinkData.customerEmail}?subject=Payment Request&body=Please complete your payment: ${generatedPaymentLink?.url || ''}`)}
-                  className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  <Mail className="mr-2 h-4 w-4" />
-                  Send Email
-                </Button>
+                {/* Right Column - Link & Actions */}
+                <div className="space-y-6">
+                  {/* Payment Link */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                      Payment Link
+                    </h4>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-mono text-sm text-gray-700 dark:text-gray-300 truncate">
+                            {generatedPaymentLink?.url || ''}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(generatedPaymentLink?.url || '')}
+                          className="shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Details */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                      Payment Details
+                    </h4>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Amount:</span>
+                        <span className="font-medium">
+                          {paymentLinkData.amount} {paymentLinkData.currency}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Description:</span>
+                        <span className="font-medium text-right max-w-[200px] truncate">
+                          {paymentLinkData.description}
+                        </span>
+                      </div>
+                      {paymentLinkData.expiresIn && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Expires:</span>
+                          <span className="font-medium">{paymentLinkData.expiresIn}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => copyToClipboard(generatedPaymentLink?.url || '')}
+                      className="h-12"
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy Link
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => navigator.share?.({ 
+                        url: generatedPaymentLink?.url || '', 
+                        title: 'Payment Request',
+                        text: `Payment: ${paymentLinkData.amount} ${paymentLinkData.currency}`
+                      })}
+                      className="h-12"
+                    >
+                      <Share className="mr-2 h-4 w-4" />
+                      Share
+                    </Button>
+                  </div>
+
+                  {/* Email Share */}
+                  {paymentLinkData.customerEmail && (
+                    <Button
+                      onClick={() => window.open(`mailto:${paymentLinkData.customerEmail}?subject=Payment Request - ${paymentLinkData.description}&body=Hi,%0D%0A%0D%0APlease complete your payment of ${paymentLinkData.amount} ${paymentLinkData.currency} using this link:%0D%0A%0D%0A${generatedPaymentLink?.url || ''}%0D%0A%0D%0AThank you!`)}
+                      className="w-full h-12 bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Mail className="mr-2 h-4 w-4" />
+                      Send to {paymentLinkData.customerEmail}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           )}
           
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsPaymentLinkModalOpen(false)}
-              className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
-            >
-              {generatedPaymentLink ? 'Close' : 'Cancel'}
-            </Button>
+          <DialogFooter className="border-t pt-6">
             {!generatedPaymentLink ? (
-              <Button 
-                onClick={generatePaymentLink}
-                disabled={!paymentLinkData.amount || !paymentLinkData.description || isSubmitting}
-                className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
-              >
-                {isSubmitting && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
-                {isSubmitting ? 'Creating...' : 'Create Payment Link'}
-              </Button>
+              <div className="flex space-x-3 w-full">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsPaymentLinkModalOpen(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={generatePaymentLink}
+                  disabled={!paymentLinkData.amount || !paymentLinkData.description || isSubmitting}
+                  className="flex-1 bg-orange-600 hover:bg-orange-700"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Link className="mr-2 h-4 w-4" />
+                      Create Payment Link
+                    </>
+                  )}
+                </Button>
+              </div>
             ) : (
-              <Button 
-                onClick={resetPaymentLinkForm}
-                className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Create Another
-              </Button>
+              <div className="flex space-x-3 w-full">
+                <Button 
+                  variant="outline"
+                  onClick={() => setIsPaymentLinkModalOpen(false)}
+                  className="flex-1"
+                >
+                  Close
+                </Button>
+                <Button 
+                  onClick={resetPaymentLinkForm}
+                  className="flex-1 bg-orange-600 hover:bg-orange-700"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Another
+                </Button>
+              </div>
             )}
           </DialogFooter>
         </DialogContent>
