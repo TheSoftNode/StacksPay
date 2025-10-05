@@ -161,6 +161,77 @@ export interface IMerchant extends Document {
   primaryAuthMethod?: string;
   isLinkedAccount?: boolean;
   linkedToPrimary?: string;
+
+  // Onboarding tracking
+  onboarding: {
+    isComplete: boolean;
+    currentStep: number;
+    completedSteps: string[];
+    startedAt?: Date;
+    completedAt?: Date;
+    stepsData: {
+      businessInfo?: {
+        completed: boolean;
+        completedAt?: Date;
+      };
+      walletSetup?: {
+        completed: boolean;
+        completedAt?: Date;
+        walletType?: string;
+      };
+      paymentPreferences?: {
+        completed: boolean;
+        completedAt?: Date;
+      };
+      apiKeys?: {
+        completed: boolean;
+        completedAt?: Date;
+        testKeyGenerated: boolean;
+        liveKeyGenerated: boolean;
+      };
+      webhookSetup?: {
+        completed: boolean;
+        completedAt?: Date;
+        webhookUrlConfigured: boolean;
+        webhookTested: boolean;
+      };
+      chainhookSetup?: {
+        completed: boolean;
+        completedAt?: Date;
+        predicatesRegistered: boolean;
+      };
+      testPayment?: {
+        completed: boolean;
+        completedAt?: Date;
+        testPaymentId?: string;
+        testSuccessful: boolean;
+      };
+      goLive?: {
+        completed: boolean;
+        completedAt?: Date;
+        liveKeysActivated: boolean;
+      };
+    };
+  };
+
+  // Webhook configuration
+  webhooks?: {
+    secret?: string;
+    url?: string;
+    events?: string[];
+    isConfigured: boolean;
+    lastTested?: Date;
+    lastDelivery?: Date;
+  };
+
+  // Chainhook configuration for STX monitoring
+  chainhook?: {
+    isConfigured: boolean;
+    predicateIds?: string[];
+    monitoredAddresses?: string[];
+    configuredAt?: Date;
+    predicateConfigs?: any[]; // Store predicate configurations for reference
+  };
 }
 
 const merchantSchema = new Schema<IMerchant>({
@@ -536,6 +607,92 @@ const merchantSchema = new Schema<IMerchant>({
     default: false,
   },
   linkedToPrimary: String,
+
+  // Onboarding tracking schema
+  onboarding: {
+    isComplete: {
+      type: Boolean,
+      default: false
+    },
+    currentStep: {
+      type: Number,
+      default: 0
+    },
+    completedSteps: {
+      type: [String],
+      default: []
+    },
+    startedAt: Date,
+    completedAt: Date,
+    stepsData: {
+      businessInfo: {
+        completed: { type: Boolean, default: false },
+        completedAt: Date
+      },
+      walletSetup: {
+        completed: { type: Boolean, default: false },
+        completedAt: Date,
+        walletType: String
+      },
+      paymentPreferences: {
+        completed: { type: Boolean, default: false },
+        completedAt: Date
+      },
+      apiKeys: {
+        completed: { type: Boolean, default: false },
+        completedAt: Date,
+        testKeyGenerated: { type: Boolean, default: false },
+        liveKeyGenerated: { type: Boolean, default: false }
+      },
+      webhookSetup: {
+        completed: { type: Boolean, default: false },
+        completedAt: Date,
+        webhookUrlConfigured: { type: Boolean, default: false },
+        webhookTested: { type: Boolean, default: false }
+      },
+      chainhookSetup: {
+        completed: { type: Boolean, default: false },
+        completedAt: Date,
+        predicatesRegistered: { type: Boolean, default: false }
+      },
+      testPayment: {
+        completed: { type: Boolean, default: false },
+        completedAt: Date,
+        testPaymentId: String,
+        testSuccessful: { type: Boolean, default: false }
+      },
+      goLive: {
+        completed: { type: Boolean, default: false },
+        completedAt: Date,
+        liveKeysActivated: { type: Boolean, default: false }
+      }
+    }
+  },
+
+  // Webhook configuration schema
+  webhooks: {
+    secret: String,
+    url: String,
+    events: [String],
+    isConfigured: {
+      type: Boolean,
+      default: false
+    },
+    lastTested: Date,
+    lastDelivery: Date
+  },
+
+  // Chainhook configuration schema
+  chainhook: {
+    isConfigured: {
+      type: Boolean,
+      default: false
+    },
+    predicateIds: [String],
+    monitoredAddresses: [String],
+    configuredAt: Date,
+    predicateConfigs: [Schema.Types.Mixed] // Store predicate configurations
+  }
 }, {
   timestamps: true,
   collection: 'merchants'
@@ -561,5 +718,9 @@ merchantSchema.index({ 'pendingLinkingRequests.linkingToken': 1 });
 merchantSchema.index({ linkedToPrimary: 1 });
 merchantSchema.index({ googleId: 1 });
 merchantSchema.index({ githubId: 1 });
+merchantSchema.index({ 'onboarding.isComplete': 1 });
+merchantSchema.index({ 'onboarding.currentStep': 1 });
+merchantSchema.index({ 'webhooks.isConfigured': 1 });
+merchantSchema.index({ 'chainhook.isConfigured': 1 });
 
 export const Merchant = models?.Merchant || model<IMerchant>('Merchant', merchantSchema);

@@ -90,16 +90,55 @@ router.post('/onboarding', asyncHandler(async (req: express.Request, res: expres
     // Update merchant with API keys and webhook secret
     merchant.apiKeys = merchant.apiKeys || [];
     merchant.apiKeys.push(testKeyData, liveKeyData);
-    
-    merchant.webhooks = merchant.webhooks || {};
-    merchant.webhooks.secret = webhookSecret;
-    
+
+    // Initialize webhooks object if it doesn't exist
+    if (!merchant.webhooks) {
+      merchant.webhooks = {
+        secret: webhookSecret,
+        isConfigured: false
+      };
+    } else {
+      merchant.webhooks.secret = webhookSecret;
+    }
+
+    // Update onboarding progress - mark API keys step as complete
+    if (!merchant.onboarding) {
+      merchant.onboarding = {
+        isComplete: false,
+        currentStep: 4, // API keys is step 4
+        completedSteps: [],
+        stepsData: {}
+      };
+    }
+
+    if (!merchant.onboarding.stepsData) {
+      merchant.onboarding.stepsData = {};
+    }
+
+    merchant.onboarding.stepsData.apiKeys = {
+      completed: true,
+      completedAt: new Date(),
+      testKeyGenerated: true,
+      liveKeyGenerated: true
+    };
+
+    // Add to completed steps if not already there
+    if (!merchant.onboarding.completedSteps.includes('apiKeys')) {
+      merchant.onboarding.completedSteps.push('apiKeys');
+    }
+
+    // Update current step to next step (webhook setup)
+    if (merchant.onboarding.currentStep < 5) {
+      merchant.onboarding.currentStep = 5;
+    }
+
     await merchant.save();
 
     logger.info('Onboarding API keys generated', {
       merchantId,
       testKeyId,
       liveKeyId,
+      onboardingStep: merchant.onboarding.currentStep,
       timestamp: new Date().toISOString()
     });
 

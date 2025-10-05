@@ -2,19 +2,20 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  CheckCircle, 
-  Building, 
-  Wallet, 
-  CreditCard, 
-  Key, 
-  Code, 
-  TestTube, 
+import {
+  CheckCircle,
+  Building,
+  Wallet,
+  CreditCard,
+  Key,
+  Code,
+  TestTube,
   Rocket,
   ArrowRight,
   ArrowLeft,
   Star,
-  Clock
+  Clock,
+  Webhook
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,6 +31,7 @@ import BusinessInfoStep from './steps/BusinessInfoStep'
 import WalletSetupStep from './steps/WalletSetupStep'
 import PaymentPreferencesStep from './steps/PaymentPreferencesStep'
 import ApiKeySetupStep from './steps/ApiKeySetupStep'
+import WebhookSetupStep from './steps/WebhookSetupStep'
 import IntegrationGuideStep from './steps/IntegrationGuideStep'
 import TestPaymentStep from './steps/TestPaymentStep'
 import GoLiveStep from './steps/GoLiveStep'
@@ -65,6 +67,12 @@ export interface OnboardingData {
     testKey: string
     liveKey: string
     webhookSecret: string
+  }
+  webhookConfig: {
+    url: string
+    events: string[]
+    isConfigured: boolean
+    isTested: boolean
   }
   integrationStatus: {
     codeGenerated: boolean
@@ -105,6 +113,12 @@ const initialData: OnboardingData = {
     testKey: '',
     liveKey: '',
     webhookSecret: ''
+  },
+  webhookConfig: {
+    url: '',
+    events: [],
+    isConfigured: false,
+    isTested: false
   },
   integrationStatus: {
     codeGenerated: false,
@@ -149,6 +163,13 @@ const steps = [
     description: 'Generate integration keys',
     icon: Key,
     component: ApiKeySetupStep
+  },
+  {
+    id: 'webhooks',
+    title: 'Webhooks',
+    description: 'Configure event notifications',
+    icon: Webhook,
+    component: WebhookSetupStep
   },
   {
     id: 'integration',
@@ -240,6 +261,12 @@ const MerchantOnboardingWizard = () => {
             testKey: settingsData?.apiKeys?.test || '',
             liveKey: settingsData?.apiKeys?.live || '',
             webhookSecret: settingsData?.webhooks?.secret || ''
+          },
+          webhookConfig: {
+            url: (settingsData?.webhooks as any)?.url || '',
+            events: (settingsData?.webhooks as any)?.events || [],
+            isConfigured: (settingsData?.webhooks as any)?.isConfigured ?? false,
+            isTested: (settingsData?.webhooks as any)?.lastTested ? true : false
           },
           integrationStatus: {
             codeGenerated: settingsData?.integrationStatus?.codeGenerated ?? false,
