@@ -2297,33 +2297,57 @@ export class AuthController {
         console.log('Accounts already linked:', isAlreadyLinked);
         
         if (isAlreadyLinked) {
-          console.log('Accounts are already linked, using consolidation service...');
+          // If accounts are already linked, we can safely update the email
+          // We need to update it on the account that should have the email (usually the primary one)
+          console.log('Accounts are already linked, proceeding with email update...');
           
-          // Use the professional consolidation service for linked accounts
-          const consolidationResult = await accountLinkingService.consolidateEmailForLinkedAccounts(
-            merchantId,
-            email
-          );
+          // For linked accounts, update the primary account's email
+          const primaryAccountId = currentMerchantDoc?.isLinkedAccount ? 
+            currentMerchantDoc.linkedToPrimary : merchantId;
           
-          if (consolidationResult.success) {
-            console.log('Email consolidation successful');
-            res.json({
-              success: true,
-              message: 'Email consolidated for linked accounts. Please check your inbox for verification.',
-              data: {
-                email: email,
-                emailVerified: false
-              }
-            });
-            return;
-          } else {
-            console.log('Email consolidation failed:', consolidationResult.error);
-            res.status(400).json({
+          console.log('Updating primary account ID:', primaryAccountId);
+          
+          // Generate email verification token
+          const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+          
+          // Update the primary account's email
+          const updateResult = await merchantService.updateMerchant(primaryAccountId || merchantId, {
+            email: email,
+            emailVerified: false,
+            emailVerificationToken: emailVerificationToken,
+            requiresEmailVerification: false,
+            lastLoginAt: new Date()
+          } as any);
+          
+          if (!updateResult.success) {
+            console.log('Failed to update primary account email');
+            res.status(500).json({
               success: false,
-              error: consolidationResult.error || 'Failed to consolidate email for linked accounts'
+              error: 'Failed to update email for linked accounts'
             });
             return;
           }
+          
+          // Send verification email
+          try {
+            await emailService.sendEmailVerificationEmail(email, {
+              merchantName: updateResult.merchant?.name || merchant.name,
+              verificationToken: emailVerificationToken
+            });
+            console.log('Verification email sent for linked account update');
+          } catch (emailError) {
+            console.log('Error sending verification email for linked account:', emailError);
+          }
+          
+          res.json({
+            success: true,
+            message: 'Email updated successfully for linked accounts. Please check your inbox for verification.',
+            data: {
+              email: email,
+              emailVerified: false
+            }
+          });
+          return;
         }
         
         // If not linked, try to detect linking opportunities (but not for already linked accounts)
@@ -2375,49 +2399,6 @@ export class AuthController {
       console.log('Email availability check passed');
 
       console.log('Current merchant email:', merchant.email);
-
-      // Check if this account is part of a linked set
-      const { Merchant } = await import('@/models/merchant/Merchant');
-      const currentMerchantDoc = await Merchant.findById(merchantId);
-      
-      const isPartOfLinkedSet = (
-        (currentMerchantDoc?.linkedAccounts && currentMerchantDoc.linkedAccounts.length > 0) ||
-        currentMerchantDoc?.isLinkedAccount
-      );
-
-      console.log('Account is part of linked set:', isPartOfLinkedSet);
-
-      // If account is part of a linked set, use consolidation service
-      if (isPartOfLinkedSet) {
-        console.log('Using consolidation service for linked account...');
-        
-        const consolidationResult = await accountLinkingService.consolidateEmailForLinkedAccounts(
-          merchantId,
-          email
-        );
-        
-        if (consolidationResult.success) {
-          console.log('Email consolidation successful');
-          res.json({
-            success: true,
-            message: 'Email updated for linked accounts. Please check your inbox for verification.',
-            data: {
-              email: email,
-              emailVerified: false
-            }
-          });
-          return;
-        } else if (consolidationResult.error !== 'Account is not linked') {
-          // If there was an actual error (not just "not linked"), handle it
-          console.log('Email consolidation failed:', consolidationResult.error);
-          res.status(400).json({
-            success: false,
-            error: consolidationResult.error || 'Failed to update email for linked accounts'
-          });
-          return;
-        }
-        // If error was "Account is not linked", fall through to normal processing
-      }
 
       console.log('Current merchant email:', merchant.email);
 

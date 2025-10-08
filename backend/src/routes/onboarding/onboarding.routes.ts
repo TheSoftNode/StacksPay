@@ -3,6 +3,7 @@ import { sessionMiddleware } from '@/middleware/auth.middleware';
 import { asyncHandler } from '@/middleware/error.middleware';
 import { Merchant } from '@/models/merchant/Merchant';
 import { stxChainhookService } from '@/services/chainhook/stx-chainhook-service';
+import { merchantAuthService } from '@/services/contract/merchant-authorization-service';
 import { createLogger } from '@/utils/logger';
 
 const router = express.Router();
@@ -141,6 +142,28 @@ router.put('/step', asyncHandler(async (req: Request, res: Response) => {
     // Update current step
     if (currentStep !== undefined) {
       merchant.onboarding.currentStep = currentStep;
+    }
+
+    // Auto-authorize merchant if they just completed wallet setup
+    if (stepName === 'walletSetup') {
+      const merchantStacksAddress = merchant.stacksAddress || merchant.connectedWallets?.stacksAddress;
+
+      if (merchantStacksAddress) {
+        logger.info(`🔐 Auto-authorizing merchant after wallet setup: ${merchantStacksAddress}`);
+
+        // Fire-and-forget authorization (don't block onboarding completion)
+        merchantAuthService.ensureMerchantAuthorized(merchantStacksAddress, merchant.paymentPreferences?.feePercentage || 1)
+          .then(result => {
+            if (result.success) {
+              logger.info(`✅ Merchant auto-authorized: ${merchantStacksAddress}`);
+            } else {
+              logger.warn(`⚠️ Merchant authorization failed during onboarding: ${result.error}`);
+            }
+          })
+          .catch(error => {
+            logger.error('Error auto-authorizing merchant:', error);
+          });
+      }
     }
 
     await merchant.save();

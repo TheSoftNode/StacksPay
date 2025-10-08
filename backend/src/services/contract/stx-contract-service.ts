@@ -1,4 +1,4 @@
-import { 
+import {
   fetchCallReadOnlyFunction,
   makeContractCall,
   broadcastTransaction,
@@ -10,7 +10,11 @@ import {
   makeRandomPrivKey
 } from '@stacks/transactions';
 import { STACKS_TESTNET, STACKS_MAINNET, StacksNetwork, TransactionVersion } from '@stacks/network';
+import { generateWallet } from '@stacks/wallet-sdk';
 import * as crypto from 'crypto';
+import { createLogger } from '@/utils/logger';
+
+const logger = createLogger('STXContractService');
 
 // Contract configuration using deployed testnet contract
 const STX_CONTRACTS = {
@@ -66,17 +70,81 @@ export class STXContractService {
     // Determine network from environment
     const isMainnet = process.env.STACKS_NETWORK === 'mainnet';
     this.network = isMainnet ? STACKS_MAINNET : STACKS_TESTNET;
-    
+
     // Set contract details based on network
     const contracts = isMainnet ? STX_CONTRACTS.mainnet : STX_CONTRACTS.testnet;
     this.contractAddress = contracts.contractAddress;
     this.contractName = contracts.contractName;
-    
-    // Backend private key for making contract calls (should be in environment)
-    this.backendPrivateKey = process.env.STX_BACKEND_PRIVATE_KEY || '';
-    
+
+    // Backend private key for making contract calls
+    this.backendPrivateKey = this.getPrivateKeyFromEnv();
+
     if (!this.backendPrivateKey) {
       console.warn('⚠️ STX_BACKEND_PRIVATE_KEY not set in environment variables');
+    }
+  }
+
+  /**
+   * Get private key from environment - supports both hex private key and mnemonic
+   */
+  private getPrivateKeyFromEnv(): string {
+    const envKey = process.env.STX_BACKEND_PRIVATE_KEY || '';
+
+    if (!envKey) {
+      return '';
+    }
+
+    // Remove quotes if present
+    const cleanedKey = envKey.replace(/^["']|["']$/g, '');
+
+    // Check if it's a mnemonic (contains spaces, indicating words)
+    if (cleanedKey.includes(' ')) {
+      try {
+        console.log('🔑 Deriving private key from mnemonic...');
+
+        // Derive private key from mnemonic using Wallet SDK async method
+        // We'll use a synchronous workaround by calling the async init immediately
+        this.initializeFromMnemonic(cleanedKey);
+
+        // For now, return empty and let async init handle it
+        // The actual key will be set asynchronously
+        return '';
+      } catch (error) {
+        console.error('❌ Failed to derive private key from mnemonic:', error);
+        return '';
+      }
+    }
+
+    // It's already a hex private key
+    return cleanedKey;
+  }
+
+  /**
+   * Initialize wallet from mnemonic asynchronously
+   */
+  private async initializeFromMnemonic(mnemonic: string): Promise<void> {
+    try {
+      const wallet = await generateWallet({
+        secretKey: mnemonic,
+        password: ''
+      });
+
+      // Get the first account (index 0)
+      const accounts = wallet.accounts || [];
+      if (accounts.length === 0) {
+        throw new Error('No accounts found in wallet');
+      }
+
+      const account = accounts[0];
+      this.backendPrivateKey = account.stxPrivateKey;
+
+      // Derive address from the private key
+      const derivedAddress = getAddressFromPrivateKey(account.stxPrivateKey, this.network);
+
+      console.log('✅ Private key derived from mnemonic');
+      console.log('📍 Derived address:', derivedAddress);
+    } catch (error) {
+      console.error('❌ Failed to initialize from mnemonic:', error);
     }
   }
 
@@ -87,19 +155,18 @@ export class STXContractService {
   async generateUniqueSTXAddress(paymentId: string): Promise<UniqueAddressResult> {
     try {
       console.log(`🔄 Generating unique STX address for payment: ${paymentId}`);
-      
+
       // Generate new private key for this payment
       const privateKey = makeRandomPrivKey();
-      const address = getAddressFromPrivateKey(
-        privateKey, 
-        this.network === STACKS_TESTNET ? 'testnet' : 'mainnet'
-      );
-      
+
+      // Get address - pass the network directly
+      const address = getAddressFromPrivateKey(privateKey, this.network);
+
       // Encrypt private key for secure storage
       const encryptedPrivateKey = this.encryptPrivateKey(privateKey, paymentId);
-      
+
       console.log(`✅ Generated unique address: ${address} for payment: ${paymentId}`);
-      
+
       return {
         address,
         encryptedPrivateKey
@@ -145,9 +212,16 @@ export class STXContractService {
 
       const transaction = await makeContractCall(txOptions);
       const broadcastResponse = await broadcastTransaction({ transaction, network: this.network });
-      
+
       if ('error' in broadcastResponse) {
-        throw new Error(`Contract call failed: ${(broadcastResponse as any).error || 'Unknown error'}`);
+        logger.error('Registration broadcast error:', {
+          error: (broadcastResponse as any).error,
+          reason: (broadcastResponse as any).reason,
+          message: (broadcastResponse as any).message,
+          txid: (broadcastResponse as any).txid,
+          full: broadcastResponse
+        });
+        throw new Error(`Contract call failed: ${(broadcastResponse as any).error || (broadcastResponse as any).reason || 'transaction rejected'}`);
       }
 
       console.log(`✅ STX payment registered successfully. TxID: ${(broadcastResponse as any).txid}`);
@@ -197,9 +271,16 @@ export class STXContractService {
 
       const transaction = await makeContractCall(txOptions);
       const broadcastResponse = await broadcastTransaction({ transaction, network: this.network });
-      
+
       if ('error' in broadcastResponse) {
-        throw new Error(`Contract call failed: ${(broadcastResponse as any).error || 'Unknown error'}`);
+        logger.error('Confirmation broadcast error:', {
+          error: (broadcastResponse as any).error,
+          reason: (broadcastResponse as any).reason,
+          message: (broadcastResponse as any).message,
+          txid: (broadcastResponse as any).txid,
+          full: broadcastResponse
+        });
+        throw new Error(`Contract call failed: ${(broadcastResponse as any).error || (broadcastResponse as any).reason || 'transaction rejected'}`);
       }
 
       console.log(`✅ STX payment confirmation successful. TxID: ${(broadcastResponse as any).txid}`);
@@ -247,9 +328,14 @@ export class STXContractService {
 
       const transaction = await makeContractCall(txOptions);
       const broadcastResponse = await broadcastTransaction({ transaction, network: this.network });
-      
+
       if ('error' in broadcastResponse) {
-        throw new Error(`Contract settlement call failed: ${(broadcastResponse as any).error || 'Unknown error'}`);
+        console.error('❌ Settlement broadcast failed!');
+        console.error('Error field:', (broadcastResponse as any).error);
+        console.error('Reason field:', (broadcastResponse as any).reason);
+        console.error('All keys:', Object.keys(broadcastResponse));
+        console.error('Full response:', JSON.stringify(broadcastResponse, null, 2));
+        throw new Error(`Contract settlement call failed: ${(broadcastResponse as any).error || (broadcastResponse as any).reason || 'transaction rejected'}`);
       }
 
       console.log(`✅ STX payment settlement initiated. TxID: ${(broadcastResponse as any).txid}`);

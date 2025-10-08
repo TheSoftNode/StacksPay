@@ -22,6 +22,7 @@ import stxPaymentRoutes from '@/routes/payment/stx-payment.routes';
 import config from '@/config';
 import { createLogger } from '@/utils/logger';
 import { webhookService } from '@/services/webhook/webhook-service';
+import { stacksBlockchainMonitor } from '@/services/blockchain/stacks-blockchain-monitor';
 import { 
   errorHandler, 
   notFoundHandler, 
@@ -194,6 +195,11 @@ class sBTCPaymentGatewayServer {
       // Start webhook background processing
       webhookService.startBackgroundProcessing();
 
+      // Start blockchain monitoring for pending STX payments
+      logger.info('🔍 Starting blockchain monitoring service...');
+      stacksBlockchainMonitor.startMonitoring();
+      logger.info('✅ Blockchain monitoring started');
+
       // Start server
       logger.info(`🌐 Starting server on port ${config.port}...`);
       this.server = this.app.listen(config.port, () => {
@@ -282,7 +288,7 @@ class sBTCPaymentGatewayServer {
       logger.error('💥 Uncaught Exception:', error);
       // Report to error service
       try {
-        const { errorService } = require('@/services/error-service');
+        const { errorService } = require('@/services/error/error-service');
         errorService.reportError(error, {
           service: 'server',
           operation: 'uncaught_exception'
@@ -297,7 +303,7 @@ class sBTCPaymentGatewayServer {
       logger.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
       // Report to error service
       try {
-        const { errorService } = require('@/services/error-service');
+        const { errorService } = require('@/services/error/error-service');
         const error = reason instanceof Error ? reason : new Error(String(reason));
         errorService.reportError(error, {
           service: 'server',

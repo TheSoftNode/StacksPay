@@ -45,6 +45,8 @@ export interface ISTXPayment extends Document {
   
   // Blockchain transaction IDs
   contractRegistrationTxId?: string;    // TX ID when payment was registered with contract
+  contractConfirmationTxId?: string;    // TX ID when payment was confirmed on contract
+  contractSettlementTxId?: string;      // TX ID when payment was settled on contract
   receiveTxId?: string;                 // TX ID when customer sent STX to unique address
   settlementTxId?: string;              // TX ID when funds were settled to merchant
   

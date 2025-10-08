@@ -66,6 +66,9 @@ router.post('/stx', apiKeyMiddleware, asyncHandler(stxPaymentController.createPa
  */
 router.get('/stx/:paymentId', apiKeyMiddleware, asyncHandler(stxPaymentController.getPaymentStatus.bind(stxPaymentController)));
 
+// Manual check payment on blockchain
+router.post('/stx/:paymentId/check', apiKeyMiddleware, asyncHandler(stxPaymentController.manualCheckPayment.bind(stxPaymentController)));
+
 /**
  * @swagger
  * /api/payments/stx:

@@ -137,7 +137,7 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
 
   const saveWalletAddress = async (address: string, isConnected: boolean) => {
     setIsLoading(true)
-    
+
     try {
       // Update onboarding data
       updateData('walletInfo', {
@@ -174,6 +174,35 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
           walletConnected: isConnected
         }
         setUser(updatedUser)
+      }
+
+      // Save step completion to backend to trigger auto-authorization
+      try {
+        const response = await fetch('/api/onboarding/step', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            stepName: 'walletSetup',
+            stepData: {
+              stacksAddress: address,
+              walletType: isConnected ? 'connected' : 'manual',
+              connected: isConnected
+            },
+            currentStep: 2 // Wallet setup is step 2 (0-indexed)
+          })
+        })
+
+        const result = await response.json()
+        if (result.success) {
+          console.log('✅ Wallet setup step saved, merchant auto-authorization triggered')
+        } else {
+          console.warn('⚠️ Failed to save wallet setup step:', result.error)
+        }
+      } catch (error) {
+        console.error('❌ Error saving wallet setup step to backend:', error)
       }
 
       onComplete()

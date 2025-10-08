@@ -2,9 +2,11 @@ import { Request, Response } from 'express';
 import { STXPayment } from '@/models/payment/STXPayment';
 import { Merchant } from '@/models/merchant/Merchant';
 import { stxContractService } from '@/services/contract/stx-contract-service';
+import { merchantAuthService } from '@/services/contract/merchant-authorization-service';
 import { webhookService } from '@/services/webhook/webhook-service';
+import { stacksBlockchainMonitor } from '@/services/blockchain/stacks-blockchain-monitor';
 import { createLogger } from '@/utils/logger';
-import { 
+import {
   CreateSTXPaymentRequest,
   STXPaymentStatusResponse
 } from '@/interfaces/payment/stx-payment.interface';
@@ -218,22 +220,65 @@ export class STXPaymentController {
 
       await payment.save();
 
-      // Register payment with smart contract
+      // Get merchant's Stacks address - NO FALLBACK
+      const merchantStacksAddress = merchant.stacksAddress || merchant.connectedWallets?.stacksAddress;
+
+      if (!merchantStacksAddress) {
+        logger.error('Merchant has no Stacks address configured');
+        res.status(400).json({
+          success: false,
+          error: 'Merchant must connect a Stacks wallet before accepting payments. Please complete onboarding.'
+        });
+        return;
+      }
+
+      // Auto-authorize merchant if not already authorized
+      logger.info(`🔐 Ensuring merchant is authorized: ${merchantStacksAddress}`);
+      const authResult = await merchantAuthService.ensureMerchantAuthorized(merchantStacksAddress, merchant.paymentPreferences?.feePercentage || 1); // Use merchant's fee or 1% default
+
+      if (!authResult.success) {
+        // Check if authorization is pending (transaction broadcasted but not confirmed)
+        if (authResult.error === 'AUTHORIZATION_PENDING') {
+          logger.warn(`⏳ Merchant authorization pending (TX: ${authResult.txId}). Please wait 1-2 minutes and try again.`);
+          res.status(202).json({
+            success: false,
+            error: 'MERCHANT_AUTHORIZATION_PENDING',
+            message: 'Your merchant account is being authorized on the blockchain. Please wait 1-2 minutes and try creating the payment again.',
+            authorizationTxId: authResult.txId,
+            estimatedWaitTime: '1-2 minutes'
+          });
+          return;
+        }
+
+        // Other authorization errors
+        logger.error(`Merchant authorization failed: ${authResult.error}`);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to authorize merchant on blockchain. Please try again or contact support.'
+        });
+        return;
+      }
+
       const contractData = {
         paymentId,
-        merchantAddress: merchant.stacksAddress || merchant.connectedWallets?.stacksAddress || '',
+        merchantAddress: merchantStacksAddress,
         uniqueAddress: addressResult.address,
         expectedAmount: paymentRequest.expectedAmount,
         metadata: paymentRequest.metadata,
-        expiresInBlocks: Math.floor(expiresInMinutes * 6) // Assuming ~10 min block time
+        expiresInBlocks: Math.ceil(expiresInMinutes / 10) // Convert minutes to blocks (~10 min per block)
       };
+
+      logger.info(`📝 Registering payment with contract. Merchant address: ${merchantStacksAddress}`);
 
       const contractResult = await stxContractService.registerSTXPayment(contractData);
       if (contractResult.success && contractResult.txId) {
+        logger.info(`✅ Payment registered on contract. TxID: ${contractResult.txId}`);
         await STXPayment.findOneAndUpdate(
           { paymentId },
           { $set: { contractRegistrationTxId: contractResult.txId } }
         );
+      } else {
+        logger.error(`❌ Failed to register payment on contract: ${contractResult.error}`);
       }
 
       // Generate QR code data for wallet scanning
@@ -359,6 +404,69 @@ export class STXPaymentController {
       res.status(500).json({
         success: false,
         error: 'Failed to get payment status'
+      });
+    }
+  }
+
+  /**
+   * Manual check payment - queries blockchain for STX transfers
+   */
+  async manualCheckPayment(req: Request, res: Response): Promise<void> {
+    try {
+      const merchantId = req.merchant?.id;
+      if (!merchantId) {
+        res.status(401).json({
+          success: false,
+          error: 'Merchant authentication required'
+        });
+        return;
+      }
+
+      const { paymentId } = req.params;
+
+      // Verify payment belongs to merchant
+      const payment = await STXPayment.findOne({
+        paymentId,
+        merchantId
+      });
+
+      if (!payment) {
+        res.status(404).json({
+          success: false,
+          error: 'Payment not found'
+        });
+        return;
+      }
+
+      logger.info(`🔍 Manual blockchain check requested for payment: ${paymentId}`);
+
+      // Check blockchain for transfers
+      const result = await stacksBlockchainMonitor.manualCheckPayment(paymentId);
+
+      // Fetch updated payment status
+      const updatedPayment = await STXPayment.findOne({ paymentId });
+
+      res.json({
+        success: true,
+        payment: {
+          paymentId: updatedPayment?.paymentId,
+          status: updatedPayment?.status,
+          expectedAmount: updatedPayment?.expectedAmount,
+          receivedAmount: updatedPayment?.receivedAmount,
+          uniqueAddress: updatedPayment?.uniqueAddress
+        },
+        blockchainCheck: {
+          hasTransfer: result.hasTransfer,
+          totalReceived: result.totalReceived,
+          transactionCount: result.transactions?.length || 0
+        }
+      });
+
+    } catch (error) {
+      logger.error('Error in manual payment check:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to check payment'
       });
     }
   }
@@ -493,18 +601,32 @@ export class STXPaymentController {
 
       // Transform payments for response
       const transformedPayments = payments.map((payment: any) => ({
+        id: payment.paymentId, // Frontend expects 'id' field
         paymentId: payment.paymentId,
+        merchantId: payment.merchantId,
+        amount: payment.expectedAmount / 1000000, // Convert microSTX to STX for display
+        currency: 'STX',
+        paymentMethod: 'stx',
+        payoutMethod: 'stx',
         status: payment.status,
+        description: payment.metadata,
         expectedAmount: payment.expectedAmount,
         receivedAmount: payment.receivedAmount,
         usdAmount: payment.usdAmount,
+        depositAddress: payment.uniqueAddress,
+        paymentAddress: payment.uniqueAddress,
         uniqueAddress: payment.uniqueAddress,
         metadata: payment.metadata,
         createdAt: payment.createdAt.toISOString(),
         updatedAt: payment.updatedAt.toISOString(),
         expiresAt: payment.expiresAt.toISOString(),
+        completedAt: payment.confirmedAt?.toISOString() || payment.settledAt?.toISOString(),
         confirmedAt: payment.confirmedAt?.toISOString(),
         settledAt: payment.settledAt?.toISOString(),
+        transactionData: payment.receiveTxId ? {
+          txId: payment.receiveTxId,
+          timestamp: payment.confirmedAt?.toISOString()
+        } : undefined,
         feeAmount: payment.feeAmount,
         netAmount: payment.netAmount,
         errorMessage: payment.errorMessage

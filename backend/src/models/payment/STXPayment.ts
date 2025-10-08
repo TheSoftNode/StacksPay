@@ -68,6 +68,7 @@ const stxPaymentSchema = new Schema<ISTXPayment>({
   expiresAt: {
     type: Date,
     required: true
+    // Note: Index is defined separately below
   },
   confirmedAt: {
     type: Date
@@ -78,6 +79,12 @@ const stxPaymentSchema = new Schema<ISTXPayment>({
   
   // Blockchain transaction IDs
   contractRegistrationTxId: {
+    type: String
+  },
+  contractConfirmationTxId: {
+    type: String
+  },
+  contractSettlementTxId: {
     type: String
   },
   receiveTxId: {
@@ -128,18 +135,13 @@ const stxPaymentSchema = new Schema<ISTXPayment>({
 });
 
 // Indexes for efficient queries
-stxPaymentSchema.index({ paymentId: 1 }, { unique: true });
-stxPaymentSchema.index({ uniqueAddress: 1 }, { unique: true });
-stxPaymentSchema.index({ merchantId: 1, status: 1 });
-stxPaymentSchema.index({ merchantId: 1, createdAt: -1 });
-stxPaymentSchema.index({ status: 1, expiresAt: 1 });
-stxPaymentSchema.index({ receiveTxId: 1 });
-stxPaymentSchema.index({ settlementTxId: 1 });
-stxPaymentSchema.index({ createdAt: -1 });
-
-// Compound indexes for analytics queries
-stxPaymentSchema.index({ merchantId: 1, status: 1, createdAt: -1 });
-stxPaymentSchema.index({ status: 1, createdAt: -1 });
+// Note: paymentId and uniqueAddress already have unique indexes from field definitions
+// Compound indexes cover single-field queries, so we only need the compound ones
+stxPaymentSchema.index({ merchantId: 1, status: 1, createdAt: -1 }); // Covers merchantId queries too
+stxPaymentSchema.index({ status: 1, expiresAt: 1 }); // For finding expired/expiring payments
+stxPaymentSchema.index({ status: 1, createdAt: -1 }); // For status-based listings
+stxPaymentSchema.index({ receiveTxId: 1 }); // For webhook lookups
+stxPaymentSchema.index({ settlementTxId: 1 }); // For settlement tracking
 
 // TTL index for automatic cleanup of expired payments (optional - only for very old payments)
 // stxPaymentSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 86400 * 30 }); // 30 days after expiry
