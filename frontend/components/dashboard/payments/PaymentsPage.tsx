@@ -1469,9 +1469,9 @@ const PaymentsPage = () => {
                 {/* Left: QR Code */}
                 <div className="col-span-2 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center">
                   <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 mb-3">
-                    {generatedPaymentLink?.qrCode ? (
+                    {generatedPaymentLink?.paymentAddress ? (
                       <QRCode
-                        value={generatedPaymentLink.url}
+                        value={generatedPaymentLink.paymentAddress}
                         size={140}
                         showCopy={false}
                         showDownload={false}
@@ -1483,7 +1483,7 @@ const PaymentsPage = () => {
                     )}
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                    Scan to open payment page
+                    Scan to copy payment address
                   </p>
                 </div>
 

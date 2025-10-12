@@ -318,6 +318,7 @@ router.post('/links', sessionMiddleware, asyncHandler(async (req: Request, res: 
             id: data.payment.paymentId,
             url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/checkout/${data.payment.paymentId}`,
             qrCode: data.payment.qrCodeData,
+            paymentAddress: data.payment.uniqueAddress, // Add the unique payment address
             expiresAt: data.payment.expiresAt
           }
         };

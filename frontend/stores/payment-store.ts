@@ -28,6 +28,7 @@ interface PaymentState {
     id: string;
     url: string;
     qrCode: string;
+    paymentAddress: string; // The unique STX address for this payment
     expiresAt?: string;
   } | null;
 

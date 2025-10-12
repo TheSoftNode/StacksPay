@@ -149,11 +149,12 @@ class PaymentDashboardApiClient {
    * Create a payment link using session authentication
    * This is for dashboard-initiated payment link creation
    */
-  async createPaymentLink(linkData: PaymentLinkRequest): Promise<ApiResponse<{ 
-    id: string; 
-    url: string; 
-    qrCode: string; 
-    expiresAt?: string; 
+  async createPaymentLink(linkData: PaymentLinkRequest): Promise<ApiResponse<{
+    id: string;
+    url: string;
+    qrCode: string;
+    paymentAddress: string;
+    expiresAt?: string;
   }>> {
     // Use session-based payment links endpoint
     return this.makeRequest('/api/auth/payments/links', {

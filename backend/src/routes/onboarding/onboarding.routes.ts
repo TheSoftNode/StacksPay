@@ -343,7 +343,7 @@ router.post('/webhook-config', asyncHandler(async (req: Request, res: Response) 
       };
     }
 
-    // Configure webhook
+    // Configure webhook in merchant record (legacy)
     merchant.webhooks.url = webhookUrl;
     merchant.webhooks.events = events || [
       'payment.created',
@@ -353,12 +353,58 @@ router.post('/webhook-config', asyncHandler(async (req: Request, res: Response) 
     ];
     merchant.webhooks.isConfigured = true;
 
+    // Create a proper Webhook record so it shows up in the Webhooks page
+    const { Webhook } = await import('@/models/webhook/Webhook');
+
+    // Check if webhook already exists for this URL
+    let webhook = await Webhook.findOne({ merchantId, url: webhookUrl });
+
+    if (!webhook) {
+      // Create new webhook record
+      webhook = await Webhook.create({
+        merchantId,
+        url: webhookUrl,
+        events: merchant.webhooks.events,
+        secret: merchant.webhooks.secret,
+        enabled: true,
+        deliveryStats: {
+          total: 0,
+          successful: 0,
+          failed: 0
+        },
+        settings: {
+          timeout: 10000,
+          retryAttempts: 3,
+          retryDelays: [1000, 5000, 15000]
+        }
+      });
+
+      logger.info('Created Webhook record for onboarding', {
+        merchantId,
+        webhookId: webhook._id,
+        webhookUrl
+      });
+    } else {
+      // Update existing webhook
+      webhook.events = merchant.webhooks.events;
+      webhook.secret = merchant.webhooks.secret;
+      webhook.enabled = true;
+      await webhook.save();
+
+      logger.info('Updated existing Webhook record for onboarding', {
+        merchantId,
+        webhookId: webhook._id,
+        webhookUrl
+      });
+    }
+
     // Update onboarding progress - mark webhook setup step as complete
     merchant.onboarding.stepsData.webhookSetup = {
       completed: true,
       completedAt: new Date(),
       webhookUrlConfigured: true,
-      webhookTested: false // Will be updated when test is performed
+      webhookTested: false, // Will be updated when test is performed
+      webhookId: webhook._id.toString() // Store reference to the Webhook record
     };
 
     if (!merchant.onboarding.completedSteps.includes('webhookSetup')) {
@@ -375,6 +421,7 @@ router.post('/webhook-config', asyncHandler(async (req: Request, res: Response) 
     logger.info('Webhook configured during onboarding', {
       merchantId,
       webhookUrl,
+      webhookId: webhook._id.toString(),
       events: merchant.webhooks.events,
       currentStep: merchant.onboarding.currentStep
     });
@@ -384,6 +431,7 @@ router.post('/webhook-config', asyncHandler(async (req: Request, res: Response) 
       data: {
         webhookUrl: merchant.webhooks.url,
         webhookSecret: merchant.webhooks.secret,
+        webhookId: webhook._id.toString(),
         events: merchant.webhooks.events,
         onboarding: merchant.onboarding
       },
