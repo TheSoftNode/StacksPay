@@ -10,34 +10,22 @@ export interface QRCodeOptions {
 
 /**
  * Generate QR code data URL for STX payment
+ * Note: Most Stacks wallets only support plain addresses in QR codes, not SIP-010 URIs with amount/memo
  */
 export async function generateSTXPaymentQR(
-  address: string, 
-  amount: number, 
+  address: string,
+  amount: number,
   memo?: string,
   options: QRCodeOptions = {}
 ): Promise<string> {
   try {
     // Dynamically import QR code library to avoid SSR issues
     const QRCode = (await import('qrcode')).default;
-    
-    // Create STX payment URI
-    let stxUri = `stx:${address}`;
-    const params = new URLSearchParams();
-    
-    if (amount > 0) {
-      // Amount in microSTX
-      params.append('amount', amount.toString());
-    }
-    
-    if (memo) {
-      params.append('memo', memo);
-    }
-    
-    if (params.toString()) {
-      stxUri += `?${params.toString()}`;
-    }
-    
+
+    // Use plain address only - Stacks wallets don't support amount/memo in QR codes
+    // The user will need to manually enter the amount
+    const stxAddress = address;
+
     // Generate QR code
     const qrOptions = {
       width: options.size || 256,
@@ -48,10 +36,10 @@ export async function generateSTXPaymentQR(
         light: '#FFFFFF'
       }
     };
-    
-    const qrDataUrl = await QRCode.toDataURL(stxUri, qrOptions);
+
+    const qrDataUrl = await QRCode.toDataURL(stxAddress, qrOptions);
     return qrDataUrl;
-    
+
   } catch (error) {
     console.error('Failed to generate STX payment QR code:', error);
     throw new Error('QR code generation failed');
@@ -60,33 +48,21 @@ export async function generateSTXPaymentQR(
 
 /**
  * Generate QR code data URL for Bitcoin payment
+ * Note: Using plain address for maximum wallet compatibility
  */
 export async function generateBitcoinPaymentQR(
-  address: string, 
-  amount?: number, 
+  address: string,
+  amount?: number,
   label?: string,
   options: QRCodeOptions = {}
 ): Promise<string> {
   try {
     const QRCode = (await import('qrcode')).default;
-    
-    // Create Bitcoin payment URI
-    let bitcoinUri = `bitcoin:${address}`;
-    const params = new URLSearchParams();
-    
-    if (amount && amount > 0) {
-      // Amount in BTC
-      params.append('amount', amount.toString());
-    }
-    
-    if (label) {
-      params.append('label', label);
-    }
-    
-    if (params.toString()) {
-      bitcoinUri += `?${params.toString()}`;
-    }
-    
+
+    // Use plain address for better wallet compatibility
+    // Users will need to manually enter the amount
+    const bitcoinAddress = address;
+
     // Generate QR code
     const qrOptions = {
       width: options.size || 256,
@@ -97,10 +73,10 @@ export async function generateBitcoinPaymentQR(
         light: '#FFFFFF'
       }
     };
-    
-    const qrDataUrl = await QRCode.toDataURL(bitcoinUri, qrOptions);
+
+    const qrDataUrl = await QRCode.toDataURL(bitcoinAddress, qrOptions);
     return qrDataUrl;
-    
+
   } catch (error) {
     console.error('Failed to generate Bitcoin payment QR code:', error);
     throw new Error('QR code generation failed');

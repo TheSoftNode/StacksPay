@@ -6,6 +6,7 @@ import { QrCode, Copy, CheckCircle, Download, Share, RefreshCw } from 'lucide-re
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
+import QRCodeLib from 'qrcode'
 
 interface QRCodeProps {
   value: string
@@ -48,95 +49,77 @@ export default function QRCode({
   const generateQRCode = async () => {
     setIsGenerating(true)
     try {
-      // Simulate QR code generation - in real implementation, use a library like qrcode
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Generate a simple pattern for demo purposes
-      // In production, use a proper QR code library
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      
-      if (ctx) {
-        canvas.width = size
-        canvas.height = size
-        
-        // Fill background
-        ctx.fillStyle = lightColor
-        ctx.fillRect(0, 0, size, size)
-        
-        // Draw QR pattern (simplified demo pattern)
-        ctx.fillStyle = darkColor
-        const moduleSize = size / 25 // 25x25 modules
-        
-        // Draw finder patterns (corners)
-        drawFinderPattern(ctx, 0, 0, moduleSize)
-        drawFinderPattern(ctx, 18 * moduleSize, 0, moduleSize)
-        drawFinderPattern(ctx, 0, 18 * moduleSize, moduleSize)
-        
-        // Draw some data modules (random pattern for demo)
-        for (let i = 0; i < 25; i++) {
-          for (let j = 0; j < 25; j++) {
-            if (shouldDrawModule(i, j, value)) {
-              ctx.fillRect(i * moduleSize, j * moduleSize, moduleSize, moduleSize)
+      // Generate actual scannable QR code using qrcode library
+      const qrOptions = {
+        errorCorrectionLevel: errorCorrectionLevel,
+        margin: margin,
+        width: size,
+        color: {
+          dark: darkColor,
+          light: lightColor
+        }
+      }
+
+      // Generate QR code as data URL
+      const dataUrl = await QRCodeLib.toDataURL(value, qrOptions)
+
+      // If logo is provided, add it to the center of the QR code
+      if (logo) {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+
+        if (ctx) {
+          canvas.width = size
+          canvas.height = size
+
+          // Draw QR code
+          const qrImage = new Image()
+          qrImage.src = dataUrl
+
+          await new Promise((resolve) => {
+            qrImage.onload = () => {
+              ctx.drawImage(qrImage, 0, 0, size, size)
+
+              // Draw logo in center
+              const logoSize = size * 0.2
+              const logoX = (size - logoSize) / 2
+              const logoY = (size - logoSize) / 2
+
+              // White background for logo
+              ctx.fillStyle = '#ffffff'
+              ctx.fillRect(logoX - 5, logoY - 5, logoSize + 10, logoSize + 10)
+
+              // Load and draw logo image
+              const logoImage = new Image()
+              logoImage.src = logo
+              logoImage.onload = () => {
+                ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize)
+                setQrDataUrl(canvas.toDataURL('image/png'))
+                resolve(null)
+              }
+              logoImage.onerror = () => {
+                // If logo fails to load, use QR without logo
+                setQrDataUrl(dataUrl)
+                resolve(null)
+              }
             }
-          }
+          })
+        } else {
+          setQrDataUrl(dataUrl)
         }
-        
-        // Add logo if provided
-        if (logo) {
-          const logoSize = size * 0.2
-          const logoX = (size - logoSize) / 2
-          const logoY = (size - logoSize) / 2
-          
-          // White background for logo
-          ctx.fillStyle = '#ffffff'
-          ctx.fillRect(logoX - 5, logoY - 5, logoSize + 10, logoSize + 10)
-          
-          // In real implementation, draw actual logo image
-          ctx.fillStyle = '#333333'
-          ctx.fillRect(logoX, logoY, logoSize, logoSize)
-        }
-        
-        setQrDataUrl(canvas.toDataURL('image/png'))
+      } else {
+        setQrDataUrl(dataUrl)
       }
     } catch (error) {
       console.error('Failed to generate QR code:', error)
+      toast({
+        title: "QR Code Error",
+        description: "Failed to generate QR code. Please try again.",
+        variant: "destructive"
+      })
     } finally {
       setIsGenerating(false)
     }
-  }
-
-  const drawFinderPattern = (ctx: CanvasRenderingContext2D, x: number, y: number, moduleSize: number) => {
-    // Draw 7x7 finder pattern
-    for (let i = 0; i < 7; i++) {
-      for (let j = 0; j < 7; j++) {
-        if (
-          (i === 0 || i === 6 || j === 0 || j === 6) ||
-          (i >= 2 && i <= 4 && j >= 2 && j <= 4)
-        ) {
-          ctx.fillRect(x + i * moduleSize, y + j * moduleSize, moduleSize, moduleSize)
-        }
-      }
-    }
-  }
-
-  const shouldDrawModule = (x: number, y: number, data: string): boolean => {
-    // Skip finder patterns
-    if (
-      (x < 9 && y < 9) ||
-      (x > 15 && y < 9) ||
-      (x < 9 && y > 15)
-    ) {
-      return false
-    }
-    
-    // Simple hash-based pattern for demo
-    const hash = data.split('').reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0)
-      return a & a
-    }, 0)
-    
-    return ((x + y + hash) % 3) === 0
   }
 
   const copyValue = async () => {

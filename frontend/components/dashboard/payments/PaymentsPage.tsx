@@ -125,7 +125,13 @@ const PaymentsPage = () => {
   const [sortBy, setSortBy] = useState('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [activeTab, setActiveTab] = useState('all')
+  const [copied, setCopied] = useState(false)
   const downloadRef = useRef<HTMLAnchorElement>(null)
+
+  // Sync activeTab with statusFilter
+  useEffect(() => {
+    setStatusFilter(activeTab === 'all' ? 'all' : activeTab)
+  }, [activeTab, setStatusFilter])
   
   // Advanced search state
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
@@ -229,9 +235,22 @@ const PaymentsPage = () => {
     })
   }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    // Toast notification would go here
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      toast({
+        title: "Copied!",
+        description: "Link copied to clipboard",
+      })
+      setTimeout(() => setCopied(false), 2000)
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Failed to copy to clipboard",
+        variant: "destructive"
+      })
+    }
   }
 
   const exportPayments = () => {
@@ -1424,138 +1443,165 @@ const PaymentsPage = () => {
               </div>
             </Tabs>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-5">
               {/* Success Header */}
-              <div className="text-center space-y-4">
-                <motion.div 
+              <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", duration: 0.5 }}
-                  className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto"
+                  className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center flex-shrink-0"
                 >
-                  <CheckCircle className="h-10 w-10 text-green-600" />
+                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-500" />
                 </motion.div>
                 <div>
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    Payment Link Created!
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    Payment Link Created Successfully
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                     Share this link with your customer to collect payment
                   </p>
                 </div>
               </div>
 
-              {/* Main Content Grid */}
-              <div className="grid md:grid-cols-2 gap-8">
-                {/* Left Column - QR Code */}
-                <div className="text-center space-y-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                    Scan to Pay
-                  </h4>
-                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border mx-auto w-fit">
+              {/* Main Content - Horizontal Layout */}
+              <div className="grid grid-cols-5 gap-5">
+                {/* Left: QR Code */}
+                <div className="col-span-2 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center">
+                  <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 mb-3">
                     {generatedPaymentLink?.qrCode ? (
                       <QRCode
                         value={generatedPaymentLink.url}
-                        size={200}
+                        size={140}
                         showCopy={false}
                         showDownload={false}
                       />
                     ) : (
-                      <div className="w-[200px] h-[200px] flex items-center justify-center">
-                        <div className="text-center space-y-2">
-                          <QrCode className="h-12 w-12 text-gray-400 mx-auto" />
-                          <p className="text-sm text-gray-500">Generating QR Code...</p>
-                        </div>
+                      <div className="w-[140px] h-[140px] flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 text-slate-400 animate-spin" />
                       </div>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500">
-                    Customer can scan with any wallet or QR scanner
+                  <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                    Scan to open payment page
                   </p>
                 </div>
 
-                {/* Right Column - Link & Actions */}
-                <div className="space-y-6">
-                  {/* Payment Link */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                      Payment Link
-                    </h4>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-mono text-sm text-gray-700 dark:text-gray-300 truncate">
-                            {generatedPaymentLink?.url || ''}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(generatedPaymentLink?.url || '')}
-                          className="shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
+                {/* Right: Details & Actions */}
+                <div className="col-span-3 space-y-4">
+                  {/* Payment Details Card */}
+                  <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Payment Details</span>
                     </div>
-                  </div>
-
-                  {/* Payment Details */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                      Payment Details
-                    </h4>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Amount:</span>
-                        <span className="font-medium">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-xs text-slate-600 dark:text-slate-400 block mb-1">Amount</span>
+                        <span className="text-base font-semibold text-slate-900 dark:text-slate-100">
                           {paymentLinkData.amount} {paymentLinkData.currency}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Description:</span>
-                        <span className="font-medium text-right max-w-[200px] truncate">
-                          {paymentLinkData.description}
-                        </span>
-                      </div>
-                      {paymentLinkData.expiresIn && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Expires:</span>
-                          <span className="font-medium">{paymentLinkData.expiresIn}</span>
+                      {paymentLinkData.expiresIn && paymentLinkData.expiresIn !== 'never' && (
+                        <div>
+                          <span className="text-xs text-slate-600 dark:text-slate-400 block mb-1">Expires In</span>
+                          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                            {paymentLinkData.expiresIn === '1' ? '1 hour' :
+                             paymentLinkData.expiresIn === '24' ? '24 hours' :
+                             paymentLinkData.expiresIn === '168' ? '7 days' :
+                             paymentLinkData.expiresIn === '720' ? '30 days' : paymentLinkData.expiresIn}
+                          </span>
                         </div>
                       )}
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-600 dark:text-slate-400 block mb-1">Description</span>
+                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                        {paymentLinkData.description}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Payment Link */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+                      Payment Link
+                    </label>
+                    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center gap-2">
+                        <p className="flex-1 font-mono text-xs text-slate-700 dark:text-slate-300 truncate">
+                          {generatedPaymentLink?.url || ''}
+                        </p>
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => copyToClipboard(generatedPaymentLink?.url || '')}
+                          className={cn(
+                            "p-2 rounded-md transition-colors flex-shrink-0",
+                            copied
+                              ? "bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-500"
+                              : "hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400"
+                          )}
+                        >
+                          <motion.div
+                            animate={copied ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            {copied ? (
+                              <CheckCircle className="h-4 w-4" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </motion.div>
+                        </motion.button>
+                      </div>
                     </div>
                   </div>
 
                   {/* Quick Actions */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      variant="outline"
+                  <div className="grid grid-cols-2 gap-2">
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => copyToClipboard(generatedPaymentLink?.url || '')}
-                      className="h-12"
+                      className={cn(
+                        "flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border",
+                        copied
+                          ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400"
+                          : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                      )}
                     >
-                      <Copy className="mr-2 h-4 w-4" />
-                      Copy Link
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => navigator.share?.({ 
-                        url: generatedPaymentLink?.url || '', 
-                        title: 'Payment Request',
-                        text: `Payment: ${paymentLinkData.amount} ${paymentLinkData.currency}`
-                      })}
-                      className="h-12"
-                    >
-                      <Share className="mr-2 h-4 w-4" />
-                      Share
-                    </Button>
+                      <motion.div
+                        animate={copied ? { rotate: [0, 360] } : { rotate: 0 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        {copied ? (
+                          <CheckCircle className="h-4 w-4" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </motion.div>
+                      <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+                    </motion.button>
+
+                    {navigator.share && (
+                      <Button
+                        variant="outline"
+                        onClick={() => navigator.share?.({
+                          url: generatedPaymentLink?.url || '',
+                          title: 'Payment Request',
+                          text: `Payment: ${paymentLinkData.amount} ${paymentLinkData.currency}`
+                        })}
+                        className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
+                      >
+                        <Share className="mr-2 h-4 w-4" />
+                        <span>Share</span>
+                      </Button>
+                    )}
                   </div>
 
                   {/* Email Share */}
                   {paymentLinkData.customerEmail && (
                     <Button
                       onClick={() => window.open(`mailto:${paymentLinkData.customerEmail}?subject=Payment Request - ${paymentLinkData.description}&body=Hi,%0D%0A%0D%0APlease complete your payment of ${paymentLinkData.amount} ${paymentLinkData.currency} using this link:%0D%0A%0D%0A${generatedPaymentLink?.url || ''}%0D%0A%0D%0AThank you!`)}
-                      className="w-full h-12 bg-blue-600 hover:bg-blue-700"
+                      className="w-full bg-orange-600 hover:bg-orange-700 text-white"
                     >
                       <Mail className="mr-2 h-4 w-4" />
                       Send to {paymentLinkData.customerEmail}
@@ -1566,20 +1612,20 @@ const PaymentsPage = () => {
             </div>
           )}
           
-          <DialogFooter className="border-t pt-6">
+          <DialogFooter className="border-t border-slate-200 dark:border-slate-700 pt-4 bg-slate-50 dark:bg-slate-900/50">
             {!generatedPaymentLink ? (
-              <div className="flex space-x-3 w-full">
-                <Button 
-                  variant="outline" 
+              <div className="flex gap-3 w-full">
+                <Button
+                  variant="outline"
                   onClick={() => setIsPaymentLinkModalOpen(false)}
-                  className="flex-1"
+                  className="flex-1 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={generatePaymentLink}
                   disabled={!paymentLinkData.amount || !paymentLinkData.description || isSubmitting}
-                  className="flex-1 bg-orange-600 hover:bg-orange-700"
+                  className="flex-1 bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <>
@@ -1595,17 +1641,17 @@ const PaymentsPage = () => {
                 </Button>
               </div>
             ) : (
-              <div className="flex space-x-3 w-full">
-                <Button 
+              <div className="flex gap-3 w-full">
+                <Button
                   variant="outline"
                   onClick={() => setIsPaymentLinkModalOpen(false)}
-                  className="flex-1"
+                  className="flex-1 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   Close
                 </Button>
-                <Button 
+                <Button
                   onClick={resetPaymentLinkForm}
-                  className="flex-1 bg-orange-600 hover:bg-orange-700"
+                  className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Create Another
