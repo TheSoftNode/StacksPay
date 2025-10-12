@@ -60,21 +60,21 @@ export class StacksBlockchainMonitor {
    */
   private async checkPendingPayments(): Promise<void> {
     try {
-      // Get all pending payments
-      const pendingPayments = await STXPayment.find({
-        status: 'pending',
+      // Get all pending and confirmed payments (confirmed need settlement)
+      const paymentsToCheck = await STXPayment.find({
+        status: { $in: ['pending', 'confirmed'] },
         expiresAt: { $gt: new Date() } // Only check non-expired payments
       }).limit(100); // Limit to prevent API rate limiting
 
-      if (pendingPayments.length === 0) {
-        logger.debug('No pending payments to check');
+      if (paymentsToCheck.length === 0) {
+        logger.debug('No payments to check');
         return;
       }
 
-      logger.info(`🔍 Checking ${pendingPayments.length} pending payments`);
+      logger.info(`🔍 Checking ${paymentsToCheck.length} payments (pending + confirmed)`);
 
       // Check each payment
-      for (const payment of pendingPayments) {
+      for (const payment of paymentsToCheck) {
         try {
           await this.checkPaymentAddress(payment);
         } catch (error) {
@@ -204,13 +204,36 @@ export class StacksBlockchainMonitor {
         expectedAmount: payment.expectedAmount
       });
 
-      // Check if received amount meets or exceeds expected amount
-      if (totalReceived >= payment.expectedAmount) {
+      // Validate received amount with 1% tolerance for rounding issues
+      const tolerance = 0.01; // 1% tolerance
+      const minAcceptableAmount = Math.floor(payment.expectedAmount * (1 - tolerance));
+
+      if (totalReceived < minAcceptableAmount) {
+        // Significantly underpaid - reject the payment
+        const percentReceived = ((totalReceived / payment.expectedAmount) * 100).toFixed(2);
+        logger.error(`❌ Payment ${payment.paymentId} underpaid: received ${totalReceived} (${percentReceived}%), expected ${payment.expectedAmount}`);
+
+        await STXPayment.findOneAndUpdate(
+          { paymentId: payment.paymentId },
+          {
+            $set: {
+              status: 'failed',
+              receivedAmount: totalReceived,
+              errorMessage: `Underpaid: received ${totalReceived} microSTX (${percentReceived}% of ${payment.expectedAmount} expected). Please contact support for refund.`
+            }
+          }
+        );
+        return;
+      }
+
+      // Check if received amount meets or exceeds expected amount (with tolerance)
+      if (totalReceived >= minAcceptableAmount) {
         const firstTransfer = stxTransfers[0];
 
         logger.info(`✅ Payment ${payment.paymentId} received sufficient funds`, {
           expected: payment.expectedAmount,
           received: totalReceived,
+          tolerance: `${(tolerance * 100)}%`,
           txId: firstTransfer.tx_id
         });
 
@@ -243,25 +266,138 @@ export class StacksBlockchainMonitor {
 
       logger.info(`✅ Contract settlement successful. TxID: ${settleResult.txId}`);
 
-      // Update payment status to settled
+      // Step 2: Execute actual STX transfer from unique address to merchant
+      logger.info(`💸 Transferring STX from unique address to merchant...`);
+
+      const settledPayment = await STXPayment.findOne({ paymentId: payment.paymentId });
+      if (!settledPayment) {
+        logger.error(`Payment ${payment.paymentId} not found after settlement`);
+        return;
+      }
+
+      // Fetch merchant separately
+      const { Merchant } = require('@/models/merchant/Merchant');
+      const merchant = await Merchant.findById(settledPayment.merchantId);
+      if (!merchant) {
+        logger.error(`Merchant not found for payment ${payment.paymentId}`);
+        return;
+      }
+
+      // Get merchant's Stacks address from their profile
+      const merchantStacksAddress = merchant.stacksAddress || merchant.connectedWallets?.stacksAddress;
+
+      if (!merchantStacksAddress) {
+        logger.error(`Merchant has no Stacks address configured for payment ${payment.paymentId}`);
+        // Update payment with error but keep as completed on contract
+        await STXPayment.findOneAndUpdate(
+          { paymentId: payment.paymentId },
+          {
+            $set: {
+              status: 'completed',
+              settledAt: new Date(),
+              'blockchainData.settlementTx': settleResult.txId,
+              errorMessage: 'Settlement completed but merchant has no Stacks address for transfer'
+            }
+          }
+        );
+        return;
+      }
+
+      // Calculate the net amount to transfer to merchant
+      // Customer paid: expectedAmount (which includes baseAmount + platformFee + settlementTxFee + transferTxFee)
+      // We transfer: baseAmount (the original product price)
+      const receivedAmount = settledPayment.receivedAmount || payment.expectedAmount;
+      const baseAmount = payment.baseAmount || receivedAmount; // Fallback for old payments without baseAmount
+
+      // Transaction fee constants (must match payment creation)
+      const SETTLEMENT_TX_FEE = 180000; // ~0.18 STX for contract call
+      const TRANSFER_TX_FEE = 180000; // ~0.18 STX for STX transfer
+      const TOTAL_TX_FEE = SETTLEMENT_TX_FEE + TRANSFER_TX_FEE; // 0.36 STX total
+
+      // For new payments with baseAmount, just transfer the base amount (merchant's product price)
+      // For old payments without baseAmount, calculate it by subtracting fees
+      let netAmount: number;
+      let platformFee: number;
+
+      if (payment.baseAmount) {
+        // New payment structure: just transfer the baseAmount
+        netAmount = baseAmount;
+        platformFee = receivedAmount - baseAmount - TOTAL_TX_FEE; // Calculate what the platform fee was
+      } else {
+        // Old payment structure: calculate fees and deduct them
+        const feeRate = merchant.paymentPreferences?.feePercentage || 1;
+        platformFee = Math.floor((receivedAmount * feeRate) / 100);
+        netAmount = receivedAmount - platformFee - TOTAL_TX_FEE;
+      }
+
+      if (netAmount <= 0) {
+        logger.error(`Cannot transfer - insufficient funds. Received: ${receivedAmount}, Base: ${baseAmount}, Platform fee: ${platformFee}, Total Tx fees: ${TOTAL_TX_FEE}`);
+        await STXPayment.findOneAndUpdate(
+          { paymentId: payment.paymentId },
+          {
+            $set: {
+              status: 'completed',
+              settledAt: new Date(),
+              'blockchainData.settlementTx': settleResult.txId,
+              errorMessage: 'Insufficient funds to cover transaction and platform fees'
+            }
+          }
+        );
+        return;
+      }
+
+      logger.info(`💰 Transferring ${netAmount} microSTX to merchant ${merchantStacksAddress} (Received: ${receivedAmount}, Platform fee: ${platformFee}, Total Tx fees: ${TOTAL_TX_FEE})`);
+
+      // Execute the transfer from unique address to merchant
+      const transferResult = await stxContractService.executeSTXTransfer(
+        settledPayment.uniqueAddress,
+        merchantStacksAddress,
+        netAmount,
+        settledPayment.encryptedPrivateKey,
+        payment.paymentId
+      );
+
+      if (!transferResult.success) {
+        logger.error(`Failed to transfer STX to merchant: ${transferResult.error}`);
+        // Keep payment as completed in contract, but mark transfer failed in DB
+        await STXPayment.findOneAndUpdate(
+          { paymentId: payment.paymentId },
+          {
+            $set: {
+              status: 'completed',
+              settledAt: new Date(),
+              'blockchainData.settlementTx': settleResult.txId,
+              errorMessage: `Settlement recorded but transfer failed: ${transferResult.error}`
+            }
+          }
+        );
+        return;
+      }
+
+      logger.info(`✅ STX transferred to merchant. TxID: ${transferResult.txId}`);
+
+      // Update payment status to completed with transfer details
       await STXPayment.findOneAndUpdate(
         { paymentId: payment.paymentId },
         {
           $set: {
             status: 'completed',
             settledAt: new Date(),
-            'blockchainData.settlementTx': settleResult.txId
+            'blockchainData.settlementTx': settleResult.txId,
+            settlementTxId: transferResult.txId,
+            feeAmount: platformFee,
+            netAmount
           }
         }
       );
 
-      // Trigger webhook for settlement
-      const settledPayment = await STXPayment.findOne({ paymentId: payment.paymentId });
-      if (settledPayment) {
-        await webhookService.triggerWebhook(settledPayment, 'payment.completed');
+      // Trigger webhook for completion
+      const finalPayment = await STXPayment.findOne({ paymentId: payment.paymentId });
+      if (finalPayment) {
+        await webhookService.triggerWebhook(finalPayment, 'payment.completed');
       }
 
-      logger.info(`✅ Payment ${payment.paymentId} settled successfully`);
+      logger.info(`✅ Payment ${payment.paymentId} fully settled and transferred to merchant`);
     } catch (error) {
       logger.error(`Error processing settlement for ${payment.paymentId}:`, error instanceof Error ? error.message : String(error));
     }

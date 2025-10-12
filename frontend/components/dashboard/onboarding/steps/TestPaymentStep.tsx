@@ -100,12 +100,12 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
 
       const realPayment: TestPayment = {
         paymentId: paymentData.payment.paymentId,
-        amount: parseFloat(testAmount),
+        amount: paymentData.payment.expectedAmount / 1000000, // Total amount in STX (includes fees)
         currency: 'STX',
         status: paymentData.payment.status || 'pending',
         paymentLink: paymentData.payment.paymentLink || '',
         uniqueAddress: paymentData.payment.uniqueAddress,
-        qrCode: paymentData.payment.qrCode,
+        qrCode: paymentData.payment.qrCodeData || paymentData.payment.qrCode, // Use qrCodeData from API
         expectedAmount: paymentData.payment.expectedAmount,
         expiresAt: paymentData.payment.expiresAt,
         createdAt: paymentData.payment.createdAt || new Date().toISOString()
@@ -135,9 +135,9 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
         }
       })
 
-      const data = await response.json()
+      const result = await response.json()
 
-      if (data.success && data.payment.status === 'completed') {
+      if (result.success && result.payment.status === 'completed') {
         setTestPayment(prev => prev ? { ...prev, status: 'completed' } : null)
         setPaymentStatus('completed')
       }
@@ -308,9 +308,9 @@ const TestPaymentStep = ({ data, updateData, onComplete, isLoading, setIsLoading
                 </CardHeader>
                 <CardContent>
                   <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border mx-auto w-fit">
-                    {testPayment.uniqueAddress ? (
+                    {testPayment.qrCode || testPayment.uniqueAddress ? (
                       <QRCodeSVG
-                        value={testPayment.uniqueAddress}
+                        value={testPayment.qrCode || testPayment.uniqueAddress}
                         size={200}
                       />
                     ) : (

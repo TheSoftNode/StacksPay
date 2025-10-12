@@ -123,33 +123,80 @@ const GoLiveStep = ({ data, updateData, onComplete, isLoading, setIsLoading }: G
 
   const activateAccount = async () => {
     setIsLoading(true)
-    
+
     try {
-      // Simulate account activation
-      await new Promise(resolve => setTimeout(resolve, 3000))
-      
-      // Generate live API key
-      const liveKey = `sk_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`
-      setLiveApiKey(liveKey)
-      
-      // TODO: Replace with actual API calls
-      // await merchantApi.activateAccount()
-      // const liveKeyResponse = await apiKeyApi.generateLiveKey()
-      
-      updateData('apiKeys', { 
-        ...data.apiKeys, 
-        liveKey 
+      // Call the backend to mark onboarding as complete
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+      const token = localStorage.getItem('authToken')
+
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.')
+      }
+
+      const response = await fetch(`${apiUrl}/api/onboarding/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
       })
-      updateData('integrationStatus', { 
-        ...data.integrationStatus, 
-        readyForLive: true 
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        const errorMsg = result.error || 'Failed to complete onboarding'
+        const missingSteps = result.missingSteps ? `\nMissing steps: ${result.missingSteps.join(', ')}` : ''
+        console.error('❌ Onboarding completion failed:', result)
+
+        // Show user-friendly message
+        const stepNames: Record<string, string> = {
+          businessInfo: 'Business Info (Step 2)',
+          walletSetup: 'Wallet Setup (Step 3)',
+          paymentPreferences: 'Payment Preferences (Step 4)',
+          apiKeys: 'API Keys (Step 5)'
+        }
+        const missingStepNames = result.missingSteps?.map((s: string) => stepNames[s] || s).join(', ')
+
+        alert(`⚠️ Please complete these required steps first:\n\n${missingStepNames}\n\nGo back and click "Save & Continue" on each step to mark them as complete.`)
+        throw new Error(errorMsg + missingSteps)
+      }
+
+      console.log('✅ Onboarding marked as complete')
+
+      // Activate live API key if it exists
+      if (data.apiKeys.liveKey) {
+        try {
+          const activateResponse = await fetch(`${apiUrl}/api/apikeys/${data.apiKeys.liveKey}/activate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          })
+
+          if (activateResponse.ok) {
+            console.log('✅ Live API key activated')
+          }
+        } catch (error) {
+          console.error('Error activating live API key:', error)
+        }
+      }
+
+      updateData('integrationStatus', {
+        ...data.integrationStatus,
+        readyForLive: true
       })
-      
+
       setActivationStatus('activated')
-      onComplete()
-      
+
+      // Redirect to dashboard after 2 seconds
+      setTimeout(() => {
+        window.location.href = '/dashboard'
+      }, 2000)
+
     } catch (error) {
       console.error('Error activating account:', error)
+      alert('Failed to complete onboarding. Please try again.')
     } finally {
       setIsLoading(false)
     }

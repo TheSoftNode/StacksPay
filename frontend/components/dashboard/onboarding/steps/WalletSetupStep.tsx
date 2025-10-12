@@ -178,12 +178,15 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
 
       // Save step completion to backend to trigger auto-authorization
       try {
-        const response = await fetch('/api/onboarding/step', {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+        const token = localStorage.getItem('authToken')
+
+        const response = await fetch(`${apiUrl}/api/onboarding/step`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
           },
-          credentials: 'include',
           body: JSON.stringify({
             stepName: 'walletSetup',
             stepData: {
@@ -191,7 +194,7 @@ const WalletSetupStep = ({ data, updateData, onComplete, isLoading, setIsLoading
               walletType: isConnected ? 'connected' : 'manual',
               connected: isConnected
             },
-            currentStep: 2 // Wallet setup is step 2 (0-indexed)
+            currentStep: 3 // Wallet setup is step 3
           })
         })
 

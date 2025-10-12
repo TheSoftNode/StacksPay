@@ -200,8 +200,18 @@ export class STXPaymentController {
       const addressResult = await stxContractService.generateUniqueSTXAddress(paymentId);
 
       // Calculate expiry
-      const expiresInMinutes = Math.min(paymentRequest.expiresInMinutes || 15, 1440); // Max 24 hours
+      const expiresInMinutes = Math.min(paymentRequest.expiresInMinutes || 60, 1440); // Default 1 hour, Max 24 hours
       const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
+
+      // Calculate total amount including transaction fees
+      // The customer pays: productPrice + platformFee + settlementTxFee + transferTxFee
+      // So merchant receives the full productPrice after fees are deducted
+      const SETTLEMENT_TX_FEE = 180000; // ~0.18 STX for contract call
+      const TRANSFER_TX_FEE = 180000; // ~0.18 STX for STX transfer
+      const TOTAL_TX_FEE = SETTLEMENT_TX_FEE + TRANSFER_TX_FEE; // 0.36 STX total
+      const feeRate = merchant.paymentPreferences?.feePercentage || 1;
+      const platformFee = Math.floor((paymentRequest.expectedAmount * feeRate) / 100);
+      const totalAmountToPay = paymentRequest.expectedAmount + platformFee + TOTAL_TX_FEE;
 
       // Create payment record
       const payment = new STXPayment({
@@ -209,13 +219,14 @@ export class STXPaymentController {
         merchantId,
         uniqueAddress: addressResult.address,
         encryptedPrivateKey: addressResult.encryptedPrivateKey,
-        expectedAmount: paymentRequest.expectedAmount,
+        expectedAmount: totalAmountToPay, // Customer pays this total amount
+        baseAmount: paymentRequest.expectedAmount, // Original product price (what merchant receives)
         usdAmount: paymentRequest.usdAmount,
         stxPriceAtCreation: paymentRequest.stxPrice,
         status: 'pending',
         metadata: paymentRequest.metadata,
         expiresAt,
-        merchantFeeRate: 100 // 1% default fee rate (in basis points)
+        merchantFeeRate: feeRate * 100 // Store in basis points
       });
 
       await payment.save();
@@ -263,7 +274,7 @@ export class STXPaymentController {
         paymentId,
         merchantAddress: merchantStacksAddress,
         uniqueAddress: addressResult.address,
-        expectedAmount: paymentRequest.expectedAmount,
+        expectedAmount: totalAmountToPay, // Register total amount (includes fees)
         metadata: paymentRequest.metadata,
         expiresInBlocks: Math.ceil(expiresInMinutes / 10) // Convert minutes to blocks (~10 min per block)
       };
@@ -282,7 +293,9 @@ export class STXPaymentController {
       }
 
       // Generate QR code data for wallet scanning
-      const qrCodeData = `stx:${addressResult.address}?amount=${paymentRequest.expectedAmount}&memo=${encodeURIComponent(paymentRequest.metadata)}`;
+      // Most Stacks wallets only support plain address in QR codes
+      // Users will need to manually enter the amount
+      const qrCodeData = addressResult.address;
 
       // Trigger webhook notification
       await webhookService.triggerWebhook(payment, 'payment.created');
@@ -290,7 +303,10 @@ export class STXPaymentController {
       logger.info('STX payment created successfully', {
         paymentId,
         merchantId,
-        expectedAmount: paymentRequest.expectedAmount,
+        baseAmount: paymentRequest.expectedAmount,
+        totalAmount: totalAmountToPay,
+        platformFee,
+        txFees: TOTAL_TX_FEE,
         uniqueAddress: addressResult.address,
         expiresAt
       });
@@ -300,7 +316,10 @@ export class STXPaymentController {
         payment: {
           paymentId,
           uniqueAddress: addressResult.address,
-          expectedAmount: paymentRequest.expectedAmount,
+          expectedAmount: totalAmountToPay, // Total amount customer must pay
+          baseAmount: paymentRequest.expectedAmount, // Original product price
+          platformFee,
+          txFee: TOTAL_TX_FEE, // Total transaction fees (settlement + transfer)
           usdAmount: paymentRequest.usdAmount,
           expiresAt: expiresAt.toISOString(),
           qrCodeData

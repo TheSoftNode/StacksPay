@@ -372,18 +372,26 @@ export class STXContractService {
       const senderKey = privateKey;
       
       // Create STX transfer transaction
+      // Truncate payment ID to fit 34-byte memo limit ("Pay: " = 5 bytes, leaving 29 for ID)
+      const truncatedPaymentId = paymentId.substring(0, 29);
       const transferTx = await makeSTXTokenTransfer({
         recipient: toAddress,
         amount: amount,
         senderKey,
         network: this.network,
-        memo: `Settlement for payment: ${paymentId}`
+        memo: `Pay: ${truncatedPaymentId}`
       });
       
       const broadcastResponse = await broadcastTransaction({ transaction: transferTx, network: this.network });
-      
+
       if ('error' in broadcastResponse) {
-        throw new Error(`STX transfer failed: ${(broadcastResponse as any).error || 'Unknown error'}`);
+        console.error('❌ STX transfer broadcast failed!');
+        console.error('Error field:', (broadcastResponse as any).error);
+        console.error('Reason field:', (broadcastResponse as any).reason);
+        console.error('Message field:', (broadcastResponse as any).message);
+        console.error('All keys:', Object.keys(broadcastResponse));
+        console.error('Full response:', JSON.stringify(broadcastResponse, null, 2));
+        throw new Error(`STX transfer failed: ${(broadcastResponse as any).error || (broadcastResponse as any).reason || 'transaction rejected'}`);
       }
       
       console.log(`✅ STX transfer executed successfully. TxID: ${(broadcastResponse as any).txid}`);

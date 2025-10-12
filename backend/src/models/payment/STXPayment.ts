@@ -36,7 +36,11 @@ const stxPaymentSchema = new Schema<ISTXPayment>({
   expectedAmount: {
     type: Number,
     required: true,
-    min: 1000 // Minimum 1000 microSTX (0.001 STX)
+    min: 1000 // Minimum 1000 microSTX (0.001 STX) - total amount customer pays
+  },
+  baseAmount: {
+    type: Number,
+    min: 0 // Original product price (what merchant receives after fees)
   },
   receivedAmount: {
     type: Number,
@@ -148,7 +152,9 @@ stxPaymentSchema.index({ settlementTxId: 1 }); // For settlement tracking
 
 // Virtual for QR code data
 stxPaymentSchema.virtual('qrCodeData').get(function() {
-  return `stx:${this.uniqueAddress}?amount=${this.expectedAmount}&memo=${encodeURIComponent(this.metadata)}`;
+  // Convert microSTX to STX for the QR code (wallets expect STX, not microSTX)
+  const amountInSTX = this.expectedAmount / 1000000;
+  return `stacks:${this.uniqueAddress}?amount=${amountInSTX}&memo=${encodeURIComponent(this.metadata)}`;
 });
 
 // Virtual for payment URL

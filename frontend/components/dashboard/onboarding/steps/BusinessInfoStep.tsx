@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select'
 import { OnboardingData } from '../MerchantOnboardingWizard'
 import { merchantApiClient } from '@/lib/api/merchant-api'
+import { onboardingApiClient } from '@/lib/api/onboarding-api'
 
 interface BusinessInfoStepProps {
   data: OnboardingData
@@ -109,13 +110,26 @@ const BusinessInfoStep = ({ data, updateData, onComplete, isLoading, setIsLoadin
     if (!validateForm()) return
 
     setIsLoading(true)
-    
+
     try {
       // Save business info using the merchant API client
       const result = await merchantApiClient.saveBusinessInfo(businessInfo)
-      
+
       if (result.success) {
         console.log('✅ Business info saved successfully')
+
+        // Mark this onboarding step as complete in backend
+        try {
+          await onboardingApiClient.updateOnboardingStep('businessInfo', {
+            businessName: businessInfo.name,
+            businessType: businessInfo.businessType,
+            country: businessInfo.country
+          }, 2) // Step 2 is business info
+          console.log('✅ Business info onboarding step marked as completed')
+        } catch (error) {
+          console.error('Error marking businessInfo step as complete:', error)
+        }
+
         onComplete()
       } else {
         console.error('❌ Failed to save business info:', result.error)
@@ -132,9 +146,14 @@ const BusinessInfoStep = ({ data, updateData, onComplete, isLoading, setIsLoadin
   }
 
   useEffect(() => {
-    const hasRequiredFields = Boolean(businessInfo.name.trim() && businessInfo.businessType && businessInfo.country)
-    setIsValid(hasRequiredFields && Object.keys(errors).length === 0)
-  }, [businessInfo, errors])
+    // Only check required fields - ignore optional field validation errors
+    const hasRequiredFields = Boolean(
+      businessInfo.name?.trim() &&
+      businessInfo.businessType &&
+      businessInfo.country
+    )
+    setIsValid(hasRequiredFields)
+  }, [businessInfo])
 
   return (
     <div className="space-y-8">

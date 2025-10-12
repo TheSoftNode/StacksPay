@@ -27,7 +27,8 @@ export interface ISTXPayment extends Document {
   encryptedPrivateKey: string;          // Encrypted private key for unique address
   
   // Payment amounts (in microSTX)
-  expectedAmount: number;               // Amount expected from customer
+  expectedAmount: number;               // Total amount customer pays (product + fees)
+  baseAmount?: number;                  // Original product price (what merchant receives)
   receivedAmount?: number;              // Amount actually received (if any)
   usdAmount?: number;                   // Original USD amount (for reference)
   stxPriceAtCreation?: number;          // STX/USD rate when payment was created

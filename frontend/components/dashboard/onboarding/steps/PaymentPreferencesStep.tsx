@@ -31,6 +31,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { OnboardingData } from '../MerchantOnboardingWizard'
 import { merchantApiClient } from '@/lib/api/merchant-api'
+import { onboardingApiClient } from '@/lib/api/onboarding-api'
 
 interface PaymentPreferencesStepProps {
   data: OnboardingData
@@ -130,13 +131,27 @@ const PaymentPreferencesStep = ({ data, updateData, onComplete, isLoading, setIs
     if (!isValid) return
 
     setIsLoading(true)
-    
+
     try {
       // Save payment preferences using the merchant API client
       const result = await merchantApiClient.savePaymentPreferences(preferences)
-      
+
       if (result.success) {
         console.log('✅ Payment preferences saved successfully')
+
+        // Mark this onboarding step as complete in backend
+        try {
+          await onboardingApiClient.updateOnboardingStep('paymentPreferences', {
+            acceptSTX: preferences.acceptSTX,
+            acceptBitcoin: preferences.acceptBitcoin,
+            acceptSBTC: preferences.acceptSBTC,
+            preferredCurrency: preferences.preferredCurrency
+          }, 4) // Step 4 is payment preferences
+          console.log('✅ Payment preferences onboarding step marked as completed')
+        } catch (error) {
+          console.error('Error marking paymentPreferences step as complete:', error)
+        }
+
         onComplete()
       } else {
         console.error('❌ Failed to save payment preferences:', result.error)
