@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import Joi from 'joi';
 import { AuthEvent } from '@/models/auth/auth-event';
+import { ApiKey } from '@/models/apikey/ApiKey';
 import { connectToDatabase } from '@/config/database';
 import { webhookService } from '../webhook/webhook-service';
 import { emailService } from '../email/email-service';
@@ -10,10 +11,10 @@ import { twoFactorService } from '../auth/two-factor-service';
 import { sessionService } from '../auth/session-service';
 import { rateLimitService } from '../auth/rate-limit-service';
 import { merchantService } from '../merchant/merchant-service';
-import { 
-  ApiKeyResponse, 
-  AuthResponse, 
-  LoginRequest, 
+import {
+  ApiKeyResponse,
+  AuthResponse,
+  LoginRequest,
   RegisterRequest,
   EmailVerificationRequest,
   ApiKeyCreateRequest,
@@ -524,62 +525,68 @@ export class AuthService {
     await connectToDatabase();
 
     try {
-      const merchants = await Merchant.find({ 'apiKeys.isActive': true });
+      // Get all active API keys from the ApiKey collection
+      const apiKeys = await ApiKey.find({ isActive: true });
 
-      for (const merchant of merchants) {
-        for (const key of merchant.apiKeys) {
-          if (key.isActive && await bcrypt.compare(apiKey, key.keyHash)) {
-            // Check if key has expired
-            if (key.expiresAt && key.expiresAt < new Date()) {
+      for (const key of apiKeys) {
+        // Compare the provided API key with the hashed key
+        if (await bcrypt.compare(apiKey, key.keyHash)) {
+          // Check if key has expired
+          if (key.expiresAt && key.expiresAt < new Date()) {
+            continue;
+          }
+
+          // Check IP restrictions
+          if (key.ipRestrictions && key.ipRestrictions.length > 0) {
+            const isAllowedIP = key.ipRestrictions.some((allowed: string) => {
+              return this.isIPInRange(ipAddress, allowed);
+            });
+
+            if (!isAllowedIP) {
+              await this.logAuthEvent(key.merchantId, 'api_key_ip_blocked', ipAddress, false, {
+                keyId: key.keyId,
+                blockedIP: ipAddress,
+              });
               continue;
             }
-
-            // Check IP restrictions
-            if (key.ipRestrictions && key.ipRestrictions.length > 0) {
-              const isAllowedIP = key.ipRestrictions.some((allowed: string) => {
-                return this.isIPInRange(ipAddress, allowed);
-              });
-              
-              if (!isAllowedIP) {
-                await this.logAuthEvent(merchant._id.toString(), 'api_key_ip_blocked', ipAddress, false, {
-                  keyId: key.keyId,
-                  blockedIP: ipAddress,
-                });
-                continue;
-              }
-            }
-
-            // Check rate limit
-            const rateCheck = await rateLimitService.checkApiKeyRateLimit(
-              key.keyId,
-              key.rateLimit,
-              60000 // 1 minute window
-            );
-
-            if (!rateCheck.allowed) {
-              return null;
-            }
-
-            // Update usage statistics
-            key.lastUsedAt = new Date();
-            key.requestCount = (key.requestCount || 0) + 1;
-            await merchant.save();
-
-            return {
-              merchantId: merchant._id.toString(),
-              keyId: key.keyId,
-              permissions: key.permissions,
-              environment: key.environment,
-              merchant: {
-                name: merchant.name,
-                email: merchant.email,
-                stacksAddress: merchant.stacksAddress,
-                emailVerified: merchant.emailVerified,
-                verificationLevel: merchant.verificationLevel,
-              },
-              rateLimit: rateCheck,
-            };
           }
+
+          // Check rate limit
+          const rateCheck = await rateLimitService.checkApiKeyRateLimit(
+            key.keyId,
+            key.rateLimit,
+            60000 // 1 minute window
+          );
+
+          if (!rateCheck.allowed) {
+            return null;
+          }
+
+          // Update usage statistics
+          key.lastUsed = new Date();
+          key.requestCount = (key.requestCount || 0) + 1;
+          await key.save();
+
+          // Get merchant info
+          const merchant = await Merchant.findById(key.merchantId);
+          if (!merchant) {
+            continue;
+          }
+
+          return {
+            merchantId: key.merchantId,
+            keyId: key.keyId,
+            permissions: key.permissions,
+            environment: key.environment,
+            merchant: {
+              name: merchant.name,
+              email: merchant.email,
+              stacksAddress: merchant.stacksAddress,
+              emailVerified: merchant.emailVerified,
+              verificationLevel: merchant.verificationLevel,
+            },
+            rateLimit: rateCheck,
+          };
         }
       }
 

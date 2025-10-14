@@ -23,6 +23,12 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -448,31 +454,42 @@ const ApiKeysPage = () => {
                     
                     <div className="flex items-center space-x-3 mb-4">
                       <div className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 font-mono text-sm">
-                        {showKeys[apiKey.keyId] 
-                          ? (apiKey.keyPreview || 'sk_***') // Show more of the preview since we don't have full key
-                          : `${(apiKey.keyPreview || 'sk_').substring(0, 12)}${'•'.repeat(20)}`
-                        }
+                        {apiKey.keyPreview || 'sk_***'}
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleKeyVisibility(apiKey.keyId)}
-                        className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
-                      >
-                        {showKeys[apiKey.keyId] ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(apiKey.keyPreview || 'sk_')}
-                        className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled
+                              className="bg-white dark:bg-gray-900 border opacity-50 cursor-not-allowed"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">API keys cannot be retrieved after creation.<br/>Use Regenerate to create a new key.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyToClipboard(apiKey.keyPreview || 'sk_')}
+                              className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Copy key preview</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-gray-400">
@@ -732,53 +749,48 @@ const ApiKeysPage = () => {
       {/* New API Key Created Dialog */}
       {createdKeyData && (
         <Dialog open={!!createdKeyData} onOpenChange={() => setCreatedKeyData(null)}>
-          <DialogContent className="w-full max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <DialogContent className="w-full max-w-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <DialogHeader>
-              <DialogTitle className="flex items-center">
+              <DialogTitle className="flex items-center text-lg">
                 <CheckCircle className="mr-2 h-5 w-5 text-green-600" />
                 API Key Created
               </DialogTitle>
-              <DialogDescription>
-                Your new API key has been created. Please copy and store it securely as it will not be shown again.
-              </DialogDescription>
             </DialogHeader>
-            
-            <div className="space-y-4">
-              <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                <Label className="text-sm font-medium mb-2 block">Your API Key</Label>
+
+            <div className="space-y-3">
+              {/* Critical Warning Banner */}
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-500 dark:border-red-700 rounded-lg p-3">
+                <div className="flex items-start space-x-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-bold text-red-900 dark:text-red-100">
+                      Save this key now - it won't be shown again
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                <Label className="text-xs font-medium mb-2 block">Your API Key</Label>
                 <div className="flex items-center space-x-2">
-                  <code className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-mono break-all overflow-wrap-anywhere">
+                  <code className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-xs font-mono break-all overflow-wrap-anywhere">
                     {createdKeyData.apiKey}
                   </code>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => copyToClipboard(createdKeyData.apiKey)}
-                    className="bg-white dark:bg-gray-900 border hover:bg-gray-50 dark:hover:bg-gray-800 shrink-0"
+                    className="bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700 shrink-0"
                   >
-                    <Copy className="h-4 w-4" />
+                    <Copy className="h-3 w-3" />
                   </Button>
                 </div>
               </div>
-              
-              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
-                <div className="flex items-start space-x-2">
-                  <Shield className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-orange-900 dark:text-orange-100">
-                      Security Notice
-                    </p>
-                    <p className="text-orange-700 dark:text-orange-300">
-                      This key will not be shown again. Store it in a secure location.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
-            
-            <DialogFooter>
-              <Button onClick={() => setCreatedKeyData(null)} className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700">
-                I have saved the key
+
+            <DialogFooter className="mt-4">
+              <Button onClick={() => setCreatedKeyData(null)} className="bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700 w-full">
+                ✓ I've saved it
               </Button>
             </DialogFooter>
           </DialogContent>

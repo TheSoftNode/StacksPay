@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { stxPaymentController } from '@/controllers/payment/STXPaymentController';
 import { stxWebhookController } from '@/controllers/webhook/STXWebhookController';
-import { apiKeyMiddleware } from '@/middleware/auth.middleware';
+import { apiKeyMiddleware, requirePermissions } from '@/middleware/auth.middleware';
 import { asyncHandler } from '@/middleware/error.middleware';
 
 const router = Router();
@@ -44,7 +44,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/STXPaymentResponse'
  */
-router.post('/stx', apiKeyMiddleware, asyncHandler(stxPaymentController.createPayment.bind(stxPaymentController)));
+router.post('/stx', apiKeyMiddleware, requirePermissions(['payments:create']), asyncHandler(stxPaymentController.createPayment.bind(stxPaymentController)));
 
 /**
  * @swagger
@@ -64,10 +64,10 @@ router.post('/stx', apiKeyMiddleware, asyncHandler(stxPaymentController.createPa
  *       200:
  *         description: Payment status retrieved successfully
  */
-router.get('/stx/:paymentId', apiKeyMiddleware, asyncHandler(stxPaymentController.getPaymentStatus.bind(stxPaymentController)));
+router.get('/stx/:paymentId', apiKeyMiddleware, requirePermissions(['payments:read']), asyncHandler(stxPaymentController.getPaymentStatus.bind(stxPaymentController)));
 
 // Manual check payment on blockchain
-router.post('/stx/:paymentId/check', apiKeyMiddleware, asyncHandler(stxPaymentController.manualCheckPayment.bind(stxPaymentController)));
+router.post('/stx/:paymentId/check', apiKeyMiddleware, requirePermissions(['payments:write']), asyncHandler(stxPaymentController.manualCheckPayment.bind(stxPaymentController)));
 
 /**
  * @swagger
@@ -97,7 +97,7 @@ router.post('/stx/:paymentId/check', apiKeyMiddleware, asyncHandler(stxPaymentCo
  *       200:
  *         description: Payments retrieved successfully
  */
-router.get('/stx', apiKeyMiddleware, asyncHandler(stxPaymentController.listPayments.bind(stxPaymentController)));
+router.get('/stx', apiKeyMiddleware, requirePermissions(['payments:read']), asyncHandler(stxPaymentController.listPayments.bind(stxPaymentController)));
 
 /**
  * @swagger
@@ -117,7 +117,7 @@ router.get('/stx', apiKeyMiddleware, asyncHandler(stxPaymentController.listPayme
  *       200:
  *         description: Payment cancelled successfully
  */
-router.post('/stx/:paymentId/cancel', apiKeyMiddleware, asyncHandler(stxPaymentController.cancelPayment.bind(stxPaymentController)));
+router.post('/stx/:paymentId/cancel', apiKeyMiddleware, requirePermissions(['payments:write']), asyncHandler(stxPaymentController.cancelPayment.bind(stxPaymentController)));
 
 /**
  * @swagger
@@ -142,7 +142,7 @@ router.post('/stx/:paymentId/cancel', apiKeyMiddleware, asyncHandler(stxPaymentC
  *       200:
  *         description: Analytics retrieved successfully
  */
-router.get('/stx/analytics', apiKeyMiddleware, asyncHandler(stxPaymentController.getAnalytics.bind(stxPaymentController)));
+router.get('/stx/analytics', apiKeyMiddleware, requirePermissions(['payments:read']), asyncHandler(stxPaymentController.getAnalytics.bind(stxPaymentController)));
 
 // ===== STX CHAINHOOK WEBHOOK ROUTES (Public - Webhook Signature Auth) =====
 
@@ -210,7 +210,7 @@ router.get('/chainhook/stx/health', asyncHandler(stxWebhookController.healthChec
  *       200:
  *         description: Chainhook configuration retrieved successfully
  */
-router.get('/chainhook/stx/config', apiKeyMiddleware, asyncHandler(stxWebhookController.getChainhookConfig.bind(stxWebhookController)));
+router.get('/chainhook/stx/config', apiKeyMiddleware, requirePermissions(['webhooks:read']), asyncHandler(stxWebhookController.getChainhookConfig.bind(stxWebhookController)));
 
 /**
  * @swagger
@@ -236,7 +236,7 @@ router.get('/chainhook/stx/config', apiKeyMiddleware, asyncHandler(stxWebhookCon
  *       200:
  *         description: Test webhook processed successfully
  */
-router.post('/chainhook/stx/test', apiKeyMiddleware, asyncHandler(stxWebhookController.testWebhook.bind(stxWebhookController)));
+router.post('/chainhook/stx/test', apiKeyMiddleware, requirePermissions(['webhooks:write']), asyncHandler(stxWebhookController.testWebhook.bind(stxWebhookController)));
 
 // ===== PUBLIC STX PAYMENT STATUS ROUTES (For Customer Checkout) =====
 

@@ -80,12 +80,14 @@ router.get('/permissions', asyncHandler(async (req: express.Request, res: expres
   }
 
   const permissions = [
-    { id: 'payments.read', name: 'Read Payments', description: 'View payment data' },
-    { id: 'payments.write', name: 'Write Payments', description: 'Create and modify payments' },
-    { id: 'customers.read', name: 'Read Customers', description: 'View customer data' },
-    { id: 'customers.write', name: 'Write Customers', description: 'Create and modify customers' },
-    { id: 'webhooks.write', name: 'Manage Webhooks', description: 'Create and modify webhooks' },
-    { id: 'analytics.read', name: 'Read Analytics', description: 'View analytics data' }
+    { id: 'payments:create', name: 'Create Payments', description: 'Create new payment requests' },
+    { id: 'payments:read', name: 'Read Payments', description: 'View payment data and history' },
+    { id: 'payments:write', name: 'Modify Payments', description: 'Cancel and modify payments' },
+    { id: 'payments:webhook', name: 'Payment Webhooks', description: 'Receive payment webhook notifications' },
+    { id: 'merchant:read', name: 'Read Merchant Info', description: 'View merchant account information' },
+    { id: 'webhooks:create', name: 'Create Webhooks', description: 'Create webhook endpoints' },
+    { id: 'webhooks:read', name: 'Read Webhooks', description: 'View webhook configurations' },
+    { id: 'webhooks:write', name: 'Manage Webhooks', description: 'Test and modify webhooks' }
   ];
 
   res.json({
@@ -258,10 +260,16 @@ router.post('/onboarding', asyncHandler(async (req: express.Request, res: expres
     // Generate webhook secret
     const webhookSecret = `whsec_${crypto.randomBytes(32).toString('hex')}`;
 
-    // Create API key records
+    // Create API key records with comprehensive permissions
     const defaultPermissions = [
-      'payments:create', 'payments:read', 'payments:webhook',
-      'merchant:read', 'webhooks:create', 'webhooks:read'
+      'payments:create',   // Can create new payments
+      'payments:read',     // Can view payment data
+      'payments:write',    // Can cancel/modify payments
+      'payments:webhook',  // Can receive webhook events
+      'merchant:read',     // Can view merchant info
+      'webhooks:create',   // Can create webhooks
+      'webhooks:read',     // Can view webhooks
+      'webhooks:write'     // Can test webhooks
     ];
 
     // Create API keys in the ApiKey collection
@@ -664,17 +672,8 @@ router.post('/:keyId/regenerate', asyncHandler(async (req: express.Request, res:
   }
 
   try {
-    const merchant = await Merchant.findById(merchantId);
-    if (!merchant) {
-      res.status(404).json({
-        success: false,
-        error: 'Merchant not found'
-      });
-      return;
-    }
-
     // Find the API key
-    const apiKey = merchant.apiKeys.find((key: any) => key.keyId === keyId);
+    const apiKey = await ApiKey.findOne({ merchantId, keyId });
     if (!apiKey) {
       res.status(404).json({
         success: false,
@@ -694,7 +693,7 @@ router.post('/:keyId/regenerate', asyncHandler(async (req: express.Request, res:
     apiKey.keyPreview = newKeyPreview;
     apiKey.createdAt = new Date();
 
-    await merchant.save();
+    await apiKey.save();
 
     logger.info('API key regenerated', {
       merchantId,
@@ -706,7 +705,13 @@ router.post('/:keyId/regenerate', asyncHandler(async (req: express.Request, res:
       success: true,
       message: 'API key regenerated successfully',
       data: {
-        key: newApiKey // Only returned once
+        keyId: apiKey.keyId,
+        apiKey: newApiKey, // Full key - only returned once
+        keyPreview: newKeyPreview,
+        name: apiKey.name,
+        environment: apiKey.environment,
+        permissions: apiKey.permissions,
+        createdAt: apiKey.createdAt.toISOString()
       }
     });
   } catch (error: any) {
